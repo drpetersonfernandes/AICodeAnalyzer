@@ -1,0 +1,95 @@
+﻿<Window x:Class="AICodeAnalyzer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="AI Code Analyzer" Height="800" Width="1200">
+    
+    <Window.Resources>
+        <Style x:Key="MenuItemStyle" TargetType="MenuItem">
+            <Setter Property="Padding" Value="8,3"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+    </Window.Resources>
+    
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File" Style="{StaticResource MenuItemStyle}">
+                <MenuItem Header="_Exit" Click="MenuExit_Click"/>
+            </MenuItem>
+            <MenuItem Header="_Help" Style="{StaticResource MenuItemStyle}">
+                <MenuItem Header="_About" Click="MenuAbout_Click"/>
+            </MenuItem>
+        </Menu>
+        
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="7*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Project Selection Area -->
+            <GroupBox Grid.Row="0" Grid.Column="0" Header="Project Selection" Margin="0,0,5,10" Padding="5">
+                <StackPanel>
+                    <DockPanel Margin="0,5">
+                        <Button x:Name="BtnSelectFolder" Content="Select Folder" Click="BtnSelectFolder_Click" Width="100" DockPanel.Dock="Right" Margin="5,0,0,0"/>
+                        <TextBox x:Name="TxtSelectedFolder" IsReadOnly="True" VerticalContentAlignment="Center"/>
+                    </DockPanel>
+                    <TextBlock x:Name="TxtStatus" Text="Ready" Margin="0,5"/>
+                </StackPanel>
+            </GroupBox>
+            
+            <!-- API Selection Area -->
+            <GroupBox Grid.Row="1" Grid.Column="0" Header="AI API Selection" Margin="0,0,5,10" Padding="5">
+                <StackPanel>
+                    <ComboBox x:Name="CboAiApi" Margin="0,5" SelectionChanged="CboAiApi_SelectionChanged"/>
+                    <DockPanel Margin="0,5">
+                        <TextBlock Text="API Key:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <ComboBox x:Name="CboPreviousKeys" Width="100" SelectionChanged="CboPreviousKeys_SelectionChanged" DockPanel.Dock="Right"/>
+                        <PasswordBox x:Name="TxtApiKey" Margin="0,0,5,0"/>
+                    </DockPanel>
+                    <Button x:Name="BtnSaveKey" Content="Save Current Key" Margin="0,5,0,0" Click="BtnSaveKey_Click"/>
+                </StackPanel>
+            </GroupBox>
+            
+            <!-- Analyze Button -->
+            <Button x:Name="BtnAnalyze" Content="Analyze Code" Grid.Row="2" Grid.Column="0" Height="30" Margin="0,0,5,10" Click="BtnAnalyze_Click"/>
+            
+            <!-- Files List -->
+            <GroupBox Grid.Row="3" Grid.Column="0" Header="Source Files" Margin="0,0,5,10" Padding="5">
+                <ListView x:Name="LvFiles" Margin="0,5"/>
+            </GroupBox>
+            
+            <!-- Follow-up Question -->
+            <GroupBox Grid.Row="4" Grid.Column="0" Header="Follow-up Question" Margin="0,0,5,10" Padding="5">
+                <DockPanel>
+                    <Button x:Name="BtnSendFollowup" Content="Send" Width="60" DockPanel.Dock="Right" Margin="5,0,0,0" IsEnabled="False" Click="BtnSendFollowup_Click"/>
+                    <TextBox x:Name="TxtFollowupQuestion" Height="60" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" IsEnabled="False"/>
+                </DockPanel>
+            </GroupBox>
+            
+            <!-- Response Area -->
+            <GroupBox Grid.Row="0" Grid.Column="1" Grid.RowSpan="5" Header="AI Analysis" Margin="5,0,0,10" Padding="5">
+                <DockPanel>
+                    <Button x:Name="BtnSaveResponse" Content="Save Response" DockPanel.Dock="Bottom" Height="30" Margin="0,5,0,0" Click="BtnSaveResponse_Click" IsEnabled="False"/>
+                    <TextBox x:Name="TxtResponse" TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas"/>
+                </DockPanel>
+            </GroupBox>
+            
+            <!-- Footer -->
+            <StackPanel Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Center">
+                <TextBlock Text="AI Code Analyzer - Analyze your entire code base with AI" Margin="0,5"/>
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</Window>

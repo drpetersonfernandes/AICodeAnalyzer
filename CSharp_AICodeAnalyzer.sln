@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AICodeAnalyzer", "AICodeAnalyzer\AICodeAnalyzer.csproj", "{FCAA3616-4A56-4B13-A8A0-93F0D79DD3CA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FCAA3616-4A56-4B13-A8A0-93F0D79DD3CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FCAA3616-4A56-4B13-A8A0-93F0D79DD3CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FCAA3616-4A56-4B13-A8A0-93F0D79DD3CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FCAA3616-4A56-4B13-A8A0-93F0D79DD3CA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
