@@ -1,0 +1,99 @@
+﻿<Window x:Class="AICodeAnalyzer.ConfigurationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Configuration" Height="500" Width="600" 
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <TextBlock Grid.Row="0" Text="Application Settings" 
+                   FontSize="24" FontWeight="Bold" 
+                   HorizontalAlignment="Center" Margin="0,0,0,20"/>
+        
+        <TabControl Grid.Row="1" Grid.RowSpan="2" Margin="0,0,0,20">
+            <TabItem Header="File Settings">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <!-- File Size Limit -->
+                    <GroupBox Grid.Row="0" Header="File Size Limit" Margin="0,0,0,10" Padding="10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBlock Grid.Column="0" Text="Maximum File Size:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <Slider x:Name="SliderMaxFileSize" Grid.Column="1" 
+                                     Minimum="1" Maximum="5120" 
+                                     TickFrequency="128" IsSnapToTickEnabled="True"
+                                     VerticalAlignment="Center"
+                                     ValueChanged="SliderMaxFileSize_ValueChanged"/>
+                            <TextBlock x:Name="TxtMaxFileSize" Grid.Column="2" Text="1024 KB" Width="80" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                    </GroupBox>
+                    
+                    <!-- File Extensions -->
+                    <GroupBox Grid.Row="1" Grid.RowSpan="3" Header="Source File Extensions" Margin="0,10,0,0" Padding="10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <TextBlock Grid.Row="0" Text="Specify which file extensions to include for analysis:" Margin="0,0,0,10"/>
+                            
+                            <ListBox x:Name="LbExtensions" Grid.Row="1" Margin="0,0,0,10"
+                                     SelectionMode="Single"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"/>
+                                            <Button Grid.Column="1" Content="X" Width="20" Height="20" 
+                                                    Margin="5,0,0,0" Padding="0"
+                                                    Click="BtnRemoveExtension_Click"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBox x:Name="TxtNewExtension" Grid.Column="0" Margin="0,0,10,0" KeyDown="TxtNewExtension_KeyDown"/>
+                                <Button x:Name="BtnAddExtension" Grid.Column="1" Content="Add Extension" Padding="10,5" Click="BtnAddExtension_Click"/>
+                            </Grid>
+                        </Grid>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+            <!-- Additional tabs can be added here for future settings -->
+        </TabControl>
+        
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="BtnReset" Content="Reset to Defaults" Padding="15,5" Margin="0,0,10,0" Click="BtnReset_Click"/>
+            <Button x:Name="BtnSave" Content="Save" Padding="20,5" Margin="0,0,10,0" Click="BtnSave_Click"/>
+            <Button x:Name="BtnCancel" Content="Cancel" Padding="20,5" Click="BtnCancel_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
