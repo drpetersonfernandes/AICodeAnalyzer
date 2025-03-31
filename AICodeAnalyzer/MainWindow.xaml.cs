@@ -229,8 +229,6 @@ public partial class MainWindow
         }
     }
 
-    // Modify MainWindow.xaml.cs - Change these methods:
-
     private async Task ScanFolder()
     {
         if (string.IsNullOrEmpty(_selectedFolder) || !Directory.Exists(_selectedFolder))
@@ -244,7 +242,7 @@ public partial class MainWindow
         
             _filesByExtension.Clear();
             LvFiles.Items.Clear();
-            
+        
             // Run the scan in a background task
             await Task.Run(() => FindSourceFiles(_selectedFolder));
 
@@ -265,34 +263,79 @@ public partial class MainWindow
         }
     }
 
-// New method to display files organized by folder
     private void DisplayFilesByFolder()
     {
         // First, organize files by their folder structure
         var filesByFolder = new Dictionary<string, List<SourceFile>>();
+    
+        // Track how many files were manually added vs. found through folder scan
+        var manuallyAddedFiles = 0;
+        var folderScannedFiles = 0;
     
         // Group all files by their parent folder
         foreach (var extensionFiles in _filesByExtension.Values)
         {
             foreach (var file in extensionFiles)
             {
+                // Check if this file is inside or outside the base folder
+                var isOutsideBaseFolder = !file.Path.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase);
+            
+                if (isOutsideBaseFolder)
+                {
+                    manuallyAddedFiles++;
+                }
+                else
+                {
+                    folderScannedFiles++;
+                }
+            
                 // Extract the folder path from the relative path
                 var folderPath = Path.GetDirectoryName(file.RelativePath) ?? string.Empty;
             
-                // Handle root folder case
-                if (string.IsNullOrEmpty(folderPath))
+                // For files outside the base folder, prefix with "(External)"
+                if (isOutsideBaseFolder && string.IsNullOrEmpty(folderPath))
+                {
+                    folderPath = "(External Files)";
+                }
+                else if (isOutsideBaseFolder)
+                {
+                    folderPath = $"(External) {folderPath}";
+                }
+                else if (string.IsNullOrEmpty(folderPath))
+                {
                     folderPath = "(Root)";
+                }
             
                 // Add to folder dictionary
                 if (!filesByFolder.ContainsKey(folderPath))
                     filesByFolder[folderPath] = new List<SourceFile>();
-                
+            
                 filesByFolder[folderPath].Add(file);
             }
         }
     
-        // Now display the folder structure in the ListView
-        // First add stats by extension for overview
+        // Clear the list before adding items
+        LvFiles.Items.Clear();
+    
+        // Add mode indicator (folder scan or manual selection)
+        LvFiles.Items.Add(new ListViewItem
+        {
+            Content = $"===== Files Summary ({_filesByExtension.Values.Sum(v => v.Count)} total) =====", 
+            FontWeight = FontWeights.Bold,
+            Background = new SolidColorBrush(Colors.LightGray)
+        });
+    
+        if (manuallyAddedFiles > 0)
+        {
+            LvFiles.Items.Add($"    {manuallyAddedFiles} manually selected files");
+        }
+    
+        if (folderScannedFiles > 0)
+        {
+            LvFiles.Items.Add($"    {folderScannedFiles} files from folder scan");
+        }
+    
+        // Now display stats by extension
         LvFiles.Items.Add(new ListViewItem
         {
             Content = "===== File Extensions Summary =====", 
@@ -326,8 +369,230 @@ public partial class MainWindow
             // Add each file in this folder (ordered alphabetically)
             foreach (var file in filesByFolder[folderPath].OrderBy(f => Path.GetFileName(f.RelativePath)))
             {
-                LvFiles.Items.Add($"    {Path.GetFileName(file.RelativePath)}");
+                // Show files that are manually added with a different indicator
+                var isOutsideBaseFolder = !file.Path.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase);
+                var prefix = isOutsideBaseFolder ? "+" : "    ";
+            
+                LvFiles.Items.Add($"{prefix} {Path.GetFileName(file.RelativePath)}");
             }
+        }
+    }
+    
+    private string GetLanguageGroupForExtension(string ext)
+    {
+        return ext switch
+        {
+            ".cs" => "C#",
+            ".xaml" => "XAML",
+            ".java" => "Java",
+            ".js" => "JavaScript",
+            ".ts" => "TypeScript",
+            ".py" => "Python",
+            ".html" or ".htm" => "HTML",
+            ".css" => "CSS",
+            ".cpp" or ".h" or ".c" => "C/C++",
+            ".go" => "Go",
+            ".rb" => "Ruby",
+            ".php" => "PHP",
+            ".swift" => "Swift",
+            ".kt" => "Kotlin",
+            ".rs" => "Rust",
+            ".dart" => "Dart",
+            ".xml" => "XML",
+            ".json" => "JSON",
+            ".yaml" or ".yml" => "YAML",
+            ".md" => "Markdown",
+            ".txt" => "Text",
+            _ => "Other"
+        };
+    }
+    
+    private string GenerateFileFilterFromExtensions()
+    {
+        var filterBuilder = new StringBuilder();
+    
+        // Add an "All Supported Files" filter first
+        filterBuilder.Append("All Supported Files|");
+    
+        // Add all supported extensions
+        foreach (var ext in _settingsManager.Settings.SourceFileExtensions)
+        {
+            filterBuilder.Append($"*{ext};");
+        }
+    
+        // Remove the last semicolon
+        filterBuilder.Length--;
+    
+        // Add specific filters for each type
+        var groupedExtensions = _settingsManager.Settings.SourceFileExtensions
+            .GroupBy(ext => GetLanguageGroupForExtension(ext))
+            .OrderBy(g => g.Key);
+    
+        foreach (var group in groupedExtensions)
+        {
+            filterBuilder.Append($"|{group.Key} Files|");
+            foreach (var ext in group)
+            {
+                filterBuilder.Append($"*{ext};");
+            }
+
+            // Remove the last semicolon
+            filterBuilder.Length--;
+        }
+    
+        // Add "All Files" filter at the end
+        filterBuilder.Append("|All Files|*.*");
+    
+        return filterBuilder.ToString();
+    }
+    
+    private async void BtnSelectFiles_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // Create file selection dialog
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Multiselect = true,
+                Title = "Select Source Files",
+                Filter = GenerateFileFilterFromExtensions()
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                // Initialize the file collection if this is the first selection
+                if (string.IsNullOrEmpty(_selectedFolder))
+                {
+                    // Use the directory of the first selected file as the base folder
+                    _selectedFolder = Path.GetDirectoryName(dialog.FileNames[0]) ?? string.Empty;
+                    TxtSelectedFolder.Text = _selectedFolder;
+                
+                    // Clear any existing data
+                    _filesByExtension.Clear();
+                    LvFiles.Items.Clear();
+                
+                    LogOperation($"Base folder set to: {_selectedFolder}");
+                }
+            
+                LogOperation($"Processing {dialog.FileNames.Length} selected files");
+                StartOperationTimer("ProcessSelectedFiles");
+            
+                // Process files in background
+                await Task.Run(() => ProcessSelectedFiles(dialog.FileNames));
+            
+                // Display results
+                var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
+                LogOperation($"Total files after selection: {totalFiles}");
+            
+                // Update the files view
+                DisplayFilesByFolder();
+            
+                EndOperationTimer("ProcessSelectedFiles");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogOperation($"Error selecting files: {ex.Message}");
+            ErrorLogger.LogError(ex, "Selecting files");
+        }
+    }
+    
+    private void ProcessSelectedFiles(string[] filePaths)
+    {
+        foreach (var filePath in filePaths)
+        {
+            try
+            {
+                var fileInfo = new FileInfo(filePath);
+                var ext = fileInfo.Extension.ToLowerInvariant();
+            
+                // Check if this extension is supported
+                if (_settingsManager.Settings.SourceFileExtensions.Contains(ext))
+                {
+                    // Check file size limit
+                    var fileSizeKb = (int)(fileInfo.Length / 1024);
+                    if (fileSizeKb <= _settingsManager.Settings.MaxFileSizeKb)
+                    {
+                        // Get relative path (if file is not in the selected folder, it will use its full path)
+                        string relativePath;
+                        if (filePath.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase))
+                        {
+                            relativePath = filePath.Substring(_selectedFolder.Length).TrimStart('\\', '/');
+                        }
+                        else
+                        {
+                            // If file is outside the base folder, use the full path
+                            relativePath = filePath;
+                        }
+                    
+                        // Initialize the extension group if needed
+                        if (!_filesByExtension.ContainsKey(ext))
+                        {
+                            _filesByExtension[ext] = new List<SourceFile>();
+                        }
+                    
+                        // Check if this file is already added
+                        if (!_filesByExtension[ext].Any(f => f.Path.Equals(filePath, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            // Add the file
+                            _filesByExtension[ext].Add(new SourceFile
+                            {
+                                Path = filePath,
+                                RelativePath = relativePath,
+                                Extension = ext,
+                                Content = File.ReadAllText(filePath)
+                            });
+                        
+                            LogOperation($"Added file: {relativePath}");
+                        }
+                        else
+                        {
+                            LogOperation($"Skipped duplicate file: {relativePath}");
+                        }
+                    }
+                    else
+                    {
+                        LogOperation($"Skipped file due to size limit: {filePath} ({fileSizeKb} KB > {_settingsManager.Settings.MaxFileSizeKb} KB)");
+                    }
+                }
+                else
+                {
+                    LogOperation($"Skipped unsupported file type: {filePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogOperation($"Error processing file {filePath}: {ex.Message}");
+            }
+        }
+    }
+
+    private void BtnClearFiles_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // Ask for confirmation
+            var result = MessageBox.Show(
+                "Are you sure you want to clear all currently selected files?",
+                "Clear Files",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            
+            if (result == MessageBoxResult.Yes)
+            {
+                // Clear the file collections
+                _filesByExtension.Clear();
+                LvFiles.Items.Clear();
+                _selectedFolder = string.Empty;
+                TxtSelectedFolder.Text = string.Empty;
+            
+                LogOperation("File selection cleared");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogOperation($"Error clearing files: {ex.Message}");
+            ErrorLogger.LogError(ex, "Clearing files");
         }
     }
 
