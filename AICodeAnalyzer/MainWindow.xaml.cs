@@ -323,7 +323,7 @@ public partial class MainWindow
                 Background = new SolidColorBrush(Colors.LightGray)
             });
         
-            // Add each file in this folder
+            // Add each file in this folder (ordered alphabetically)
             foreach (var file in filesByFolder[folderPath].OrderBy(f => Path.GetFileName(f.RelativePath)))
             {
                 LvFiles.Items.Add($"    {Path.GetFileName(file.RelativePath)}");
