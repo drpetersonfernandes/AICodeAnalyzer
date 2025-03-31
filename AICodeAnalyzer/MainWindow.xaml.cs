@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using AICodeAnalyzer.AIProvider;
 using AICodeAnalyzer.Models;
 using Microsoft.WindowsAPICodePack.Dialogs;
 
@@ -138,19 +140,10 @@ public partial class MainWindow
         e.Handled = true;
     }
 
-    private void CboAiApi_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (CboAiApi.SelectedItem != null)
-        {
-            var apiSelection = CboAiApi.SelectedItem.ToString() ?? string.Empty;
-            UpdatePreviousKeys(apiSelection);
-        }
-    }
-
     private void UpdatePreviousKeys(string apiProvider)
     {
         CboPreviousKeys.Items.Clear();
-        CboPreviousKeys.Items.Add("Select a saved key");
+        CboPreviousKeys.Items.Add("Select a key");
         
         var savedKeys = _keyManager.GetKeysForProvider(apiProvider);
         foreach (var key in savedKeys)
@@ -236,6 +229,8 @@ public partial class MainWindow
         }
     }
 
+    // Modify MainWindow.xaml.cs - Change these methods:
+
     private async Task ScanFolder()
     {
         if (string.IsNullOrEmpty(_selectedFolder) || !Directory.Exists(_selectedFolder))
@@ -246,25 +241,20 @@ public partial class MainWindow
             TxtStatus.Text = "Scanning folder for source files...";
             LogOperation($"Starting folder scan: {_selectedFolder}");
             StartOperationTimer("FolderScan");
-            
+        
             _filesByExtension.Clear();
             LvFiles.Items.Clear();
-                
+            
             // Run the scan in a background task
             await Task.Run(() => FindSourceFiles(_selectedFolder));
 
             // Display results
             var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
             TxtStatus.Text = $"Found {totalFiles} source files.";
-            
-            // Display file stats by extension
-            foreach (var ext in _filesByExtension.Keys.OrderBy(k => k))
-            {
-                var count = _filesByExtension[ext].Count;
-                LvFiles.Items.Add($"{ext} - {count} files");
-                LogOperation($"Found {count} {ext} files");
-            }
-            
+        
+            // Display files organized by folder
+            DisplayFilesByFolder();
+        
             EndOperationTimer("FolderScan");
         }
         catch (Exception ex)
@@ -272,6 +262,72 @@ public partial class MainWindow
             LogOperation($"Error scanning folder: {ex.Message}");
             ErrorLogger.LogError(ex, "Scanning folder");
             TxtStatus.Text = "Error scanning folder.";
+        }
+    }
+
+// New method to display files organized by folder
+    private void DisplayFilesByFolder()
+    {
+        // First, organize files by their folder structure
+        var filesByFolder = new Dictionary<string, List<SourceFile>>();
+    
+        // Group all files by their parent folder
+        foreach (var extensionFiles in _filesByExtension.Values)
+        {
+            foreach (var file in extensionFiles)
+            {
+                // Extract the folder path from the relative path
+                var folderPath = Path.GetDirectoryName(file.RelativePath) ?? string.Empty;
+            
+                // Handle root folder case
+                if (string.IsNullOrEmpty(folderPath))
+                    folderPath = "(Root)";
+            
+                // Add to folder dictionary
+                if (!filesByFolder.ContainsKey(folderPath))
+                    filesByFolder[folderPath] = new List<SourceFile>();
+                
+                filesByFolder[folderPath].Add(file);
+            }
+        }
+    
+        // Now display the folder structure in the ListView
+        // First add stats by extension for overview
+        LvFiles.Items.Add(new ListViewItem
+        {
+            Content = "===== File Extensions Summary =====", 
+            FontWeight = FontWeights.Bold
+        });
+    
+        foreach (var ext in _filesByExtension.Keys.OrderBy(k => k))
+        {
+            var count = _filesByExtension[ext].Count;
+            LvFiles.Items.Add($"    {ext} - {count} files");
+            LogOperation($"Found {count} {ext} files");
+        }
+    
+        LvFiles.Items.Add(new ListViewItem
+        {
+            Content = "===== Files By Folder =====",
+            FontWeight = FontWeights.Bold
+        });
+    
+        // Then list files by folder
+        foreach (var folderPath in filesByFolder.Keys.OrderBy(f => f))
+        {
+            // Add folder as a header
+            LvFiles.Items.Add(new ListViewItem
+            {
+                Content = folderPath, 
+                FontWeight = FontWeights.Bold,
+                Background = new SolidColorBrush(Colors.LightGray)
+            });
+        
+            // Add each file in this folder
+            foreach (var file in filesByFolder[folderPath].OrderBy(f => Path.GetFileName(f.RelativePath)))
+            {
+                LvFiles.Items.Add($"    {Path.GetFileName(file.RelativePath)}");
+            }
         }
     }
 
@@ -480,37 +536,6 @@ public partial class MainWindow
         return prompt.ToString();
     }
 
-    private async Task<string> SendToAiApi(string apiSelection, string prompt)
-    {
-        try
-        {
-            // Log the request
-            LogOperation($"Preparing request to {apiSelection}");
-            
-            // Get the selected provider
-            var provider = _apiProviderFactory.GetProvider(apiSelection);
-            
-            // Start timer for API request
-            StartOperationTimer($"ApiRequest-{apiSelection}");
-            LogOperation($"Sending prompt to {apiSelection} ({prompt.Length} characters)");
-            
-            // Send the prompt and return the response
-            var response = await provider.SendPromptAsync(TxtApiKey.Password, prompt, _conversationHistory);
-            
-            // Log response received
-            EndOperationTimer($"ApiRequest-{apiSelection}");
-            LogOperation($"Received response from {apiSelection} ({response.Length} characters)");
-            
-            return response;
-        }
-        catch (Exception ex)
-        {
-            LogOperation($"Error calling {apiSelection} API: {ex.Message}");
-            ErrorLogger.LogError(ex, $"Sending prompt to {apiSelection}");
-            throw; // Re-throw to let the caller handle it
-        }
-    }
-
     private async void BtnSendFollowup_Click(object sender, RoutedEventArgs e)
     {
         var followupQuestion = TxtFollowupQuestion.Text;
@@ -700,6 +725,181 @@ public partial class MainWindow
         {
             // Log the error but don't crash the application
             LogOperation($"Error setting Markdown document properties: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Populate the model dropdown based on the selected provider
+    /// </summary>
+    private void PopulateModelDropdown()
+    {
+        CboModel.Items.Clear();
+
+        if (CboAiApi.SelectedItem == null)
+            return;
+    
+        var providerName = CboAiApi.SelectedItem.ToString();
+
+        try
+        {
+            // Only populate models for providers that support model selection
+            if (providerName == "DeepSeek API")
+            {
+                var provider = (DeepSeek)_apiProviderFactory.GetProvider(providerName);
+                var models = provider.GetAvailableModels();
+        
+                foreach (var model in models)
+                {
+                    CboModel.Items.Add(new ModelDropdownItem 
+                    { 
+                        DisplayText = model.Name, 
+                        ModelId = model.Id,
+                        Description = model.Description
+                    });
+                }
+        
+                CboModel.IsEnabled = true;
+                CboModel.SelectedIndex = 0;
+        
+                // Show tooltip with model description
+                CboModel.ToolTip = ((ModelDropdownItem)CboModel.SelectedItem).Description;
+            }
+            else if (providerName == "Claude API")
+            {
+                var provider = (Claude)_apiProviderFactory.GetProvider(providerName);
+                var models = provider.GetAvailableModels();
+            
+                foreach (var model in models)
+                {
+                    CboModel.Items.Add(new ModelDropdownItem 
+                    { 
+                        DisplayText = model.Name, 
+                        ModelId = model.Id,
+                        Description = model.Description
+                    });
+                }
+            
+                CboModel.IsEnabled = true;
+                CboModel.SelectedIndex = 0;
+            
+                // Show tooltip with model description
+                CboModel.ToolTip = ((ModelDropdownItem)CboModel.SelectedItem).Description;
+            }
+            else if (providerName == "Grok API") // Add this new section for Grok
+            {
+                var provider = (Grok)_apiProviderFactory.GetProvider(providerName);
+                var models = provider.GetAvailableModels();
+            
+                foreach (var model in models)
+                {
+                    CboModel.Items.Add(new ModelDropdownItem 
+                    { 
+                        DisplayText = model.Name, 
+                        ModelId = model.Id,
+                        Description = model.Description
+                    });
+                }
+            
+                CboModel.IsEnabled = true;
+                CboModel.SelectedIndex = 0;
+            
+                // Show tooltip with model description
+                CboModel.ToolTip = ((ModelDropdownItem)CboModel.SelectedItem).Description;
+            }
+            else
+            {
+                // For other providers, disable the model dropdown
+                CboModel.IsEnabled = false;
+                CboModel.Items.Add("Default model");
+                CboModel.SelectedIndex = 0;
+                CboModel.ToolTip = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            LogOperation($"Error populating model dropdown: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Handle selection change in the API provider dropdown
+    /// </summary>
+    private void CboAiApi_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CboAiApi.SelectedItem != null)
+        {
+            var apiSelection = CboAiApi.SelectedItem.ToString() ?? string.Empty;
+            UpdatePreviousKeys(apiSelection);
+            PopulateModelDropdown(); // Add this line to existing method
+        }
+    }
+
+    /// <summary>
+    /// Handle selection change in the model dropdown
+    /// </summary>
+    private void CboModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CboModel.SelectedItem is ModelDropdownItem selectedModel)
+        {
+            // Update tooltip with model description
+            CboModel.ToolTip = selectedModel.Description;
+        }
+    }
+
+    private async Task<string> SendToAiApi(string apiSelection, string prompt)
+    {
+        try
+        {
+            // Log the request
+            LogOperation($"Preparing request to {apiSelection}");
+    
+            // Get the selected provider
+            var provider = _apiProviderFactory.GetProvider(apiSelection);
+    
+            // Start timer for API request
+            StartOperationTimer($"ApiRequest-{apiSelection}");
+            LogOperation($"Sending prompt to {apiSelection} ({prompt.Length} characters)");
+    
+            // Get selected model ID for providers that support model selection
+            string? modelId = null;
+            if (CboModel.IsEnabled && CboModel.SelectedItem is ModelDropdownItem selectedModel)
+            {
+                modelId = selectedModel.ModelId;
+                LogOperation($"Using model: {selectedModel.DisplayText} ({modelId})");
+            }
+    
+            // Send the prompt and return the response
+            string response;
+    
+            // Special handling for providers with model selection
+            if (provider is DeepSeek deepSeekProvider && modelId != null)
+            {
+                response = await deepSeekProvider.SendPromptWithModelAsync(TxtApiKey.Password, prompt, _conversationHistory, modelId);
+            }
+            else if (provider is Claude claudeProvider && modelId != null)
+            {
+                response = await claudeProvider.SendPromptWithModelAsync(TxtApiKey.Password, prompt, _conversationHistory, modelId);
+            }
+            else if (provider is Grok grokProvider && modelId != null)
+            {
+                response = await grokProvider.SendPromptWithModelAsync(TxtApiKey.Password, prompt, _conversationHistory, modelId);
+            }
+            else
+            {
+                response = await provider.SendPromptWithModelAsync(TxtApiKey.Password, prompt, _conversationHistory);
+            }
+    
+            // Log response received
+            EndOperationTimer($"ApiRequest-{apiSelection}");
+            LogOperation($"Received response from {apiSelection} ({response.Length} characters)");
+    
+            return response;
+        }
+        catch (Exception ex)
+        {
+            LogOperation($"Error calling {apiSelection} API: {ex.Message}");
+            ErrorLogger.LogError(ex, $"Sending prompt to {apiSelection}");
+            throw; // Re-throw to let the caller handle it
         }
     }
 }

@@ -16,7 +16,7 @@ public class Gemini : IAiApiProvider
     public string Name => "Gemini API";
     public string DefaultModel => "gemini-pro";
 
-    public async Task<string> SendPromptAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
+    public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
     {
         var model = DefaultModel;
         var apiUrl = $"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={apiKey}";

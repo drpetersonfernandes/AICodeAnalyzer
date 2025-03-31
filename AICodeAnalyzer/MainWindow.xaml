@@ -29,14 +29,15 @@
         
         <Grid Margin="10">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="150"/>
+                <RowDefinition Height="Auto"/> <!-- Row 0 -->
+                <RowDefinition Height="Auto"/> <!-- Row 1 -->
+                <RowDefinition Height="Auto"/> <!-- Row 2 -->
+                <RowDefinition Height="Auto"/> <!-- Row 3 -->
+                <RowDefinition Height="*"/>    <!-- Row 4 -->
+                <RowDefinition Height="Auto"/> <!-- Row 5 -->
+                <RowDefinition Height="Auto"/> <!-- Row 6 -->
+                <RowDefinition Height="*"/>    <!-- Row 7 -->
+                <RowDefinition Height="Auto"/>  <!-- Row 8 -->
             </Grid.RowDefinitions>
             
             <Grid.ColumnDefinitions>
@@ -49,46 +50,82 @@
             <GroupBox Grid.Row="0" Grid.Column="0" Header="Project Selection" Margin="0,0,5,10" Padding="5">
                 <StackPanel>
                     <DockPanel Margin="0,5">
-                        <Button x:Name="BtnSelectFolder" Content="Select Folder" Click="BtnSelectFolder_Click" Width="100" DockPanel.Dock="Right" Margin="5,0,0,0"/>
+                        <Button x:Name="BtnSelectFolder" Content="Select Folder" Click="BtnSelectFolder_Click" Width="100" DockPanel.Dock="Right" Margin="5,0,0,0" Height="25"/>
                         <TextBox x:Name="TxtSelectedFolder" IsReadOnly="True" VerticalContentAlignment="Center"/>
                     </DockPanel>
                     <TextBlock x:Name="TxtStatus" Text="Ready" Margin="0,5"/>
                 </StackPanel>
             </GroupBox>
-            
+
             <!-- API Selection Area -->
             <GroupBox Grid.Row="1" Grid.Column="0" Header="AI API Selection" Margin="0,0,5,10" Padding="5">
-                <StackPanel>
-                    <ComboBox x:Name="CboAiApi" Margin="0,5" SelectionChanged="CboAiApi_SelectionChanged"/>
-                    <DockPanel Margin="0,5">
-                        <TextBlock Text="API Key:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <ComboBox x:Name="CboPreviousKeys" Width="100" SelectionChanged="CboPreviousKeys_SelectionChanged" DockPanel.Dock="Right"/>
-                        <PasswordBox x:Name="TxtApiKey" Margin="0,0,5,0"/>
-                    </DockPanel>
-                    <Button x:Name="BtnSaveKey" Content="Save Current Key" Margin="0,5,0,0" Click="BtnSaveKey_Click"/>
-                </StackPanel>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- AI API ComboBox -->
+                    <ComboBox x:Name="CboAiApi" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,5"
+                              SelectionChanged="CboAiApi_SelectionChanged" />
+
+                    <!-- Model Selection -->
+                    <Label Content="Model:" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,5,5" />
+                    <ComboBox x:Name="CboModel"
+                              Grid.Row="1" Grid.Column="1"
+                              IsEnabled="False"
+                              Margin="0,0,5,5"
+                              HorizontalAlignment="Stretch"
+                              SelectionChanged="CboModel_SelectionChanged" />
+
+                    <!-- API Key Section -->
+                    <TextBlock Text="API Key:" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,5,5" />
+                    <PasswordBox x:Name="TxtApiKey" Grid.Row="2" Grid.Column="1" Margin="0,0,5,5" />
+                    <ComboBox x:Name="CboPreviousKeys" Grid.Row="2" Grid.Column="2" Width="100"
+                              Margin="0,0,5,5"
+                              SelectionChanged="CboPreviousKeys_SelectionChanged" />
+
+                    <!-- Save Button -->
+                    <Button x:Name="BtnSaveKey" Content="Save Current Key" Grid.Row="3" Grid.Column="0"
+                            Grid.ColumnSpan="3" Margin="0,0,0,0" Click="BtnSaveKey_Click" Height="25"/>
+                </Grid>
             </GroupBox>
-            
+
             <!-- Analyze Button -->
-            <Button x:Name="BtnAnalyze" Content="Analyze Code" Grid.Row="2" Grid.Column="0" Height="30" Margin="0,0,5,10" Click="BtnAnalyze_Click"/>
-            
+            <Button x:Name="BtnAnalyze" Content="Analyze Code" Grid.Row="3" Grid.Column="0" Height="25"
+                    Margin="0,0,5,10" Click="BtnAnalyze_Click" />
+
             <!-- Files List -->
-            <GroupBox Grid.Row="3" Grid.Column="0" Header="Source Files" Margin="0,0,5,10" Padding="5">
-                <ListView x:Name="LvFiles" Margin="0,5"/>
-            </GroupBox>
-            
+            <GroupBox Grid.Row="4" Grid.Column="0" Header="Source Files" Margin="0,0,5,10" Padding="5">
+                <ListView x:Name="LvFiles" Margin="0,5">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                </ListView>            </GroupBox>
+
             <!-- Follow-up Question -->
-            <GroupBox Grid.Row="4" Grid.Column="0" Header="Follow-up Question" Margin="0,0,5,10" Padding="5">
+            <GroupBox Grid.Row="5" Grid.Column="0" Header="Follow-up Question" Margin="0,0,5,10" Padding="5">
                 <DockPanel>
-                    <Button x:Name="BtnSendFollowup" Content="Send" Width="60" DockPanel.Dock="Right" Margin="5,0,0,0" IsEnabled="False" Click="BtnSendFollowup_Click"/>
-                    <TextBox x:Name="TxtFollowupQuestion" Height="60" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" IsEnabled="False"/>
+                    <Button x:Name="BtnSendFollowup" Content="Send" Width="60" DockPanel.Dock="Right" Margin="5,0,0,0"
+                            IsEnabled="False" Click="BtnSendFollowup_Click" />
+                    <TextBox x:Name="TxtFollowupQuestion" Height="60" TextWrapping="Wrap" AcceptsReturn="True"
+                             VerticalScrollBarVisibility="Auto" IsEnabled="False" />
                 </DockPanel>
             </GroupBox>
             
             <!-- GridSplitter -->
             <GridSplitter 
                 Grid.Row="0" 
-                Grid.RowSpan="5" 
+                Grid.RowSpan="6" 
                 Grid.Column="1"
                 Width="5"
                 HorizontalAlignment="Center"
@@ -99,7 +136,7 @@
                 Cursor="SizeWE"/>
             
             <!-- Response Area -->
-            <GroupBox Grid.Row="0" Grid.Column="2" Grid.RowSpan="5" Header="AI Analysis" Margin="5,0,0,10" Padding="5">
+            <GroupBox Grid.Row="0" Grid.Column="2" Grid.RowSpan="6" Header="AI Analysis" Margin="5,0,0,10" Padding="5">
                 <DockPanel>
                     <Grid DockPanel.Dock="Bottom" Margin="0,5,0,0">
                         <Grid.ColumnDefinitions>
@@ -120,7 +157,7 @@
                         <!-- Markdown Viewer -->
                         <ScrollViewer x:Name="MarkdownScrollViewer" Visibility="Visible" 
                                       VerticalScrollBarVisibility="Auto" 
-                                      HorizontalScrollBarVisibility="Disabled"
+                                      HorizontalScrollBarVisibility="Auto"
                                       PanningMode="VerticalOnly"
                                       CanContentScroll="True"
                                       PreviewMouseWheel="MarkdownScrollViewer_PreviewMouseWheel"
@@ -128,35 +165,28 @@
                             <markdig:MarkdownViewer x:Name="MarkdownViewer" 
                                                    Background="White" 
                                                    Padding="10"
-                                                   HorizontalAlignment="Stretch"
-                                                   Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}"/>
+                                                   HorizontalAlignment="Stretch" />
                         </ScrollViewer>
                     </Grid>
                 </DockPanel>
             </GroupBox>
             
-            <!-- Horizontal GridSplitter -->
-            <GridSplitter 
-                Grid.Row="6" 
-                Grid.Column="0" 
-                Grid.ColumnSpan="3"
-                Height="5"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Center"
-                Background="#DDDDDD"
-                ShowsPreview="True"
-                ResizeBehavior="PreviousAndNext"
-                Cursor="SizeNS"/>
-                
             <!-- Log Panel -->
-            <GroupBox Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="3" Header="Operation Log" Margin="0,5,0,0" Padding="5">
+            <GroupBox Grid.Row="7" 
+                      Grid.Column="0" 
+                      Grid.ColumnSpan="3" 
+                      Header="Operation Log" 
+                      Margin="0,5,0,0" 
+                      Padding="5" 
+                      VerticalAlignment="Stretch">
                 <TextBox x:Name="TxtLog" 
                          IsReadOnly="True" 
                          TextWrapping="NoWrap" 
                          FontFamily="Consolas" 
                          FontSize="11"
                          VerticalScrollBarVisibility="Auto" 
-                         HorizontalScrollBarVisibility="Auto" 
+                         HorizontalScrollBarVisibility="Auto"
+                         VerticalAlignment="Stretch"
                          Background="#F5F5F5"/>
             </GroupBox>
         </Grid>

@@ -14,12 +14,43 @@ public class Grok : IAiApiProvider
 {
     private readonly HttpClient _httpClient = new();
         
-    public string Name => "GroK API";
-    public string DefaultModel => "grok-1";
+    public string Name => "Grok API";
+    public string DefaultModel => "grok-2-1212";
 
-    public async Task<string> SendPromptAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
+    /// <summary>
+    /// Gets the list of available models for this provider
+    /// </summary>
+    /// <returns>A list of available models</returns>
+    public List<GrokModelInfo> GetAvailableModels()
     {
-        var model = DefaultModel;
+        return new List<GrokModelInfo>
+        {
+            new()
+            {
+                Name = "Grok 2",
+                Id = "grok-2-1212",
+                Description = "Grok 2 model supporting function calling and structured outputs (131K context)"
+            }
+        };
+    }
+
+    /// <summary>
+    /// Sends a prompt to the Grok API using the default model
+    /// Implements the interface method
+    /// </summary>
+    public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
+    {
+        // Call the overloaded method with the default model
+        return await SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
+    }
+
+    /// <summary>
+    /// Sends a prompt to the Grok API using the specified model
+    /// Extended method for model selection
+    /// </summary>
+    public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
+    {
+        var model = modelId;
         var apiUrl = "https://api.grok.x/v1/chat/completions";
                 
         _httpClient.DefaultRequestHeaders.Clear();
@@ -72,4 +103,25 @@ public class Grok : IAiApiProvider
             .GetProperty("message")
             .GetProperty("content").GetString() ?? "No response";
     }
+}
+
+/// <summary>
+/// Represents an AI model that can be selected in the UI
+/// </summary>
+public class GrokModelInfo
+{
+    /// <summary>
+    /// Gets or sets the display name of the model
+    /// </summary>
+    public required string Name { get; set; }
+    
+    /// <summary>
+    /// Gets or sets the model identifier used in API calls
+    /// </summary>
+    public required string Id { get; set; }
+    
+    /// <summary>
+    /// Gets or sets a description of the model
+    /// </summary>
+    public required string Description { get; set; }
 }

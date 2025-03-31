@@ -26,5 +26,5 @@ public interface IAiApiProvider
     /// <param name="prompt">The prompt to send to the API</param>
     /// <param name="conversationHistory">Previous messages in the conversation</param>
     /// <returns>The AI's response text</returns>
-    Task<string> SendPromptAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory);
+    Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory);
 }

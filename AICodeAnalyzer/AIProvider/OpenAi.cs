@@ -17,7 +17,7 @@ public class OpenAi : IAiApiProvider
     public string Name => "ChatGPT API";
     public string DefaultModel => "gpt-4-turbo-preview";
 
-    public async Task<string> SendPromptAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
+    public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
     {
         var model = DefaultModel;
         var apiUrl = "https://api.openai.com/v1/chat/completions";
