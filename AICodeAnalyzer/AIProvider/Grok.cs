@@ -13,7 +13,7 @@ namespace AICodeAnalyzer.AIProvider;
 public class Grok : IAiApiProvider
 {
     private readonly HttpClient _httpClient = new();
-        
+
     public string Name => "Grok API";
     public string DefaultModel => "grok-2-1212";
 
@@ -52,13 +52,13 @@ public class Grok : IAiApiProvider
     {
         var model = modelId;
         var apiUrl = "https://api.grok.x/v1/chat/completions";
-                
+
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-            
+
         // Properly format the message history for Grok API
         var messages = new List<object>();
-            
+
         // First add system message if this is the first message
         if (conversationHistory.Count == 0)
         {
@@ -72,33 +72,33 @@ public class Grok : IAiApiProvider
                 messages.Add(new { role = msg.Role, content = msg.Content });
             }
         }
-            
+
         // Add the current prompt
         messages.Add(new { role = "user", content = prompt });
-            
+
         var requestData = new
         {
             model,
             messages,
             max_tokens = 4096
         };
-                
+
         var content = new StringContent(
             JsonSerializer.Serialize(requestData),
             Encoding.UTF8,
             "application/json");
-                
+
         var response = await _httpClient.PostAsync(apiUrl, content);
-                
+
         if (!response.IsSuccessStatusCode)
         {
             var errorText = await response.Content.ReadAsStringAsync();
             throw new Exception($"API error ({response.StatusCode}): {errorText}");
         }
-                
+
         var responseJson = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(responseJson);
-                
+
         return doc.RootElement.GetProperty("choices")[0]
             .GetProperty("message")
             .GetProperty("content").GetString() ?? "No response";
@@ -114,12 +114,12 @@ public class GrokModelInfo
     /// Gets or sets the display name of the model
     /// </summary>
     public required string Name { get; set; }
-    
+
     /// <summary>
     /// Gets or sets the model identifier used in API calls
     /// </summary>
     public required string Id { get; set; }
-    
+
     /// <summary>
     /// Gets or sets a description of the model
     /// </summary>

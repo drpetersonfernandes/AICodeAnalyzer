@@ -11,12 +11,12 @@ namespace AICodeAnalyzer;
 public class ApiProviderFactory
 {
     private readonly Dictionary<string, IAiApiProvider> _providers = new();
-        
+
     /// <summary>
     /// Gets all available API providers
     /// </summary>
     public IReadOnlyList<IAiApiProvider> AllProviders => new List<IAiApiProvider>(_providers.Values).AsReadOnly();
-        
+
     public ApiProviderFactory()
     {
         // Register all available providers
@@ -26,7 +26,7 @@ public class ApiProviderFactory
         RegisterProvider(new Grok());
         RegisterProvider(new Gemini());
     }
-        
+
     /// <summary>
     /// Registers a new API provider
     /// </summary>
@@ -35,7 +35,7 @@ public class ApiProviderFactory
     {
         _providers[provider.Name] = provider;
     }
-        
+
     /// <summary>
     /// Gets a provider by name
     /// </summary>
@@ -47,7 +47,7 @@ public class ApiProviderFactory
         {
             return provider;
         }
-            
+
         throw new ArgumentException($"Provider '{name}' is not registered.", nameof(name));
     }
 }

@@ -8,7 +8,7 @@ public partial class AboutWindow
     {
         InitializeComponent();
     }
-        
+
     private void BtnOk_Click(object sender, RoutedEventArgs e)
     {
         Close();

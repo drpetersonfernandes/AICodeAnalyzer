@@ -13,12 +13,12 @@ public interface IAiApiProvider
     /// Gets the display name of the API provider
     /// </summary>
     string Name { get; }
-        
+
     /// <summary>
     /// Gets the default model name for this provider
     /// </summary>
     string DefaultModel { get; }
-        
+
     /// <summary>
     /// Sends a prompt to the AI API and returns the response
     /// </summary>

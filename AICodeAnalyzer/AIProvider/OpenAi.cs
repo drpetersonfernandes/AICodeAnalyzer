@@ -13,7 +13,7 @@ namespace AICodeAnalyzer.AIProvider;
 public class OpenAi : IAiApiProvider
 {
     private readonly HttpClient _httpClient = new();
-        
+
     public string Name => "ChatGPT API";
     public string DefaultModel => "gpt-4-turbo-preview";
 
@@ -21,13 +21,13 @@ public class OpenAi : IAiApiProvider
     {
         var model = DefaultModel;
         var apiUrl = "https://api.openai.com/v1/chat/completions";
-                
+
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-            
+
         // Properly format the message history for OpenAI API
         var messages = new List<object>();
-            
+
         // First add system message if this is the first message
         if (conversationHistory.Count == 0)
         {
@@ -41,33 +41,33 @@ public class OpenAi : IAiApiProvider
                 messages.Add(new { role = msg.Role, content = msg.Content });
             }
         }
-            
+
         // Add the current prompt
         messages.Add(new { role = "user", content = prompt });
-            
+
         var requestData = new
         {
             model,
             messages,
             max_tokens = 4096
         };
-                
+
         var content = new StringContent(
             JsonSerializer.Serialize(requestData),
             Encoding.UTF8,
             "application/json");
-                
+
         var response = await _httpClient.PostAsync(apiUrl, content);
-                
+
         if (!response.IsSuccessStatusCode)
         {
             var errorText = await response.Content.ReadAsStringAsync();
             throw new Exception($"API error ({response.StatusCode}): {errorText}");
         }
-                
+
         var responseJson = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(responseJson);
-                
+
         return doc.RootElement.GetProperty("choices")[0]
             .GetProperty("message")
             .GetProperty("content").GetString() ?? "No response";

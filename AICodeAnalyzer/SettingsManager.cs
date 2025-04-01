@@ -9,15 +9,15 @@ public class SettingsManager
 {
     private const string SettingsFileName = "settings.xml";
     private readonly string _settingsFilePath;
-    
+
     public ApplicationSettings Settings { get; private set; }
-    
+
     public SettingsManager()
     {
         _settingsFilePath = Path.Combine(AppContext.BaseDirectory, SettingsFileName);
         Settings = LoadSettings();
     }
-    
+
     /// <summary>
     /// Loads settings from the XML file or creates new settings if file doesn't exist
     /// </summary>
@@ -25,7 +25,7 @@ public class SettingsManager
     {
         if (!File.Exists(_settingsFilePath))
             return new ApplicationSettings();
-            
+
         try
         {
             using var reader = new StreamReader(_settingsFilePath);
@@ -39,7 +39,7 @@ public class SettingsManager
             return new ApplicationSettings();
         }
     }
-    
+
     /// <summary>
     /// Saves the current settings to the XML file
     /// </summary>

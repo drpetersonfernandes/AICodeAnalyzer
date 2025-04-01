@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:markdig="clr-namespace:Markdig.Wpf;assembly=Markdig.Wpf"
         mc:Ignorable="d"
-        Title="AI Code Analyzer" Height="800" Width="1200">
+        Title="AI Code Analyzer" Height="800" Width="1500">
 
     <Window.Resources>
         <Style x:Key="MenuItemStyle" TargetType="MenuItem">
@@ -48,9 +48,9 @@
             </Grid.RowDefinitions>
 
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="3*" MinWidth="200" />
+                <ColumnDefinition Width="2*" MinWidth="200" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="7*" MinWidth="300" />
+                <ColumnDefinition Width="8*" MinWidth="300" />
             </Grid.ColumnDefinitions>
 
             <!-- Project Selection Area -->
@@ -122,7 +122,8 @@
                     Margin="0,0,5,10" Click="BtnAnalyze_Click" />
 
             <!-- Files List -->
-            <GroupBox Grid.Row="4" Grid.Column="0" Grid.RowSpan="3" Header="Files List" Margin="0,0,5,10" Padding="5" VerticalAlignment="Stretch">
+            <GroupBox Grid.Row="4" Grid.Column="0" Grid.RowSpan="3" Header="Files List" Margin="0,0,5,10" Padding="5"
+                      VerticalAlignment="Stretch">
                 <ListView x:Name="LvFiles" Margin="0,5" VerticalAlignment="Stretch">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
@@ -146,8 +147,37 @@
                 Cursor="SizeWE" />
 
             <!-- Response Area -->
+            <!-- Response Area -->
             <GroupBox Grid.Row="0" Grid.Column="2" Grid.RowSpan="5" Header="AI Analysis" Margin="5,0,0,10" Padding="5">
                 <DockPanel>
+                    <!-- Message Navigation Panel -->
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Previous Response Button -->
+                        <Button x:Name="BtnPreviousResponse" Grid.Column="0"
+                                Content="◀" FontSize="14" Width="30" Height="30"
+                                ToolTip="View Previous Response"
+                                Click="BtnPreviousResponse_Click"
+                                IsEnabled="False" />
+
+                        <!-- Message Counter Display -->
+                        <TextBlock x:Name="TxtResponseCounter" Grid.Column="1"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Text="Response 0 of 0" FontSize="12" />
+
+                        <!-- Next Response Button -->
+                        <Button x:Name="BtnNextResponse" Grid.Column="2"
+                                Content="▶" FontSize="14" Width="30" Height="30"
+                                ToolTip="View Next Response"
+                                Click="BtnNextResponse_Click"
+                                IsEnabled="False" />
+                    </Grid>
+
                     <Grid DockPanel.Dock="Bottom" Margin="0,5,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -182,7 +212,7 @@
                     </Grid>
                 </DockPanel>
             </GroupBox>
-            
+
             <!-- Follow-up Question -->
             <GroupBox Grid.Row="6" Grid.Column="2" Header="Follow-up Question" Margin="5,0,0,0" Padding="5">
                 <DockPanel>

@@ -13,7 +13,7 @@ namespace AICodeAnalyzer.AIProvider;
 public class DeepSeek : IAiApiProvider
 {
     private readonly HttpClient _httpClient = new();
-        
+
     public string Name => "DeepSeek API";
     public string DefaultModel => "deepseek-coder"; // Keep deepseek-coder as default for backward compatibility
 
@@ -25,7 +25,7 @@ public class DeepSeek : IAiApiProvider
     /// <summary>
     /// Available DeepSeek models
     /// </summary>
-    public static class Models
+    private static class Models
     {
         // General purpose models
         public const string DeepSeekChat = "deepseek-chat"; // DeepSeek-V3
@@ -41,16 +41,16 @@ public class DeepSeek : IAiApiProvider
         return new List<DeepSeekModelInfo>
         {
             new()
-            { 
-                Id = Models.DeepSeekChat, 
+            {
+                Id = Models.DeepSeekChat,
                 Name = "DeepSeek Chat (V3)",
                 Description = "General purpose chat model with 64K context window",
                 ContextLength = 65536,
                 MaxOutputTokens = 8192
             },
             new()
-            { 
-                Id = Models.DeepSeekReasoner, 
+            {
+                Id = Models.DeepSeekReasoner,
                 Name = "DeepSeek Reasoner (R1)",
                 Description = "Reasoning model with chain-of-thought capabilities, 64K context",
                 ContextLength = 65536,
@@ -59,18 +59,18 @@ public class DeepSeek : IAiApiProvider
         };
     }
 
-    public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string? modelId = null)
+    public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
     {
         // Use specified model or fall back to default
-        var model = modelId ?? DefaultModel; // Fix: Use null-coalescing operator to handle null modelId
+        var model = modelId; // Fix: Use null-coalescing operator to handle null modelId
         var apiUrl = "https://api.deepseek.com/v1/chat/completions";
-                
+
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-            
+
         // Properly format the message history for DeepSeek API
         var messages = new List<object>();
-            
+
         // First add system message if this is the first message
         if (conversationHistory.Count == 0)
         {
@@ -85,41 +85,41 @@ public class DeepSeek : IAiApiProvider
                 messages.Add(new { role = msg.Role, content = msg.Content });
             }
         }
-            
+
         // Add the current prompt
         messages.Add(new { role = "user", content = prompt });
-            
+
         // Determine max tokens based on model
         var maxTokens = GetMaxTokensForModel(model);
-            
+
         var requestData = new
         {
             model,
             messages,
             max_tokens = maxTokens
         };
-                
+
         var content = new StringContent(
             JsonSerializer.Serialize(requestData),
             Encoding.UTF8,
             "application/json");
-                
+
         var response = await _httpClient.PostAsync(apiUrl, content);
-                
+
         if (!response.IsSuccessStatusCode)
         {
             var errorText = await response.Content.ReadAsStringAsync();
             throw new Exception($"API error ({response.StatusCode}): {errorText}");
         }
-                
+
         var responseJson = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(responseJson);
-                
+
         return doc.RootElement.GetProperty("choices")[0]
             .GetProperty("message")
             .GetProperty("content").GetString() ?? "No response";
     }
-    
+
     /// <summary>
     /// Gets the appropriate system prompt based on the model
     /// </summary>
@@ -131,7 +131,7 @@ public class DeepSeek : IAiApiProvider
             _ => "You are a helpful assistant specializing in code review and analysis." // Default for deepseek-chat and others
         };
     }
-    
+
     /// <summary>
     /// Gets the maximum output tokens for the specified model
     /// </summary>
@@ -155,22 +155,22 @@ public class DeepSeekModelInfo
     /// The model identifier used in API calls
     /// </summary>
     public required string Id { get; set; }
-    
+
     /// <summary>
     /// Display name for the model
     /// </summary>
     public required string Name { get; set; }
-    
+
     /// <summary>
     /// Description of the model's capabilities
     /// </summary>
     public required string Description { get; set; }
-    
+
     /// <summary>
     /// Maximum context length in tokens
     /// </summary>
     public int ContextLength { get; set; }
-    
+
     /// <summary>
     /// Maximum number of output tokens
     /// </summary>
