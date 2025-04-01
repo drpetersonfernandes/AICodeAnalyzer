@@ -234,12 +234,23 @@
 
             <!-- Follow-up Question -->
             <GroupBox Grid.Row="6" Grid.Column="2" Header="Follow-up Question" Margin="5,0,0,0" Padding="5">
-                <DockPanel>
-                    <Button x:Name="BtnSendFollowup" Content="Send" Width="60" DockPanel.Dock="Right" Margin="5,0,0,0"
-                            IsEnabled="False" Click="BtnSendFollowup_Click" />
-                    <TextBox x:Name="TxtFollowupQuestion" Height="60" TextWrapping="Wrap" AcceptsReturn="True"
-                             VerticalScrollBarVisibility="Auto" IsEnabled="False" />
-                </DockPanel>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" /> <!-- For checkbox -->
+                        <RowDefinition Height="*" />   <!-- For textbox -->
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" /> <!-- Expanding space -->
+                        <ColumnDefinition Width="Auto" /> <!-- For button -->
+                    </Grid.ColumnDefinitions>
+                    <CheckBox x:Name="ChkIncludeSelectedFiles" Content="Include selected files with question" 
+                              Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,5"
+                              IsEnabled="False" ToolTip="Include the files selected in the file list with your follow-up question" />
+                    <TextBox x:Name="TxtFollowupQuestion" Grid.Row="1" Grid.Column="0" Height="60" TextWrapping="Wrap" 
+                             AcceptsReturn="True" VerticalScrollBarVisibility="Auto" IsEnabled="False" />
+                    <Button x:Name="BtnSendFollowup" Content="Send" Grid.Row="1" Grid.Column="1" Width="60" 
+                            Margin="5,0,0,0" IsEnabled="False" Click="BtnSendFollowup_Click" />
+                </Grid>
             </GroupBox>
 
             <!-- Log Panel -->

@@ -35,6 +35,10 @@ public partial class MainWindow
         _apiProviderFactory = new ApiProviderFactory();
         _settingsManager = new SettingsManager();
 
+        TxtFollowupQuestion.IsEnabled = false;
+        BtnSendFollowup.IsEnabled = false;
+        ChkIncludeSelectedFiles.IsEnabled = false;
+
         // Populate API dropdown using provider names from the factory
         foreach (var provider in _apiProviderFactory.AllProviders)
         {
@@ -722,6 +726,7 @@ public partial class MainWindow
             // Enable follow-up questions
             TxtFollowupQuestion.IsEnabled = true;
             BtnSendFollowup.IsEnabled = true;
+            ChkIncludeSelectedFiles.IsEnabled = true;
             BtnSaveResponse.IsEnabled = true;
 
             TxtStatus.Text = "Analysis complete!";
@@ -837,6 +842,13 @@ public partial class MainWindow
             // Create an enhanced follow-up prompt with context
             var enhancedPrompt = GenerateContextualFollowupPrompt(followupQuestion);
 
+            // Check if we should include selected files
+            if (ChkIncludeSelectedFiles.IsChecked == true && LvFiles.SelectedItems.Count > 0)
+            {
+                // Add information about selected files to the prompt
+                enhancedPrompt = AppendSelectedFilesToPrompt(enhancedPrompt);
+            }
+
             // Add the original follow-up question to the conversation history
             _conversationHistory.Add(new ChatMessage { Role = "user", Content = followupQuestion });
             LogOperation("Added follow-up question to conversation history");
@@ -866,6 +878,74 @@ public partial class MainWindow
             TxtStatus.Text = "Error sending follow-up question.";
             EndOperationTimer("FollowupQuestion");
         }
+    }
+
+    /// <summary>
+    /// Appends content of the selected files to the prompt
+    /// </summary>
+    /// <param name="originalPrompt">The original prompt text</param>
+    /// <returns>Enhanced prompt with selected file contents</returns>
+    private string AppendSelectedFilesToPrompt(string originalPrompt)
+    {
+        var promptBuilder = new StringBuilder(originalPrompt);
+
+        promptBuilder.AppendLine();
+        promptBuilder.AppendLine("--- SELECTED FILES FOR REFERENCE ---");
+        promptBuilder.AppendLine();
+
+        var selectedFileNames = new List<string>();
+        var selectedFilesContent = new StringBuilder();
+        var fileCount = 0;
+
+        foreach (var item in LvFiles.SelectedItems)
+        {
+            if (item is string fileName && !fileName.StartsWith("=====") && !fileName.TrimStart().StartsWith("("))
+            {
+                // Handle file entries (not folder or summary headers)
+                // Trim any leading spaces or + signs used for displaying in the list
+                var cleanFileName = fileName.TrimStart(' ', '+');
+
+                // Find the matching file in our file collection
+                foreach (var extensionFiles in _filesByExtension.Values)
+                {
+                    var matchingFile = extensionFiles.FirstOrDefault(f =>
+                        Path.GetFileName(f.RelativePath).Equals(cleanFileName, StringComparison.OrdinalIgnoreCase));
+
+                    if (matchingFile != null)
+                    {
+                        fileCount++;
+                        selectedFileNames.Add(matchingFile.RelativePath);
+
+                        // Append file content in a code block with language identification
+                        selectedFilesContent.AppendLine($"File: {matchingFile.RelativePath}");
+                        selectedFilesContent.AppendLine($"```{GetLanguageForExtension(matchingFile.Extension)}");
+                        selectedFilesContent.AppendLine(matchingFile.Content);
+                        selectedFilesContent.AppendLine("```");
+                        selectedFilesContent.AppendLine();
+
+                        // Break out of the inner loop once file is found
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Add summary of selected files
+        promptBuilder.AppendLine($"I've included {fileCount} selected files for your reference:");
+        foreach (var fileName in selectedFileNames)
+        {
+            promptBuilder.AppendLine($"- {fileName}");
+        }
+
+        promptBuilder.AppendLine();
+
+        // Add the file contents
+        promptBuilder.Append(selectedFilesContent);
+
+        // Log the operation
+        LogOperation($"Included {fileCount} selected files in follow-up question");
+
+        return promptBuilder.ToString();
     }
 
     private string GenerateContextualFollowupPrompt(string followupQuestion)
