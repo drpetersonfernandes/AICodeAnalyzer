@@ -27,7 +27,6 @@ public class Gemini : IAiApiProvider
         public const string Gemini15Flash = "gemini-1.5-flash";
         public const string Gemini15Flash8B = "gemini-1.5-flash-8b";
         public const string Gemini15Pro = "gemini-1.5-pro";
-        public const string GeminiPro = "gemini-pro"; // Legacy model, kept for backward compatibility
     }
 
     /// <summary>
@@ -90,15 +89,6 @@ public class Gemini : IAiApiProvider
                 Description = "Flagship model with superior reasoning and problem-solving",
                 ContextLength = 1000000,
                 MaxOutputTokens = 8192,
-                ApiVersion = "v1"
-            },
-            new()
-            { 
-                Id = Models.GeminiPro, 
-                Name = "Gemini Pro (Legacy)",
-                Description = "Original Gemini model, maintained for compatibility",
-                ContextLength = 32768,
-                MaxOutputTokens = 4096,
                 ApiVersion = "v1"
             }
         };
