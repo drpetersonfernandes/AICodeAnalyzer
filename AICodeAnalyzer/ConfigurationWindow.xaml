@@ -87,7 +87,33 @@
                     </GroupBox>
                 </Grid>
             </TabItem>
-            <!-- Additional tabs can be added here for future settings -->
+            
+            <!-- New Prompt Settings Tab -->
+            <TabItem Header="Prompt Settings">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Text="Customize the initial prompt for code analysis:" 
+                               Margin="0,0,0,10" TextWrapping="Wrap"/>
+                    
+                    <TextBox x:Name="TxtInitialPrompt" Grid.Row="1"
+                             AcceptsReturn="True" TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                             FontFamily="Consolas" FontSize="12"
+                             TextChanged="TxtInitialPrompt_TextChanged"
+                             Margin="0,0,0,10"/>
+                    
+                    <Button x:Name="BtnRestoreDefaultPrompt" Grid.Row="2" 
+                            Content="Restore Default Prompt" 
+                            HorizontalAlignment="Right"
+                            Padding="10,5" 
+                            Click="BtnRestoreDefaultPrompt_Click"/>
+                </Grid>
+            </TabItem>
         </TabControl>
         
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">

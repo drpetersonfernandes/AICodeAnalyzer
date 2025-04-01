@@ -773,16 +773,9 @@ public partial class MainWindow
     private string GenerateInitialPrompt(Dictionary<string, List<string>> consolidatedFiles)
     {
         var prompt = new StringBuilder();
-            
-        // Start with a clear instruction
-        prompt.AppendLine("Please analyze the following source code files from my project. I would like you to:");
-        prompt.AppendLine("1. Understand the overall structure and purpose of the codebase");
-        prompt.AppendLine("2. Identify any bugs, errors, or inconsistencies");
-        prompt.AppendLine("3. Highlight potential security vulnerabilities");
-        prompt.AppendLine("4. Suggest improvements for code quality and maintainability");
-        prompt.AppendLine("5. Provide specific recommendations for the most critical issues");
-        prompt.AppendLine();
-        prompt.AppendLine("Here are all the files from my project:");
+        
+        // Use the customized prompt from settings instead of hardcoded text
+        prompt.AppendLine(_settingsManager.Settings.InitialPrompt);
         prompt.AppendLine();
 
         // Include files, grouped by extension
@@ -790,14 +783,14 @@ public partial class MainWindow
         {
             prompt.AppendLine($"--- {ext.ToUpperInvariant()} FILES ---");
             prompt.AppendLine();
-                
+            
             foreach (var fileContent in consolidatedFiles[ext])
             {
                 prompt.AppendLine(fileContent);
                 prompt.AppendLine();
             }
         }
-            
+        
         return prompt.ToString();
     }
 

@@ -21,7 +21,8 @@ public partial class ConfigurationWindow
         _workingSettings = new ApplicationSettings
         {
             MaxFileSizeKb = _settingsManager.Settings.MaxFileSizeKb,
-            SourceFileExtensions = new List<string>(_settingsManager.Settings.SourceFileExtensions)
+            SourceFileExtensions = new List<string>(_settingsManager.Settings.SourceFileExtensions),
+            InitialPrompt = _settingsManager.Settings.InitialPrompt
         };
         
         LoadSettingsToUi();
@@ -36,6 +37,9 @@ public partial class ConfigurationWindow
         // Load extensions
         LbExtensions.ItemsSource = null; // Clear first to force refresh
         LbExtensions.ItemsSource = _workingSettings.SourceFileExtensions;
+        
+        // Load initial prompt
+        TxtInitialPrompt.Text = _workingSettings.InitialPrompt;
     }
     
     private void UpdateFileSizeDisplay()
@@ -114,6 +118,22 @@ public partial class ConfigurationWindow
         }
     }
     
+    private void TxtInitialPrompt_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        // Update the working settings with the current prompt text
+        _workingSettings.InitialPrompt = TxtInitialPrompt.Text;
+    }
+    
+    private void BtnRestoreDefaultPrompt_Click(object sender, RoutedEventArgs e)
+    {
+        // Create a new settings object to get the default prompt
+        var defaultSettings = new ApplicationSettings();
+        
+        // Set the prompt text to the default
+        TxtInitialPrompt.Text = defaultSettings.InitialPrompt;
+        _workingSettings.InitialPrompt = defaultSettings.InitialPrompt;
+    }
+    
     private void BtnReset_Click(object sender, RoutedEventArgs e)
     {
         var result = MessageBox.Show("Are you sure you want to reset all settings to default values?", 
@@ -131,6 +151,7 @@ public partial class ConfigurationWindow
         // Apply changes to the actual settings
         _settingsManager.Settings.MaxFileSizeKb = _workingSettings.MaxFileSizeKb;
         _settingsManager.Settings.SourceFileExtensions = new List<string>(_workingSettings.SourceFileExtensions);
+        _settingsManager.Settings.InitialPrompt = _workingSettings.InitialPrompt;
         
         // Save to file
         _settingsManager.SaveSettings();
