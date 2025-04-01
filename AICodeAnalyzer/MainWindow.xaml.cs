@@ -711,17 +711,19 @@ public partial class MainWindow
             EndOperationTimer("GeneratePrompt");
             LogOperation($"Initial prompt generated ({initialPrompt.Length} characters)");
 
+            // Add user message to conversation history first
+            _conversationHistory.Add(new ChatMessage { Role = "user", Content = initialPrompt });
+
             // Send it to selected API
             var response = await SendToAiApi(apiSelection, initialPrompt);
+
+            // Add assistant response to conversation history
+            _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = response });
+            LogOperation("Conversation history updated");
 
             // Display the response
             LogOperation("Updating UI with response");
             UpdateResponseDisplay(response);
-
-            // Update conversation history
-            _conversationHistory.Add(new ChatMessage { Role = "user", Content = initialPrompt });
-            _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = response });
-            LogOperation("Conversation history updated");
 
             // Enable follow-up questions
             TxtFollowupQuestion.IsEnabled = true;
@@ -849,25 +851,25 @@ public partial class MainWindow
                 enhancedPrompt = AppendSelectedFilesToPrompt(enhancedPrompt);
             }
 
-            // Add the original follow-up question to the conversation history
+            // Add the user question to the conversation history first
             _conversationHistory.Add(new ChatMessage { Role = "user", Content = followupQuestion });
             LogOperation("Added follow-up question to conversation history");
 
             // Send the enhanced prompt to selected API
             var response = await SendToAiApi(apiSelection, enhancedPrompt);
 
-            // Display the response
+            // Add the assistant response to conversation history
+            _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = response });
+            LogOperation("Added assistant response to conversation history");
+
+            // Display the response (this will also auto-save it)
             LogOperation("Updating UI with follow-up response");
             UpdateResponseDisplay(response);
-
-            // Update conversation history
-            _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = response });
 
             // Clear the follow-up question text box
             TxtFollowupQuestion.Text = "";
 
             TxtStatus.Text = "Follow-up response received!";
-            BtnSaveResponse.IsEnabled = true;
             EndOperationTimer("FollowupQuestion");
             LogOperation("Follow-up question workflow completed");
         }
@@ -1326,37 +1328,22 @@ public partial class MainWindow
     /// </summary>
     private void NavigateToResponse(int index)
     {
+        // Get all assistant responses from the conversation history
+        var assistantResponses = _conversationHistory
+            .Where(m => m.Role == "assistant")
+            .ToList();
+
         // Ensure index is within bounds
-        if (_conversationHistory.Count == 0 || index < 0 || index >= _conversationHistory.Count)
-        {
-            return;
-        }
-
-        // Only look at assistant responses (every other message starting from index 1)
-        var assistantResponseIndex = -1;
-        List<ChatMessage> assistantResponses = new();
-
-        for (var i = 0; i < _conversationHistory.Count; i++)
-        {
-            if (_conversationHistory[i].Role == "assistant")
-            {
-                assistantResponses.Add(_conversationHistory[i]);
-                if (i <= index)
-                    assistantResponseIndex++;
-            }
-        }
-
-        // Ensure we have assistant responses
-        if (assistantResponses.Count == 0 || assistantResponseIndex < 0)
+        if (assistantResponses.Count == 0 || index < 0 || index >= assistantResponses.Count)
         {
             return;
         }
 
         // Get the response at the specified index
-        var response = assistantResponses[assistantResponseIndex].Content;
+        var response = assistantResponses[index].Content;
 
         // Update the current index
-        _currentResponseIndex = assistantResponseIndex;
+        _currentResponseIndex = index;
 
         // Update navigation buttons
         UpdateNavigationControls();
@@ -1373,6 +1360,8 @@ public partial class MainWindow
 
         // Update the message counter
         UpdateMessageCounter();
+
+        LogOperation($"Navigated to response #{index + 1} of {assistantResponses.Count}");
     }
 
     /// <summary>
@@ -1412,7 +1401,10 @@ public partial class MainWindow
     /// </summary>
     private void BtnPreviousResponse_Click(object sender, RoutedEventArgs e)
     {
-        NavigateToResponse(_currentResponseIndex - 1);
+        if (_currentResponseIndex > 0)
+        {
+            NavigateToResponse(_currentResponseIndex - 1);
+        }
     }
 
     /// <summary>
@@ -1420,11 +1412,16 @@ public partial class MainWindow
     /// </summary>
     private void BtnNextResponse_Click(object sender, RoutedEventArgs e)
     {
-        NavigateToResponse(_currentResponseIndex + 1);
+        var totalResponses = _conversationHistory.Count(m => m.Role == "assistant");
+
+        if (_currentResponseIndex < totalResponses - 1)
+        {
+            NavigateToResponse(_currentResponseIndex + 1);
+        }
     }
 
     /// <summary>
-    /// Modified method to update the response display and configure navigation
+    /// Updates the response display and configures navigation
     /// </summary>
     private void UpdateResponseDisplay(string responseText)
     {
@@ -1444,9 +1441,14 @@ public partial class MainWindow
         BtnToggleMarkdown.IsEnabled = true;
         BtnSaveResponse.IsEnabled = true;
 
-        // Update the current response index to the newest response
-        var totalResponses = _conversationHistory.Count(m => m.Role == "assistant");
-        _currentResponseIndex = totalResponses - 1;
+        // Calculate the current response index (count of assistant messages - 1)
+        var assistantResponses = _conversationHistory.Count(m => m.Role == "assistant");
+
+        // This will be the index of the response we're about to add
+        _currentResponseIndex = assistantResponses;
+
+        // Auto-save the response
+        AutoSaveResponse(responseText, _currentResponseIndex);
 
         // Update navigation controls
         UpdateNavigationControls();
@@ -1530,6 +1532,45 @@ public partial class MainWindow
         {
             LogOperation($"Error opening configuration window: {ex.Message}");
             ErrorLogger.LogError(ex, "Opening configuration window");
+        }
+    }
+
+    /// <summary>
+    /// Automatically saves an AI response to the AiOutput folder
+    /// </summary>
+    /// <param name="responseText">The AI response text to save</param>
+    /// <param name="responseIndex">The index of this response in the conversation</param>
+    private void AutoSaveResponse(string responseText, int responseIndex)
+    {
+        try
+        {
+            // Create the AiOutput directory if it doesn't exist
+            var outputDirectory = Path.Combine(AppContext.BaseDirectory, "AiOutput");
+            if (!Directory.Exists(outputDirectory))
+            {
+                Directory.CreateDirectory(outputDirectory);
+                LogOperation($"Created AiOutput directory at {outputDirectory}");
+            }
+
+            // Generate a filename based on project name (if available) and timestamp
+            var projectName = "unknown";
+            if (!string.IsNullOrEmpty(_selectedFolder))
+            {
+                projectName = new DirectoryInfo(_selectedFolder).Name;
+            }
+
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var filename = $"{projectName}_response_{responseIndex + 1}_{timestamp}.md";
+            var filePath = Path.Combine(outputDirectory, filename);
+
+            // Save the response
+            File.WriteAllText(filePath, responseText);
+            LogOperation($"Auto-saved response #{responseIndex + 1} to {filename}");
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't interrupt the user experience
+            LogOperation($"Error auto-saving response: {ex.Message}");
         }
     }
 }
