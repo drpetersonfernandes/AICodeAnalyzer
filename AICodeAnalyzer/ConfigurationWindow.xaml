@@ -88,30 +88,55 @@
                 </Grid>
             </TabItem>
             
-            <!-- New Prompt Settings Tab -->
+            <!-- Updated Prompt Settings Tab -->
             <TabItem Header="Prompt Settings">
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     
-                    <TextBlock Grid.Row="0" Text="Customize the initial prompt for code analysis:" 
+                    <!-- Prompt Selection and Management Controls -->
+                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0" Text="Prompt Template:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <ComboBox x:Name="CboPromptTemplates" Grid.Column="1" 
+                                  SelectionChanged="CboPromptTemplates_SelectionChanged"
+                                  DisplayMemberPath="Name"
+                                  Margin="0,0,10,0"/>
+                        
+                        <Button x:Name="BtnNewPrompt" Grid.Column="2" Content="New" 
+                                Padding="10,5" Margin="0,0,5,0" Click="BtnNewPrompt_Click"/>
+                        <Button x:Name="BtnRenamePrompt" Grid.Column="3" Content="Rename" 
+                                Padding="10,5" Margin="0,0,5,0" Click="BtnRenamePrompt_Click"/>
+                        <Button x:Name="BtnDeletePrompt" Grid.Column="4" Content="Delete" 
+                                Padding="10,5" Click="BtnDeletePrompt_Click"/>
+                    </Grid>
+                    
+                    <TextBlock Grid.Row="1" Text="Customize the selected prompt template for code analysis:" 
                                Margin="0,0,0,10" TextWrapping="Wrap"/>
                     
-                    <TextBox x:Name="TxtInitialPrompt" Grid.Row="1"
+                    <TextBox x:Name="TxtInitialPrompt" Grid.Row="2"
                              AcceptsReturn="True" TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                              FontFamily="Consolas" FontSize="12"
                              TextChanged="TxtInitialPrompt_TextChanged"
                              Margin="0,0,0,10"/>
                     
-                    <Button x:Name="BtnRestoreDefaultPrompt" Grid.Row="2" 
-                            Content="Restore Default Prompt" 
-                            HorizontalAlignment="Right"
-                            Padding="10,5" 
-                            Click="BtnRestoreDefaultPrompt_Click"/>
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="BtnRestoreDefaultPrompt" Content="Restore Default Prompt" 
+                                Padding="10,5" 
+                                Click="BtnRestoreDefaultPrompt_Click"/>
+                    </StackPanel>
                 </Grid>
             </TabItem>
         </TabControl>

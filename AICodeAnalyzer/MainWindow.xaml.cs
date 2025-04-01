@@ -45,6 +45,15 @@ public partial class MainWindow
 
         // Initialize log
         LogOperation("Application started");
+
+        InitializePromptSelection();
+    }
+
+    private void InitializePromptSelection()
+    {
+        // Initialize prompt templates
+        LoadPromptTemplates();
+        LogOperation("Loaded prompt templates");
     }
 
     private void MenuConfigure_Click(object sender, RoutedEventArgs e)
@@ -62,6 +71,9 @@ public partial class MainWindow
             {
                 // Settings were saved, update any necessary UI or behavior
                 LogOperation("Settings updated");
+
+                // Refresh the prompt templates dropdown
+                LoadPromptTemplates();
             }
         }
         catch (Exception ex)
@@ -781,8 +793,11 @@ public partial class MainWindow
     {
         var prompt = new StringBuilder();
 
-        // Use the customized prompt from settings instead of hardcoded text
-        prompt.AppendLine(_settingsManager.Settings.InitialPrompt);
+        // Get the selected prompt content
+        var promptTemplate = _settingsManager.Settings.InitialPrompt;
+
+        // Use the template as the basis for the prompt
+        prompt.AppendLine(promptTemplate);
         prompt.AppendLine();
 
         // Include files, grouped by extension
@@ -1358,5 +1373,83 @@ public partial class MainWindow
 
         // Update message counter
         UpdateMessageCounter();
+    }
+
+    /// <summary>
+    /// Loads available prompt templates into the dropdown
+    /// </summary>
+    private void LoadPromptTemplates()
+    {
+        CboPromptTemplate.ItemsSource = null;
+        CboPromptTemplate.ItemsSource = _settingsManager.Settings.CodePrompts;
+
+        // Select the current prompt
+        if (!string.IsNullOrEmpty(_settingsManager.Settings.SelectedPromptName))
+        {
+            var selectedPrompt = _settingsManager.Settings.CodePrompts.FirstOrDefault(p =>
+                p.Name == _settingsManager.Settings.SelectedPromptName);
+
+            if (selectedPrompt != null)
+            {
+                CboPromptTemplate.SelectedItem = selectedPrompt;
+            }
+            else if (_settingsManager.Settings.CodePrompts.Count > 0)
+            {
+                CboPromptTemplate.SelectedIndex = 0;
+            }
+        }
+        else if (_settingsManager.Settings.CodePrompts.Count > 0)
+        {
+            CboPromptTemplate.SelectedIndex = 0;
+        }
+    }
+
+    /// <summary>
+    /// Event handler for prompt template selection change
+    /// </summary>
+    private void CboPromptTemplate_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CboPromptTemplate.SelectedItem is CodePrompt selectedPrompt)
+        {
+            _settingsManager.Settings.SelectedPromptName = selectedPrompt.Name;
+            _settingsManager.SaveSettings();
+            LogOperation($"Selected prompt template: {selectedPrompt.Name}");
+        }
+    }
+
+    /// <summary>
+    /// Event handler for Configure Prompts button
+    /// </summary>
+    private void BtnConfigurePrompts_Click(object sender, RoutedEventArgs e)
+    {
+        OpenConfigurationWindow();
+    }
+
+    /// <summary>
+    /// Opens the configuration window with focus on prompt settings
+    /// </summary>
+    private void OpenConfigurationWindow()
+    {
+        try
+        {
+            var configWindow = new ConfigurationWindow(_settingsManager)
+            {
+                Owner = this
+            };
+
+            var result = configWindow.ShowDialog();
+
+            if (result == true)
+            {
+                // Settings were saved, update any necessary UI
+                LogOperation("Settings updated");
+                LoadPromptTemplates();
+            }
+        }
+        catch (Exception ex)
+        {
+            LogOperation($"Error opening configuration window: {ex.Message}");
+            ErrorLogger.LogError(ex, "Opening configuration window");
+        }
     }
 }
