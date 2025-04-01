@@ -425,7 +425,7 @@ public partial class MainWindow
     
         // Add specific filters for each type
         var groupedExtensions = _settingsManager.Settings.SourceFileExtensions
-            .GroupBy(ext => GetLanguageGroupForExtension(ext))
+            .GroupBy(GetLanguageGroupForExtension)
             .OrderBy(g => g.Key);
     
         foreach (var group in groupedExtensions)
