@@ -38,25 +38,23 @@
             <!-- Grid content remains unchanged -->
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" /> <!-- Row 0 -->
-                <RowDefinition Height="Auto" /> <!-- Row 1 -->
+                <RowDefinition Height="*" /> <!-- Row 1 -->
                 <RowDefinition Height="Auto" /> <!-- Row 2 -->
                 <RowDefinition Height="Auto" /> <!-- Row 3 -->
-                <RowDefinition Height="*" />    <!-- Row 4 -->
+                <RowDefinition Height="Auto" /> <!-- Row 4 -->
                 <RowDefinition Height="Auto" /> <!-- Row 5 -->
-                <RowDefinition Height="Auto" /> <!-- Row 6 -->
-                <RowDefinition Height="*" />    <!-- Row 7 -->
+                <RowDefinition Height="120" />  <!-- Row 6 -->
             </Grid.RowDefinitions>
 
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="3*" MinWidth="200" />
+                <ColumnDefinition Width="2.5*" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="7*" MinWidth="300" />
+                <ColumnDefinition Width="7.5*" />
             </Grid.ColumnDefinitions>
 
             <!-- Project Selection Area -->
-            <GroupBox Grid.Row="0" Grid.Column="0" Header="Project Selection" Margin="0,0,5,10" Padding="5">
+            <GroupBox Grid.Row="0" Grid.Column="0" Header="Select Files" Margin="0,0,5,0" Padding="0">
                 <StackPanel Margin="10">
-                    <TextBlock Text="Project Files" FontWeight="Bold" Margin="0,0,0,5" />
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -75,28 +73,21 @@
                     </Grid>
                 </StackPanel>
             </GroupBox>
-            
-            <GroupBox Grid.Row="2" Grid.Column="0" Header="Initial Prompt" Margin="0,0,5,10" Padding="5">
-                <StackPanel Margin="10">
-                    <TextBlock Text="Select Template" FontWeight="Bold" Margin="0,0,0,5" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <ComboBox x:Name="CboPromptTemplate" Grid.Column="0" 
-                                  SelectionChanged="CboPromptTemplate_SelectionChanged"
-                                  DisplayMemberPath="Name"
-                                  Margin="0,0,5,0" />
-                        <Button x:Name="BtnConfigurePrompts" Content="Edit" 
-                                Grid.Column="1" Padding="8,3" 
-                                Click="BtnConfigurePrompts_Click" />
-                    </Grid>
-                </StackPanel>
+
+            <!-- Files List -->
+            <GroupBox Grid.Row="1" Grid.Column="0" Header="Files List" Margin="0,0,5,0" Padding="0"
+                      VerticalAlignment="Stretch">
+                <ListView x:Name="LvFiles" Margin="0,5" VerticalAlignment="Stretch">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                </ListView>
             </GroupBox>
 
             <!-- API Selection Area -->
-            <GroupBox Grid.Row="1" Grid.Column="0" Header="AI API Selection" Margin="0,0,5,10" Padding="5">
+            <GroupBox Grid.Row="2" Grid.Column="0" Header="AI API Selection" Margin="0,0,5,0" Padding="0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -136,26 +127,33 @@
                 </Grid>
             </GroupBox>
 
-            <!-- Analyze Button -->
-            <Button Content="Analyze Code" Grid.Row="3" Grid.Column="0" Height="25"
-                    Margin="0,0,5,10" Click="BtnAnalyze_Click" />
-
-            <!-- Files List -->
-            <GroupBox Grid.Row="4" Grid.Column="0" Grid.RowSpan="3" Header="Files List" Margin="0,0,5,10" Padding="5"
-                      VerticalAlignment="Stretch">
-                <ListView x:Name="LvFiles" Margin="0,5" VerticalAlignment="Stretch">
-                    <ListView.ItemContainerStyle>
-                        <Style TargetType="ListViewItem">
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                        </Style>
-                    </ListView.ItemContainerStyle>
-                </ListView>
+            <!-- Initial Prompt -->
+            <GroupBox Grid.Row="3" Grid.Column="0" Header="Initial Prompt" Margin="0,0,5,5" Padding="0">
+                <StackPanel Margin="10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ComboBox x:Name="CboPromptTemplate" Grid.Column="0"
+                                  SelectionChanged="CboPromptTemplate_SelectionChanged"
+                                  DisplayMemberPath="Name"
+                                  Margin="0,0,5,0" />
+                        <Button x:Name="BtnConfigurePrompts" Content="Edit"
+                                Grid.Column="1" Padding="8,3"
+                                Click="BtnConfigurePrompts_Click" />
+                    </Grid>
+                </StackPanel>
             </GroupBox>
+
+            <!-- Analyze Button -->
+            <Button Content="Send Initial Prompt" Grid.Row="4" Grid.Column="0" Height="25"
+                    Margin="0,0,5,5" Click="BtnAnalyze_Click" />
 
             <!-- GridSplitter -->
             <GridSplitter
                 Grid.Row="0"
-                Grid.RowSpan="7"
+                Grid.RowSpan="6"
                 Grid.Column="1"
                 Width="5"
                 HorizontalAlignment="Center"
@@ -166,38 +164,52 @@
                 Cursor="SizeWE" />
 
             <!-- Response Area -->
-            <!-- Response Area -->
-            <GroupBox Grid.Row="0" Grid.Column="2" Grid.RowSpan="5" Header="AI Analysis" Margin="5,0,0,10" Padding="5">
+            <GroupBox Grid.Row="0" Grid.Column="2" Grid.RowSpan="6" Header="AI Analysis" Margin="5,0,0,0" Padding="5">
                 <DockPanel>
-                    <!-- Message Navigation Panel -->
+                    <!-- Top Control Bar (Navigation and Zoom) -->
                     <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" /> <!-- Previous Button -->
+                            <ColumnDefinition Width="*" />    <!-- Counter -->
+                            <ColumnDefinition Width="Auto" /> <!-- Next Button -->
+                            <ColumnDefinition Width="Auto" /> <!-- Zoom Controls -->
                         </Grid.ColumnDefinitions>
 
-                        <!-- Previous Response Button -->
-                        <Button x:Name="BtnPreviousResponse" Grid.Column="0"
-                                Content="◀" FontSize="14" Width="30" Height="30"
-                                ToolTip="View Previous Response"
-                                Click="BtnPreviousResponse_Click"
-                                IsEnabled="False" />
+                        <!-- Message Navigation Panel -->
+                        <StackPanel Orientation="Horizontal" Grid.Column="0" Grid.ColumnSpan="3">
+                            <Button x:Name="BtnPreviousResponse"
+                                    Content="◀" FontSize="14" Width="30" Height="30"
+                                    ToolTip="View Previous Response"
+                                    Click="BtnPreviousResponse_Click"
+                                    IsEnabled="False" Margin="0,0,5,0" />
 
-                        <!-- Message Counter Display -->
-                        <TextBlock x:Name="TxtResponseCounter" Grid.Column="1"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   Text="Response 0 of 0" FontSize="12" />
+                            <TextBlock x:Name="TxtResponseCounter"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Text="Response 0 of 0" FontSize="12" Margin="5,0" />
 
-                        <!-- Next Response Button -->
-                        <Button x:Name="BtnNextResponse" Grid.Column="2"
-                                Content="▶" FontSize="14" Width="30" Height="30"
-                                ToolTip="View Next Response"
-                                Click="BtnNextResponse_Click"
-                                IsEnabled="False" />
+                            <Button x:Name="BtnNextResponse"
+                                    Content="▶" FontSize="14" Width="30" Height="30"
+                                    ToolTip="View Next Response"
+                                    Click="BtnNextResponse_Click"
+                                    IsEnabled="False" Margin="5,0,0,0" />
+                        </StackPanel>
+
+                        <!-- Zoom Controls Panel -->
+                        <StackPanel Orientation="Horizontal" Grid.Column="3" HorizontalAlignment="Right">
+                            <Button x:Name="BtnZoomOut" Content="-" Width="25" Height="30" Click="BtnZoomOut_Click"
+                                    ToolTip="Zoom Out (Ctrl+Scroll)" Margin="0,0,2,0" />
+                            <TextBlock x:Name="TxtZoomLevel" Text="100%" VerticalAlignment="Center" Margin="5,0"
+                                       ToolTip="Current Zoom Level" />
+                            <Button x:Name="BtnZoomIn" Content="+" Width="25" Height="30" Click="BtnZoomIn_Click"
+                                    ToolTip="Zoom In (Ctrl+Scroll)" Margin="2,0,5,0" />
+                            <Button x:Name="BtnResetZoom" Content="Reset" Height="30" Click="BtnResetZoom_Click"
+                                    ToolTip="Reset Zoom (100%)" />
+                        </StackPanel>
                     </Grid>
 
+                    <!-- Bottom Control Bar (Save/Toggle) -->
                     <Grid DockPanel.Dock="Bottom" Margin="0,5,0,0">
+                        <!-- ... (Existing Save/Toggle buttons remain here) ... -->
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
@@ -217,12 +229,13 @@
 
                         <!-- Markdown Viewer -->
                         <ScrollViewer x:Name="MarkdownScrollViewer" Visibility="Visible"
-                                      VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Auto"
-                                      PanningMode="VerticalOnly"
-                                      CanContentScroll="True"
+                                      VerticalScrollBarVisibility="Disabled"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      PanningMode="None"
+                                      CanContentScroll="False"
                                       PreviewMouseWheel="MarkdownScrollViewer_PreviewMouseWheel"
                                       SizeChanged="MarkdownScrollViewer_SizeChanged">
+                            <!-- MarkdownViewer IS a FlowDocumentScrollViewer -->
                             <markdig:MarkdownViewer x:Name="MarkdownViewer"
                                                     Background="White"
                                                     Padding="10"
@@ -233,7 +246,7 @@
             </GroupBox>
 
             <!-- Follow-up Question -->
-            <GroupBox Grid.Row="6" Grid.Column="2" Header="Follow-up Question" Margin="5,0,0,0" Padding="5">
+            <GroupBox Grid.Row="5" Grid.Column="0" Header="Follow-up Question" Margin="5,0,0,0" Padding="5">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" /> <!-- For checkbox -->
@@ -243,18 +256,19 @@
                         <ColumnDefinition Width="*" /> <!-- Expanding space -->
                         <ColumnDefinition Width="Auto" /> <!-- For button -->
                     </Grid.ColumnDefinitions>
-                    <CheckBox x:Name="ChkIncludeSelectedFiles" Content="Include selected files with question" 
+                    <CheckBox x:Name="ChkIncludeSelectedFiles" Content="Include selected files with question"
                               Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,5"
-                              IsEnabled="False" ToolTip="Include the files selected in the file list with your follow-up question" />
-                    <TextBox x:Name="TxtFollowupQuestion" Grid.Row="1" Grid.Column="0" Height="60" TextWrapping="Wrap" 
+                              IsEnabled="False"
+                              ToolTip="Include the files selected in the file list with your follow-up question" />
+                    <TextBox x:Name="TxtFollowupQuestion" Grid.Row="1" Grid.Column="0" Height="60" TextWrapping="Wrap"
                              AcceptsReturn="True" VerticalScrollBarVisibility="Auto" IsEnabled="False" />
-                    <Button x:Name="BtnSendFollowup" Content="Send" Grid.Row="1" Grid.Column="1" Width="60" 
+                    <Button x:Name="BtnSendFollowup" Content="Send" Grid.Row="1" Grid.Column="1" Width="60"
                             Margin="5,0,0,0" IsEnabled="False" Click="BtnSendFollowup_Click" />
                 </Grid>
             </GroupBox>
 
             <!-- Log Panel -->
-            <GroupBox Grid.Row="7"
+            <GroupBox Grid.Row="6"
                       Grid.Column="0"
                       Grid.ColumnSpan="3"
                       Header="Operation Log"

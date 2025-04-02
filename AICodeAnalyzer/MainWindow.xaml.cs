@@ -26,6 +26,14 @@ public partial class MainWindow
     private readonly Dictionary<string, DateTime> _operationTimers = new();
     private readonly SettingsManager _settingsManager;
     private int _currentResponseIndex = -1;
+    
+    // --- Zoom related fields ---
+    private const double ZoomIncrement = 10.0; // Zoom step (10%)
+    private const double MinZoom = 20.0; // Minimum zoom level (20%)
+    private const double MaxZoom = 500.0; // Maximum zoom level (500%)
+
+    private double _markdownZoomLevel = 100.0; // Current zoom level (default 100%)
+    // -------------------------------
 
     public MainWindow()
     {
@@ -35,7 +43,7 @@ public partial class MainWindow
         _apiProviderFactory = new ApiProviderFactory();
         _settingsManager = new SettingsManager();
 
-        TxtFollowupQuestion.IsEnabled = false;
+        TxtFollowupQuestion.IsEnabled = true;
         BtnSendFollowup.IsEnabled = false;
         ChkIncludeSelectedFiles.IsEnabled = false;
 
@@ -51,6 +59,59 @@ public partial class MainWindow
         LogOperation("Application started");
 
         InitializePromptSelection();
+        
+        UpdateZoomDisplay(); // Initialize zoom display
+    }
+    
+    private void UpdateZoomDisplay()
+    {
+        if (MarkdownViewer != null)
+        {
+            // Clamp the zoom level within min/max bounds
+            _markdownZoomLevel = Math.Max(MinZoom, Math.Min(MaxZoom, _markdownZoomLevel));
+
+            // Apply zoom using ScaleTransform instead of a direct Zoom property
+            MarkdownViewer.LayoutTransform = new ScaleTransform(
+                _markdownZoomLevel / 100.0, // X scale factor
+                _markdownZoomLevel / 100.0 // Y scale factor
+            );
+
+            // Update the TextBlock display
+            TxtZoomLevel.Text = $"{_markdownZoomLevel:F0}%";
+
+            LogOperation($"Markdown zoom set to {_markdownZoomLevel:F0}%");
+        
+            // When zooming, we might want to update the page width as well
+            UpdateMarkdownPageWidth();
+        }
+    }
+    
+    private void ZoomIn()
+    {
+        _markdownZoomLevel += ZoomIncrement;
+        UpdateZoomDisplay();
+    }
+
+    private void ZoomOut()
+    {
+        _markdownZoomLevel -= ZoomIncrement;
+        UpdateZoomDisplay();
+    }
+    
+    private void BtnZoomIn_Click(object sender, RoutedEventArgs e)
+    {
+        ZoomIn();
+    }
+
+    private void BtnZoomOut_Click(object sender, RoutedEventArgs e)
+    {
+        ZoomOut();
+    }
+    
+    private void BtnResetZoom_Click(object sender, RoutedEventArgs e)
+    {
+        _markdownZoomLevel = 100.0; // Reset to default
+        UpdateZoomDisplay();
     }
 
     private void InitializePromptSelection()
@@ -141,20 +202,56 @@ public partial class MainWindow
     // Add this new method to handle mouse wheel scrolling in the MarkdownScrollViewer
     private void MarkdownScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        var scrollViewer = (ScrollViewer)sender;
-
-        if (e.Delta < 0)
+        // Check if Ctrl key is pressed for zooming
+        if (Keyboard.Modifiers == ModifierKeys.Control)
         {
-            scrollViewer.LineDown();
-            scrollViewer.LineDown();
+            if (e.Delta > 0) // Wheel scrolled up (Zoom In)
+            {
+                ZoomIn();
+            }
+            else if (e.Delta < 0) // Wheel scrolled down (Zoom Out)
+            {
+                ZoomOut();
+            }
+
+            e.Handled = true; // Prevent default scroll behavior when zooming
         }
         else
         {
-            scrollViewer.LineUp();
-            scrollViewer.LineUp();
-        }
+            // --- Keep original custom scrolling logic for non-Ctrl scroll ---
+            // Pass the event to the actual MarkdownViewer (FlowDocumentScrollViewer)
+            // Note: This might not be strictly necessary if the outer ScrollViewer's
+            // scrolling is disabled, but it ensures the event bubbles correctly if needed.
+            // We let the internal MarkdownViewer handle its scrolling naturally now.
 
-        e.Handled = true;
+            // The original custom scroll logic might be removed if the
+            // internal scrollbars of MarkdownViewer behave as desired.
+            // Test this part carefully. If the default scrolling feels off,
+            // re-introduce the scrollViewer.LineDown/Up logic here.
+
+            // Example: Letting MarkdownViewer handle it (remove custom scroll)
+            if (sender is ScrollViewer && MarkdownViewer != null)
+            {
+                // Let the event bubble down to the MarkdownViewer
+            }
+
+            e.Handled = false; // Allow normal scrolling
+
+            /* // --- Original custom scrolling (keep if needed) ---
+            var scrollViewer = (ScrollViewer)sender; // This was the outer one
+            if (e.Delta < 0)
+            {
+                MarkdownViewer.LineDown(); // Target the inner viewer now
+                MarkdownViewer.LineDown();
+            }
+            else
+            {
+                MarkdownViewer.LineUp(); // Target the inner viewer now
+                MarkdownViewer.LineUp();
+            }
+            e.Handled = true;
+            */
+        }
     }
 
     private void UpdatePreviousKeys(string apiProvider)
@@ -169,6 +266,8 @@ public partial class MainWindow
         }
 
         CboPreviousKeys.SelectedIndex = 0;
+        
+        TxtApiKey.Clear();
     }
 
     private string MaskKey(string key)
@@ -681,6 +780,15 @@ public partial class MainWindow
             return;
         }
 
+        // Check if there's text in the follow-up question box
+        var hasFollowUpText = !string.IsNullOrWhiteSpace(TxtFollowupQuestion.Text);
+        var followUpText = hasFollowUpText ? TxtFollowupQuestion.Text.Trim() : string.Empty;
+    
+        if (hasFollowUpText)
+        {
+            LogOperation($"Found text in follow-up box: '{followUpText}'");
+        }
+
         var apiSelection = CboAiApi.SelectedItem?.ToString() ?? "Claude API";
         TxtStatus.Text = $"Analyzing with {apiSelection}...";
         LogOperation($"Starting code analysis with {apiSelection}");
@@ -708,6 +816,17 @@ public partial class MainWindow
             LogOperation("Generating initial prompt");
             StartOperationTimer("GeneratePrompt");
             var initialPrompt = GenerateInitialPrompt(consolidatedFiles);
+        
+            // If there's follow-up text, add it to the prompt
+            if (hasFollowUpText)
+            {
+                initialPrompt += "\n\nAdditional instructions or questions:\n" + followUpText;
+                LogOperation("Added follow-up text to the initial prompt");
+            
+                // Clear the follow-up text box after using its content
+                TxtFollowupQuestion.Text = string.Empty;
+            }
+        
             EndOperationTimer("GeneratePrompt");
             LogOperation($"Initial prompt generated ({initialPrompt.Length} characters)");
 
@@ -1360,6 +1479,14 @@ public partial class MainWindow
 
         // Update the message counter
         UpdateMessageCounter();
+        
+        // Update display without resetting zoom
+        _currentResponseText = response;
+        TxtResponse.Text = response;
+        MarkdownViewer.Markdown = response;
+        UpdateZoomDisplay(); // Re-apply current zoom level
+        UpdateMarkdownPageWidth();
+        UpdateMessageCounter();
 
         LogOperation($"Navigated to response #{index + 1} of {assistantResponses.Count}");
     }
@@ -1425,35 +1552,31 @@ public partial class MainWindow
     /// </summary>
     private void UpdateResponseDisplay(string responseText)
     {
-        // Store the response text
+        // ... (Existing code to store text, update TxtResponse, MarkdownViewer.Markdown) ...
         _currentResponseText = responseText;
-
-        // Update the text display
         TxtResponse.Text = responseText;
-
-        // Update markdown view (now the default)
         MarkdownViewer.Markdown = responseText;
 
-        // Update the page width based on the current container size
-        UpdateMarkdownPageWidth();
+        // Reset zoom when displaying a new response initially
+        // Only reset if it's a *new* response being added, not just navigating
+        if (_conversationHistory.Count(m => m.Role == "assistant") == _currentResponseIndex) // Check if adding new response
+        {
+            _markdownZoomLevel = 100.0; // Reset zoom for new content
+        }
 
-        // Enable the markdown toggle button
+        UpdateZoomDisplay(); // Apply potentially reset zoom level
+
+        UpdateMarkdownPageWidth(); // Keep this if you still need custom page width logic
+
         BtnToggleMarkdown.IsEnabled = true;
         BtnSaveResponse.IsEnabled = true;
 
-        // Calculate the current response index (count of assistant messages - 1)
         var assistantResponses = _conversationHistory.Count(m => m.Role == "assistant");
+        _currentResponseIndex = assistantResponses; // This was the index *before* adding the new one
 
-        // This will be the index of the response we're about to add
-        _currentResponseIndex = assistantResponses;
+        AutoSaveResponse(responseText, _currentResponseIndex); // Index should be 0-based count *before* adding
 
-        // Auto-save the response
-        AutoSaveResponse(responseText, _currentResponseIndex);
-
-        // Update navigation controls
         UpdateNavigationControls();
-
-        // Update message counter
         UpdateMessageCounter();
     }
 
