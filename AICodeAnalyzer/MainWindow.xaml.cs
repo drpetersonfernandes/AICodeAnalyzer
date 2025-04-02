@@ -26,7 +26,7 @@ public partial class MainWindow
     private readonly Dictionary<string, DateTime> _operationTimers = new();
     private readonly SettingsManager _settingsManager;
     private int _currentResponseIndex = -1;
-    
+
     // --- Zoom related fields ---
     private const double ZoomIncrement = 10.0; // Zoom step (10%)
     private const double MinZoom = 20.0; // Minimum zoom level (20%)
@@ -59,10 +59,10 @@ public partial class MainWindow
         LogOperation("Application started");
 
         InitializePromptSelection();
-        
+
         UpdateZoomDisplay(); // Initialize zoom display
     }
-    
+
     private void UpdateZoomDisplay()
     {
         if (MarkdownViewer != null)
@@ -80,12 +80,12 @@ public partial class MainWindow
             TxtZoomLevel.Text = $"{_markdownZoomLevel:F0}%";
 
             LogOperation($"Markdown zoom set to {_markdownZoomLevel:F0}%");
-        
+
             // When zooming, we might want to update the page width as well
             UpdateMarkdownPageWidth();
         }
     }
-    
+
     private void ZoomIn()
     {
         _markdownZoomLevel += ZoomIncrement;
@@ -97,7 +97,7 @@ public partial class MainWindow
         _markdownZoomLevel -= ZoomIncrement;
         UpdateZoomDisplay();
     }
-    
+
     private void BtnZoomIn_Click(object sender, RoutedEventArgs e)
     {
         ZoomIn();
@@ -107,7 +107,7 @@ public partial class MainWindow
     {
         ZoomOut();
     }
-    
+
     private void BtnResetZoom_Click(object sender, RoutedEventArgs e)
     {
         _markdownZoomLevel = 100.0; // Reset to default
@@ -266,7 +266,7 @@ public partial class MainWindow
         }
 
         CboPreviousKeys.SelectedIndex = 0;
-        
+
         TxtApiKey.Clear();
     }
 
@@ -783,7 +783,7 @@ public partial class MainWindow
         // Check if there's text in the follow-up question box
         var hasFollowUpText = !string.IsNullOrWhiteSpace(TxtFollowupQuestion.Text);
         var followUpText = hasFollowUpText ? TxtFollowupQuestion.Text.Trim() : string.Empty;
-    
+
         if (hasFollowUpText)
         {
             LogOperation($"Found text in follow-up box: '{followUpText}'");
@@ -816,17 +816,17 @@ public partial class MainWindow
             LogOperation("Generating initial prompt");
             StartOperationTimer("GeneratePrompt");
             var initialPrompt = GenerateInitialPrompt(consolidatedFiles);
-        
+
             // If there's follow-up text, add it to the prompt
             if (hasFollowUpText)
             {
                 initialPrompt += "\n\nAdditional instructions or questions:\n" + followUpText;
                 LogOperation("Added follow-up text to the initial prompt");
-            
+
                 // Clear the follow-up text box after using its content
                 TxtFollowupQuestion.Text = string.Empty;
             }
-        
+
             EndOperationTimer("GeneratePrompt");
             LogOperation($"Initial prompt generated ({initialPrompt.Length} characters)");
 
@@ -1479,7 +1479,7 @@ public partial class MainWindow
 
         // Update the message counter
         UpdateMessageCounter();
-        
+
         // Update display without resetting zoom
         _currentResponseText = response;
         TxtResponse.Text = response;
