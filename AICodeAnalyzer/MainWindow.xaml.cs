@@ -766,13 +766,6 @@ public partial class MainWindow
 
     private async void BtnAnalyze_Click(object sender, RoutedEventArgs e)
     {
-        if (_filesByExtension.Count == 0)
-        {
-            MessageBox.Show("Please select a folder and scan for files first.", "No Files", MessageBoxButton.OK, MessageBoxImage.Warning);
-            LogOperation("Analysis canceled: No files selected");
-            return;
-        }
-
         if (string.IsNullOrEmpty(TxtApiKey.Password))
         {
             MessageBox.Show("Please enter an API key.", "Missing API Key", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -842,7 +835,7 @@ public partial class MainWindow
 
             // Display the response
             LogOperation("Updating UI with response");
-            UpdateResponseDisplay(response);
+            UpdateResponseDisplay(response, true);
 
             // Enable follow-up questions
             TxtFollowupQuestion.IsEnabled = true;
@@ -983,7 +976,7 @@ public partial class MainWindow
 
             // Display the response (this will also auto-save it)
             LogOperation("Updating UI with follow-up response");
-            UpdateResponseDisplay(response);
+            UpdateResponseDisplay(response, true);
 
             // Clear the follow-up question text box
             TxtFollowupQuestion.Text = "";
@@ -1496,16 +1489,16 @@ public partial class MainWindow
     /// </summary>
     private void UpdateMessageCounter()
     {
-        var totalResponses = _conversationHistory.Count(m => m.Role == "assistant");
+        var assistantResponses = _conversationHistory.Count(m => m.Role == "assistant");
 
-        if (totalResponses == 0)
+        if (assistantResponses == 0)
         {
             TxtResponseCounter.Text = "No responses";
         }
         else
         {
-            // Display as 1-based index for the user (1 of 3 instead of 0 of 2)
-            TxtResponseCounter.Text = $"Response {_currentResponseIndex + 1} of {totalResponses}";
+            // Display as 1-based index for the user (1 of 1 instead of 0 of 0)
+            TxtResponseCounter.Text = $"Response {_currentResponseIndex + 1} of {assistantResponses}";
         }
     }
 
@@ -1550,31 +1543,34 @@ public partial class MainWindow
     /// <summary>
     /// Updates the response display and configures navigation
     /// </summary>
-    private void UpdateResponseDisplay(string responseText)
+    private void UpdateResponseDisplay(string responseText, bool isNewResponse = false)
     {
-        // ... (Existing code to store text, update TxtResponse, MarkdownViewer.Markdown) ...
         _currentResponseText = responseText;
         TxtResponse.Text = responseText;
         MarkdownViewer.Markdown = responseText;
 
+        if (isNewResponse)
+        {
+            // For a new response, set the index to the last response
+            _currentResponseIndex = _conversationHistory.Count(m => m.Role == "assistant") - 1;
+        }
+
         // Reset zoom when displaying a new response initially
-        // Only reset if it's a *new* response being added, not just navigating
-        if (_conversationHistory.Count(m => m.Role == "assistant") == _currentResponseIndex) // Check if adding new response
+        if (isNewResponse)
         {
             _markdownZoomLevel = 100.0; // Reset zoom for new content
         }
 
         UpdateZoomDisplay(); // Apply potentially reset zoom level
-
         UpdateMarkdownPageWidth(); // Keep this if you still need custom page width logic
 
         BtnToggleMarkdown.IsEnabled = true;
         BtnSaveResponse.IsEnabled = true;
 
-        var assistantResponses = _conversationHistory.Count(m => m.Role == "assistant");
-        _currentResponseIndex = assistantResponses; // This was the index *before* adding the new one
-
-        AutoSaveResponse(responseText, _currentResponseIndex); // Index should be 0-based count *before* adding
+        if (isNewResponse)
+        {
+            AutoSaveResponse(responseText, _currentResponseIndex);
+        }
 
         UpdateNavigationControls();
         UpdateMessageCounter();

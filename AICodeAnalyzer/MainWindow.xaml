@@ -47,9 +47,9 @@
             </Grid.RowDefinitions>
 
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2.5*" />
+                <ColumnDefinition Width="2.2*" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="7.5*" />
+                <ColumnDefinition Width="7.8*" />
             </Grid.ColumnDefinitions>
 
             <!-- Project Selection Area -->
