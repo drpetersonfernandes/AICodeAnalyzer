@@ -1334,6 +1334,27 @@ public partial class MainWindow
                 // Show tooltip with model description
                 CboModel.ToolTip = ((ModelDropdownItem)CboModel.SelectedItem).Description;
             }
+            else if (providerName == "ChatGPT API")
+            {
+                var provider = (OpenAi)_apiProviderFactory.GetProvider(providerName);
+                var models = provider.GetAvailableModels();
+
+                foreach (var model in models)
+                {
+                    CboModel.Items.Add(new ModelDropdownItem
+                    {
+                        DisplayText = model.Name,
+                        ModelId = model.Id,
+                        Description = model.Description
+                    });
+                }
+
+                CboModel.IsEnabled = true;
+                CboModel.SelectedIndex = 0;
+
+                // Show tooltip with model description
+                CboModel.ToolTip = ((ModelDropdownItem)CboModel.SelectedItem).Description;
+            }
             else
             {
                 // For other providers, disable the model dropdown
@@ -1415,6 +1436,10 @@ public partial class MainWindow
             else if (provider is Gemini geminiProvider && modelId != null)
             {
                 response = await geminiProvider.SendPromptWithModelAsync(TxtApiKey.Password, prompt, _conversationHistory, modelId);
+            }
+            else if (provider is OpenAi openAiProvider && modelId != null)
+            {
+                response = await openAiProvider.SendPromptWithModelAsync(TxtApiKey.Password, prompt, _conversationHistory, modelId);
             }
             else
             {

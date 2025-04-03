@@ -19,13 +19,12 @@ public class Gemini : IAiApiProvider
     /// <summary>
     /// Available Gemini models
     /// </summary>
-    public static class Models
+    private static class Models
     {
         public const string Gemini25ProExp = "gemini-2.5-pro-exp-03-25";
         public const string Gemini20Flash = "gemini-2.0-flash";
         public const string Gemini20FlashLite = "gemini-2.0-flash-lite";
         public const string Gemini15Flash = "gemini-1.5-flash";
-        public const string Gemini15Flash8B = "gemini-1.5-flash-8b";
         public const string Gemini15Pro = "gemini-1.5-pro";
     }
 
@@ -72,15 +71,6 @@ public class Gemini : IAiApiProvider
                 ContextLength = 131072,
                 MaxOutputTokens = 8192,
                 ApiVersion = "v1"
-            },
-            new()
-            {
-                Id = Models.Gemini15Flash8B,
-                Name = "Gemini 1.5 Flash-8B",
-                Description = "Compact 8B parameter model for high efficiency",
-                ContextLength = 131072,
-                MaxOutputTokens = 8192,
-                ApiVersion = "v1beta"
             },
             new()
             {
@@ -244,7 +234,6 @@ public class Gemini : IAiApiProvider
             Models.Gemini20Flash => 8192,
             Models.Gemini20FlashLite => 8192,
             Models.Gemini15Flash => 8192,
-            Models.Gemini15Flash8B => 8192,
             Models.Gemini15Pro => 8192,
             _ => 4096 // Default for gemini-pro and others
         };
