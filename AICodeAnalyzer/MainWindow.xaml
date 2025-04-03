@@ -37,13 +37,14 @@
         <Grid Margin="10">
             <!-- Grid content remains unchanged -->
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" /> <!-- Row 0 -->
-                <RowDefinition Height="*" /> <!-- Row 1 -->
-                <RowDefinition Height="Auto" /> <!-- Row 2 -->
-                <RowDefinition Height="Auto" /> <!-- Row 3 -->
-                <RowDefinition Height="Auto" /> <!-- Row 4 -->
-                <RowDefinition Height="Auto" /> <!-- Row 5 -->
-                <RowDefinition Height="120" />  <!-- Row 6 -->
+                <RowDefinition Height="Auto" /> <!-- Row 0: Project Selection -->
+                <RowDefinition Height="*" />    <!-- Row 1: Files List -->
+                <RowDefinition Height="Auto" /> <!-- Row 2: NEW Token Count -->
+                <RowDefinition Height="Auto" /> <!-- Row 3: API Selection (previously 2) -->
+                <RowDefinition Height="Auto" /> <!-- Row 4: Initial Prompt (previously 3) -->
+                <RowDefinition Height="Auto" /> <!-- Row 5: Analyze Button (previously 4) -->
+                <RowDefinition Height="Auto" /> <!-- Row 6: Follow-up Question (previously 5) -->
+                <RowDefinition Height="120" />  <!-- Row 7: Log Panel (previously 6) -->
             </Grid.RowDefinitions>
 
             <Grid.ColumnDefinitions>
@@ -85,9 +86,16 @@
                     </ListView.ItemContainerStyle>
                 </ListView>
             </GroupBox>
+            
+            <TextBlock x:Name="TxtTokenCount" 
+                       Grid.Row="2" 
+                       Grid.Column="0" 
+                       Margin="0,5,5,10"
+                       Text="Estimated Input Tokens: 0" 
+                       ToolTip="Estimated number of tokens that will be sent to the AI API" />
 
             <!-- API Selection Area -->
-            <GroupBox Grid.Row="2" Grid.Column="0" Header="AI API Selection" Margin="0,0,5,0" Padding="0">
+            <GroupBox Grid.Row="3" Grid.Column="0" Header="AI API Selection" Margin="0,0,5,0" Padding="0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -128,7 +136,7 @@
             </GroupBox>
 
             <!-- Initial Prompt -->
-            <GroupBox Grid.Row="3" Grid.Column="0" Header="Initial Prompt" Margin="0,0,5,5" Padding="0">
+            <GroupBox Grid.Row="4" Grid.Column="0" Header="Initial Prompt" Margin="0,0,5,5" Padding="0">
                 <StackPanel Margin="10">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -147,13 +155,13 @@
             </GroupBox>
 
             <!-- Analyze Button -->
-            <Button Content="Send Initial Prompt" Grid.Row="4" Grid.Column="0" Height="25"
+            <Button Content="Send Initial Prompt" Grid.Row="5" Grid.Column="0" Height="25"
                     Margin="0,0,5,5" Click="BtnAnalyze_Click" />
 
             <!-- GridSplitter -->
             <GridSplitter
                 Grid.Row="0"
-                Grid.RowSpan="6"
+                Grid.RowSpan="7"
                 Grid.Column="1"
                 Width="5"
                 HorizontalAlignment="Center"
@@ -164,7 +172,7 @@
                 Cursor="SizeWE" />
 
             <!-- Response Area -->
-            <GroupBox Grid.Row="0" Grid.Column="2" Grid.RowSpan="6" Header="AI Analysis" Margin="5,0,0,0" Padding="5">
+            <GroupBox Grid.Row="0" Grid.Column="2" Grid.RowSpan="7" Header="AI Analysis" Margin="5,0,0,0" Padding="5">
                 <DockPanel>
                     <!-- Top Control Bar (Navigation and Zoom) -->
                     <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
@@ -246,7 +254,7 @@
             </GroupBox>
 
             <!-- Follow-up Question -->
-            <GroupBox Grid.Row="5" Grid.Column="0" Header="Follow-up Question" Margin="5,0,0,0" Padding="5">
+            <GroupBox Grid.Row="6" Grid.Column="0" Header="Follow-up Question" Margin="5,0,0,0" Padding="5">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" /> <!-- For checkbox -->
@@ -268,7 +276,7 @@
             </GroupBox>
 
             <!-- Log Panel -->
-            <GroupBox Grid.Row="6"
+            <GroupBox Grid.Row="7"
                       Grid.Column="0"
                       Grid.ColumnSpan="3"
                       Header="Operation Log"

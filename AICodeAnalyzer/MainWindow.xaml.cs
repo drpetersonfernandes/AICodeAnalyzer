@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using AICodeAnalyzer.AIProvider;
 using AICodeAnalyzer.Models;
 using Microsoft.WindowsAPICodePack.Dialogs;
@@ -26,6 +27,13 @@ public partial class MainWindow
     private readonly Dictionary<string, DateTime> _operationTimers = new();
     private readonly SettingsManager _settingsManager;
     private int _currentResponseIndex = -1;
+    private int _estimatedTokenCount;
+
+    private bool _isProcessing;
+    private readonly DispatcherTimer _statusUpdateTimer = new();
+    private readonly string[] _loadingDots = { ".", "..", "...", "....", "....." };
+    private int _dotsIndex;
+    private string _baseStatusMessage = string.Empty;
 
     // --- Zoom related fields ---
     private const double ZoomIncrement = 10.0; // Zoom step (10%)
@@ -61,6 +69,132 @@ public partial class MainWindow
         InitializePromptSelection();
 
         UpdateZoomDisplay(); // Initialize zoom display
+
+        SetupStatusUpdateTimer();
+    }
+
+    private void SetupStatusUpdateTimer()
+    {
+        _statusUpdateTimer.Interval = TimeSpan.FromMilliseconds(300);
+        _statusUpdateTimer.Tick += StatusUpdateTimer_Tick;
+    }
+
+    private void StatusUpdateTimer_Tick(object? sender, EventArgs e)
+    {
+        if (!_isProcessing) return;
+
+        // Update the status text with animated dots
+        _dotsIndex = (_dotsIndex + 1) % _loadingDots.Length;
+        TxtStatus.Text = $"{_baseStatusMessage}{_loadingDots[_dotsIndex]}";
+    }
+
+    private void SetProcessingState(bool isProcessing, string statusMessage = "")
+    {
+        if (isProcessing == _isProcessing) return;
+
+        _isProcessing = isProcessing;
+
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (isProcessing)
+            {
+                // Store the base message for the animation
+                _baseStatusMessage = statusMessage;
+                _dotsIndex = 0;
+
+                // Start the timer for the animation
+                _statusUpdateTimer.Start();
+
+                // Show visual processing state
+                Mouse.OverrideCursor = Cursors.Wait;
+
+                // Get reference to buttons with proper null handling
+                var analyzeButton = FindNameInWindow("BtnAnalyze") as Button ??
+                                    FindButtonByContent("Send Initial Prompt") as Button;
+
+                var followupButton = FindNameInWindow("BtnSendFollowup") as Button ??
+                                     FindButtonByContent("Send") as Button;
+
+                var selectFolderButton = FindNameInWindow("BtnSelectFolder") as Button ??
+                                         FindButtonByContent("Select Folder") as Button;
+
+                var selectFilesButton = FindNameInWindow("BtnSelectFiles") as Button ??
+                                        FindButtonByContent("Add Files") as Button;
+
+                // Disable certain controls to prevent multiple submissions
+                if (analyzeButton != null) analyzeButton.IsEnabled = false;
+                if (followupButton != null) followupButton.IsEnabled = false;
+                if (selectFolderButton != null) selectFolderButton.IsEnabled = false;
+                if (selectFilesButton != null) selectFilesButton.IsEnabled = false;
+
+                // Show "Processing..." text in the markdown viewer if it's empty
+                if (string.IsNullOrWhiteSpace(MarkdownViewer.Markdown))
+                {
+                    TxtResponse.Text = "Connecting to AI...";
+                    MarkdownViewer.Markdown = "## Processing request...\n\nConnecting to the AI service. This may take a few moments depending on the size of your code and the selected model.";
+                }
+
+                // Set a slightly tinted overlay on the response area to indicate processing
+                var overlay = new Border
+                {
+                    Name = "ProcessingOverlay",
+                    Background = new SolidColorBrush(Color.FromArgb(30, 0, 0, 0)), // Very light gray transparent overlay
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Stretch,
+                };
+
+                // Check if overlay already exists
+                var existingOverlay = MarkdownScrollViewer.FindName("ProcessingOverlay") as Border;
+                if (existingOverlay == null)
+                {
+                    MarkdownScrollViewer.RegisterName("ProcessingOverlay", overlay);
+                    if (MarkdownScrollViewer.Parent is Grid parentGrid)
+                    {
+                        parentGrid.Children.Add(overlay);
+                        Panel.SetZIndex(overlay, 1); // Ensure it's above the normal content
+                    }
+                }
+            }
+            else
+            {
+                // Stop the timer
+                _statusUpdateTimer.Stop();
+
+                // Clear the wait cursor
+                Mouse.OverrideCursor = null;
+
+                // Re-enable controls
+                var analyzeButton = FindNameInWindow("BtnAnalyze");
+
+                var followupButton = FindNameInWindow("BtnSendFollowup");
+
+                var selectFolderButton = FindNameInWindow("BtnSelectFolder");
+
+                var selectFilesButton = FindNameInWindow("BtnSelectFiles");
+
+                if (analyzeButton != null) analyzeButton.IsEnabled = true;
+                if (followupButton != null) followupButton.IsEnabled = ChkIncludeSelectedFiles.IsEnabled;
+                if (selectFolderButton != null) selectFolderButton.IsEnabled = true;
+                if (selectFilesButton != null) selectFilesButton.IsEnabled = true;
+
+                // Remove the overlay
+                try
+                {
+                    if (MarkdownScrollViewer.FindName("ProcessingOverlay") is Border existingOverlay)
+                    {
+                        if (MarkdownScrollViewer.Parent is Grid parentGrid)
+                        {
+                            parentGrid.Children.Remove(existingOverlay);
+                            MarkdownScrollViewer.UnregisterName("ProcessingOverlay");
+                        }
+                    }
+                }
+                catch
+                {
+                    // If there's an issue with the overlay, just continue
+                }
+            }
+        }));
     }
 
     private void UpdateZoomDisplay()
@@ -370,6 +504,8 @@ public partial class MainWindow
             DisplayFilesByFolder();
 
             EndOperationTimer("FolderScan");
+
+            CalculateTotalTokens();
         }
         catch (Exception ex)
         {
@@ -681,6 +817,8 @@ public partial class MainWindow
                 LogOperation($"Error processing file {filePath}: {ex.Message}");
             }
         }
+
+        CalculateTotalTokens();
     }
 
     private void BtnClearFiles_Click(object sender, RoutedEventArgs e)
@@ -709,6 +847,11 @@ public partial class MainWindow
         {
             LogOperation($"Error clearing files: {ex.Message}");
             ErrorLogger.LogError(ex, "Clearing files");
+        }
+        finally
+        {
+            _estimatedTokenCount = 0;
+            UpdateTokenCountDisplay();
         }
     }
 
@@ -783,7 +926,12 @@ public partial class MainWindow
         }
 
         var apiSelection = CboAiApi.SelectedItem?.ToString() ?? "Claude API";
-        TxtStatus.Text = $"Analyzing with {apiSelection}...";
+
+        // Update status and show processing indicators
+        var statusMessage = $"Analyzing with {apiSelection}";
+        TxtStatus.Text = $"{statusMessage}...";
+        SetProcessingState(true, statusMessage);
+
         LogOperation($"Starting code analysis with {apiSelection}");
         StartOperationTimer("CodeAnalysis");
 
@@ -850,9 +998,21 @@ public partial class MainWindow
         catch (Exception ex)
         {
             LogOperation($"Error during analysis: {ex.Message}");
-            ErrorLogger.LogError(ex, "Analyzing code");
+
+            // Only show the error dialog if it's not a token limit error
+            // that we've already handled
+            if (!ex.Message.StartsWith("Token limit exceeded:"))
+            {
+                ErrorLogger.LogError(ex, "Analyzing code");
+            }
+
             TxtStatus.Text = "Error during analysis.";
             EndOperationTimer("CodeAnalysis");
+        }
+        finally
+        {
+            // Always reset the processing state
+            SetProcessingState(false);
         }
     }
 
@@ -947,7 +1107,12 @@ public partial class MainWindow
         }
 
         var apiSelection = CboAiApi.SelectedItem?.ToString() ?? "Claude API";
-        TxtStatus.Text = $"Sending follow-up question to {apiSelection}...";
+
+        // Update status and show processing indicators
+        var statusMessage = $"Sending follow-up question to {apiSelection}";
+        TxtStatus.Text = $"{statusMessage}...";
+        SetProcessingState(true, statusMessage);
+
         LogOperation($"Sending follow-up question to {apiSelection}");
         StartOperationTimer("FollowupQuestion");
 
@@ -988,9 +1153,21 @@ public partial class MainWindow
         catch (Exception ex)
         {
             LogOperation($"Error sending follow-up question: {ex.Message}");
-            ErrorLogger.LogError(ex, "Sending follow-up question");
+
+            // Only show the error dialog if it's not a token limit error
+            // that we've already handled
+            if (!ex.Message.StartsWith("Token limit exceeded:"))
+            {
+                ErrorLogger.LogError(ex, "Sending follow-up question");
+            }
+
             TxtStatus.Text = "Error sending follow-up question.";
             EndOperationTimer("FollowupQuestion");
+        }
+        finally
+        {
+            // Always reset the processing state
+            SetProcessingState(false);
         }
     }
 
@@ -1177,11 +1354,15 @@ public partial class MainWindow
                 MarkdownScrollViewer.Visibility = Visibility.Visible;
                 BtnToggleMarkdown.Content = "Show Raw Text";
 
-                // Set the markdown content
-                MarkdownViewer.Markdown = _currentResponseText;
+                // Set the markdown content with preprocessing
+                var processedMarkdown = PreprocessMarkdown(_currentResponseText);
+                MarkdownViewer.Markdown = processedMarkdown;
 
                 // Update the page width
                 UpdateMarkdownPageWidth();
+
+                // Log the switch to markdown view
+                LogOperation("Switched to markdown view with preprocessing");
             }
             else
             {
@@ -1189,6 +1370,9 @@ public partial class MainWindow
                 TxtResponse.Visibility = Visibility.Visible;
                 MarkdownScrollViewer.Visibility = Visibility.Collapsed;
                 BtnToggleMarkdown.Content = "Show Markdown";
+
+                // Log the switch to raw text view
+                LogOperation("Switched to raw text view");
             }
         }
         catch (Exception ex)
@@ -1455,6 +1639,53 @@ public partial class MainWindow
         catch (Exception ex)
         {
             LogOperation($"Error calling {apiSelection} API: {ex.Message}");
+
+            // Check if it's a token limit error
+            if (ex.Message.Contains("maximum context length") || ex.Message.Contains("token limit exceeded"))
+            {
+                // Log error silently (no dialog)
+                ErrorLogger.LogErrorSilently(ex, $"Sending prompt to {apiSelection}");
+
+                // Parse error message to extract token information
+                var actualTokens = 0;
+                var modelLimit = 0;
+
+                try
+                {
+                    // Try to parse the token information from error message
+                    // Typical message: "...maximum context length is 65536 tokens. However, you requested 97153 tokens (88961 in the messages..."
+                    var message = ex.Message;
+
+                    // Extract model limit
+                    var limitMatch = System.Text.RegularExpressions.Regex.Match(message, @"maximum context length is (\d+)");
+                    if (limitMatch.Success && limitMatch.Groups.Count > 1)
+                    {
+                        modelLimit = int.Parse(limitMatch.Groups[1].Value);
+                    }
+
+                    // Extract actual tokens
+                    var tokensMatch = System.Text.RegularExpressions.Regex.Match(message, @"you requested (\d+) tokens");
+                    if (tokensMatch.Success && tokensMatch.Groups.Count > 1)
+                    {
+                        actualTokens = int.Parse(tokensMatch.Groups[1].Value);
+                    }
+
+                    // Handle the token limit error with our specialized method
+                    if (actualTokens > 0 && modelLimit > 0)
+                    {
+                        HandleTokenLimitError(actualTokens, modelLimit);
+
+                        // Throw a custom exception so the calling method knows what happened
+                        throw new ApplicationException($"Token limit exceeded: {actualTokens} tokens exceeds model limit of {modelLimit}");
+                    }
+                }
+                catch (FormatException)
+                {
+                    // If parsing fails, just continue with normal error handling
+                }
+            }
+
+            // For non-token limit errors, log as normal
             ErrorLogger.LogError(ex, $"Sending prompt to {apiSelection}");
             throw; // Re-throw to let the caller handle it
         }
@@ -1490,7 +1721,7 @@ public partial class MainWindow
 
         // Update both text controls without adding to history
         TxtResponse.Text = response;
-        MarkdownViewer.Markdown = response;
+        MarkdownViewer.Markdown = PreprocessMarkdown(response);
 
         // Update page width for markdown
         UpdateMarkdownPageWidth();
@@ -1501,7 +1732,7 @@ public partial class MainWindow
         // Update display without resetting zoom
         _currentResponseText = response;
         TxtResponse.Text = response;
-        MarkdownViewer.Markdown = response;
+        MarkdownViewer.Markdown = PreprocessMarkdown(response);
         UpdateZoomDisplay(); // Re-apply current zoom level
         UpdateMarkdownPageWidth();
         UpdateMessageCounter();
@@ -1572,7 +1803,10 @@ public partial class MainWindow
     {
         _currentResponseText = responseText;
         TxtResponse.Text = responseText;
-        MarkdownViewer.Markdown = responseText;
+
+        // Apply preprocessing to fix markdown rendering issues
+        var processedMarkdown = PreprocessMarkdown(responseText);
+        MarkdownViewer.Markdown = processedMarkdown;
 
         if (isNewResponse)
         {
@@ -1715,6 +1949,297 @@ public partial class MainWindow
         {
             // Log error but don't interrupt the user experience
             LogOperation($"Error auto-saving response: {ex.Message}");
+        }
+    }
+
+    // 2. Add this method to MainWindow.xaml.cs to estimate tokens for text
+    /// <summary>
+    /// Estimates the number of tokens in a text string.
+    /// Uses a simple approximation of 4 characters per token on average.
+    /// </summary>
+    private int EstimateTokenCount(string text, string fileExtension = "")
+    {
+        if (string.IsNullOrEmpty(text))
+            return 0;
+
+        // Use a more conservative base tokenization ratio - approximately 2.5 characters per token
+        // This is based on the error we received showing our estimates were too low
+        var charsPerToken = 2.5; // More conservative than the previous 4.0
+
+        // Adjust based on file type - code files generally use more tokens per character
+        if (!string.IsNullOrEmpty(fileExtension))
+        {
+            charsPerToken = fileExtension switch
+            {
+                // Code files often have more tokens due to special characters and syntax
+                ".cs" => 2.2, // C# has many operators and punctuation
+                ".java" => 2.2, // Similar to C#
+                ".xaml" => 2.0, // XML-based files have many tags and attributes
+                ".xml" => 2.0, // XML has many brackets and quotes
+                ".json" => 2.0, // JSON has many quotes and syntax characters
+                ".cpp" => 2.2, // C++ similar to C#
+                ".js" => 2.3, // JavaScript
+                ".py" => 2.5, // Python is somewhat more compact
+                ".html" => 2.0, // HTML has many tags
+                ".css" => 2.3, // CSS has special characters
+                ".md" => 3.0, // Markdown is closer to natural language
+                ".txt" => 3.5, // Plain text is closest to natural language
+                _ => 2.5 // Default conservative estimate
+            };
+        }
+
+        // Token calculation with more conservative rounding
+        return (int)Math.Ceiling(text.Length / charsPerToken);
+    }
+
+    // 3. Add this method to calculate tokens for all files
+    /// <summary>
+    /// Calculates the total estimated token count for all selected files
+    /// </summary>
+    private void CalculateTotalTokens()
+    {
+        _estimatedTokenCount = 0;
+
+        // Calculate tokens for each file with extension-specific adjustments
+        foreach (var extensionGroup in _filesByExtension)
+        {
+            var extension = extensionGroup.Key;
+            foreach (var file in extensionGroup.Value)
+            {
+                _estimatedTokenCount += EstimateTokenCount(file.Content, extension);
+            }
+        }
+
+        // Add tokens for the initial prompt
+        var promptTemplate = _settingsManager.Settings.InitialPrompt;
+        _estimatedTokenCount += EstimateTokenCount(promptTemplate);
+
+        // Add tokens for file headers and formatting (increased estimate)
+        // Each file gets a header like "File: path.ext" and code block markers
+        var fileCount = _filesByExtension.Values.Sum(list => list.Count);
+        _estimatedTokenCount += fileCount * EstimateTokenCount("File: filename.ext\n```language\n\n```\n");
+
+        // Add tokens for section headers and structural overhead
+        // This accounts for extension headers like "--- .CS FILES ---" and extra formatting
+        var extensionCount = _filesByExtension.Keys.Count;
+        _estimatedTokenCount += extensionCount * EstimateTokenCount("--- .EXTENSION FILES ---\n\n");
+
+        // Add additional overhead for organizing and structuring the content (15% buffer)
+        _estimatedTokenCount = (int)(_estimatedTokenCount * 1.15);
+
+        // Update the UI with the new estimate
+        UpdateTokenCountDisplay();
+    }
+
+    // 4. Add this method to update the UI
+    /// <summary>
+    /// Updates the token count display in the UI
+    /// </summary>
+    // Modify the UpdateTokenCountDisplay method to show a range
+    private void UpdateTokenCountDisplay()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            // Calculate lower and upper bounds with wider range (±30%)
+            // Based on our observed error, we need a much wider range
+            var lowerBound = (int)(_estimatedTokenCount * 0.80);
+            var upperBound = (int)(_estimatedTokenCount * 1.50); // Wider upper bound for safety
+
+            // Format the display text with the range
+            TxtTokenCount.Text = $"Estimated Input Tokens: {lowerBound:N0} - {upperBound:N0}";
+
+            // Detailed tooltip with model-specific information
+            var tooltipText = $"Base estimate: {_estimatedTokenCount:N0} tokens\n" +
+                              $"Range: {lowerBound:N0} - {upperBound:N0} tokens\n\n" +
+                              "⚠️ Token estimates are approximate and may vary by model\n";
+
+            // Get selected model information if available
+            var modelContextLimit = "Unknown";
+            var modelName = "the selected model";
+
+            if (CboAiApi.SelectedItem != null)
+            {
+                var provider = CboAiApi.SelectedItem.ToString();
+                switch (provider)
+                {
+                    case "Claude API":
+                        modelContextLimit = "100,000";
+                        modelName = "Claude";
+                        break;
+                    case "ChatGPT API":
+                        if (CboModel.SelectedItem is ModelDropdownItem model)
+                        {
+                            if (model.ModelId.Contains("gpt-4"))
+                            {
+                                modelContextLimit = "8,000 - 32,000";
+                                modelName = model.DisplayText;
+                            }
+                            else
+                            {
+                                modelContextLimit = "4,000 - 16,000";
+                                modelName = model.DisplayText;
+                            }
+                        }
+                        else
+                        {
+                            modelContextLimit = "8,000 - 32,000";
+                            modelName = "GPT models";
+                        }
+
+                        break;
+                    case "DeepSeek API":
+                        modelContextLimit = "65,536";
+                        modelName = "DeepSeek";
+                        break;
+                    case "Gemini API":
+                        modelContextLimit = "32,000 - 128,000";
+                        modelName = "Gemini";
+                        break;
+                    case "Grok API":
+                        modelContextLimit = "200,000";
+                        modelName = "Grok";
+                        break;
+                    default:
+                        modelContextLimit = "Unknown";
+                        modelName = provider;
+                        break;
+                }
+            }
+
+            // Add color coding based on the upper bound compared to model context limits
+            var modelMaxTokens = int.TryParse(modelContextLimit.Split('-')[0].Trim().Replace(",", ""),
+                out var parsed)
+                ? parsed
+                : 100000;
+
+            if (upperBound > modelMaxTokens)
+            {
+                TxtTokenCount.Foreground = Brushes.Red;
+                tooltipText += $"\n❌ ERROR: Your input likely exceeds {modelName}'s context limit of {modelContextLimit} tokens.\n" +
+                               "You must reduce the number of files or their size before analysis.";
+            }
+            else if (upperBound > modelMaxTokens * 0.8)
+            {
+                TxtTokenCount.Foreground = Brushes.Orange;
+                tooltipText += $"\n⚠️ WARNING: Your input is approaching {modelName}'s context limit of {modelContextLimit} tokens.\n" +
+                               "Consider reducing the number or size of files to ensure successful processing.";
+            }
+            else if (upperBound > modelMaxTokens * 0.5)
+            {
+                TxtTokenCount.Foreground = new SolidColorBrush(Colors.DarkGoldenrod);
+                tooltipText += $"\n⚠️ CAUTION: Your input is using a substantial portion of {modelName}'s context limit ({modelContextLimit} tokens).\n" +
+                               "This may leave limited space for the model's response.";
+            }
+            else
+            {
+                TxtTokenCount.Foreground = Brushes.Green;
+                tooltipText += $"\n✅ Your input is within {modelName}'s context limit of {modelContextLimit} tokens.";
+            }
+
+            TxtTokenCount.ToolTip = tooltipText;
+
+            // Make the token count more prominent
+            TxtTokenCount.FontWeight = FontWeights.Bold;
+
+            LogOperation($"Updated token estimate range: {lowerBound:N0} - {upperBound:N0} tokens (base: {_estimatedTokenCount:N0})");
+        });
+    }
+
+    private void HandleTokenLimitError(int actualTokens, int modelLimit)
+    {
+        // Update our estimation algorithm based on actual token usage
+        var observedRatio = (double)_estimatedTokenCount / actualTokens;
+        LogOperation($"Token estimation accuracy: {observedRatio:P2} (estimated: {_estimatedTokenCount:N0}, actual: {actualTokens:N0})");
+
+        // Show error dialog with helpful guidance
+        MessageBox.Show(
+            $"Error: Token limit exceeded\n\n" +
+            $"Your code contains approximately {actualTokens:N0} tokens, but the model's limit is {modelLimit:N0} tokens.\n\n" +
+            "To fix this issue, try one of these approaches:\n" +
+            "• Remove non-essential files from your selection\n" +
+            "• Focus on specific parts of your codebase\n" +
+            "• Try a model with a larger context window, if available\n\n" +
+            "The token count display has been updated to reflect this information.",
+            "Token Limit Exceeded",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error);
+
+        // Update the estimation display with actual token count for future reference
+        _estimatedTokenCount = actualTokens;
+        UpdateTokenCountDisplay();
+    }
+
+    // Add this helper method to preprocess markdown responses
+    /// <summary>
+    /// Preprocesses markdown content to fix common rendering issues
+    /// </summary>
+    /// <param name="markdownContent">The original markdown content</param>
+    /// <returns>Processed markdown content</returns>
+    private string PreprocessMarkdown(string markdownContent)
+    {
+        if (string.IsNullOrEmpty(markdownContent))
+            return markdownContent;
+
+        // Fix for responses that start with ```markdown by removing that line
+        // This prevents the entire content from being treated as a code block
+        if (markdownContent.StartsWith("```markdown") || markdownContent.StartsWith("```Markdown"))
+        {
+            // Find the first line break after the ```markdown
+            var lineBreakIndex = markdownContent.IndexOf('\n');
+            if (lineBreakIndex > 0)
+            {
+                // Remove the ```markdown line
+                markdownContent = markdownContent.Substring(lineBreakIndex + 1);
+
+                // Look for the closing ``` and remove it as well
+                var closingBackticksIndex = markdownContent.LastIndexOf("```", StringComparison.Ordinal);
+                if (closingBackticksIndex >= 0)
+                {
+                    markdownContent = markdownContent.Substring(0, closingBackticksIndex).TrimEnd();
+                }
+
+                LogOperation("Preprocessed markdown response to fix formatting issues");
+            }
+        }
+
+        return markdownContent;
+    }
+
+    private FrameworkElement? FindButtonByContent(string content)
+    {
+        // Find all buttons in the window
+        var buttons = FindVisualChildren<Button>(this);
+
+        // Look for a button with matching content
+        foreach (var button in buttons)
+        {
+            if (button.Content is string buttonContent && buttonContent == content)
+            {
+                return button;
+            }
+        }
+
+        return null;
+    }
+
+    private FrameworkElement? FindNameInWindow(string name)
+    {
+        return this.FindName(name) as FrameworkElement;
+    }
+
+    private IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+    {
+        if (depObj == null) yield break;
+
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+        {
+            var child = VisualTreeHelper.GetChild(depObj, i);
+
+            if (child is T typedChild)
+                yield return typedChild;
+
+            foreach (var childOfChild in FindVisualChildren<T>(child))
+                yield return childOfChild;
         }
     }
 }

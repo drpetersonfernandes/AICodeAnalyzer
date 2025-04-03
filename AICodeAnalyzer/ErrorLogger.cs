@@ -70,4 +70,47 @@ public static class ErrorLogger
                 MessageBoxImage.Error);
         }
     }
+
+    /// <summary>
+    /// Logs an error to the file without showing a dialog to the user
+    /// </summary>
+    /// <param name="ex">The exception to log</param>
+    /// <param name="context">Optional context information</param>
+    public static void LogErrorSilently(Exception ex, string context = "")
+    {
+        try
+        {
+            // Create a detailed error log
+            var sb = new StringBuilder();
+            sb.AppendLine($"===== Error Log: {DateTime.Now} =====");
+
+            if (!string.IsNullOrEmpty(context))
+                sb.AppendLine($"Context: {context}");
+
+            sb.AppendLine($"Error Type: {ex.GetType().Name}");
+            sb.AppendLine($"Message: {ex.Message}");
+            sb.AppendLine($"Stack Trace:");
+            sb.AppendLine(ex.StackTrace);
+
+            // Add any inner exception details
+            if (ex.InnerException != null)
+            {
+                sb.AppendLine();
+                sb.AppendLine("Inner Exception:");
+                sb.AppendLine($"Type: {ex.InnerException.GetType().Name}");
+                sb.AppendLine($"Message: {ex.InnerException.Message}");
+                sb.AppendLine("Stack Trace:");
+                sb.AppendLine(ex.InnerException.StackTrace);
+            }
+
+            sb.AppendLine();
+
+            // Append to the log file without showing a dialog
+            File.AppendAllText(LogFilePath, sb.ToString());
+        }
+        catch
+        {
+            // If silent logging fails, just continue without notify
+        }
+    }
 }
