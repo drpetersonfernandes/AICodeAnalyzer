@@ -35,13 +35,10 @@ public partial class MainWindow
     private int _dotsIndex;
     private string _baseStatusMessage = string.Empty;
 
-    // --- Zoom related fields ---
     private const double ZoomIncrement = 10.0; // Zoom step (10%)
     private const double MinZoom = 20.0; // Minimum zoom level (20%)
     private const double MaxZoom = 500.0; // Maximum zoom level (500%)
-
     private double _markdownZoomLevel = 100.0; // Current zoom level (default 100%)
-    // -------------------------------
 
     public MainWindow()
     {
@@ -65,15 +62,11 @@ public partial class MainWindow
             CboAiApi.Items.Add(provider.Name);
         }
 
-        CboAiApi.SelectedIndex = 3; // Default to first provider (now alphabetically first)
+        CboAiApi.SelectedIndex = -1; // Default to none
 
-        // Initialize log
         LogOperation("Application started");
-
         InitializePromptSelection();
-
-        UpdateZoomDisplay(); // Initialize zoom display
-
+        UpdateZoomDisplay();
         SetupStatusUpdateTimer();
     }
 
@@ -286,10 +279,6 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>
-    /// Logs an operation with a timestamp to the log panel
-    /// </summary>
-    /// <param name="message">The message to log</param>
     private void LogOperation(string message)
     {
         var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
@@ -309,20 +298,12 @@ public partial class MainWindow
         });
     }
 
-    /// <summary>
-    /// Starts timing an operation
-    /// </summary>
-    /// <param name="operationName">Unique name for the operation</param>
     private void StartOperationTimer(string operationName)
     {
         _operationTimers[operationName] = DateTime.Now;
         LogOperation($"Started: {operationName}");
     }
 
-    /// <summary>
-    /// Ends timing an operation and logs the elapsed time
-    /// </summary>
-    /// <param name="operationName">Name of the operation to end</param>
     private void EndOperationTimer(string operationName)
     {
         if (_operationTimers.TryGetValue(operationName, out var startTime))
@@ -337,7 +318,6 @@ public partial class MainWindow
         }
     }
 
-    // Add this new method to handle mouse wheel scrolling in the MarkdownScrollViewer
     private void MarkdownScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         // Check if Ctrl key is pressed for zooming
@@ -356,17 +336,6 @@ public partial class MainWindow
         }
         else
         {
-            // --- Keep original custom scrolling logic for non-Ctrl scroll ---
-            // Pass the event to the actual MarkdownViewer (FlowDocumentScrollViewer)
-            // Note: This might not be strictly necessary if the outer ScrollViewer's
-            // scrolling is disabled, but it ensures the event bubbles correctly if needed.
-            // We let the internal MarkdownViewer handle its scrolling naturally now.
-
-            // The original custom scroll logic might be removed if the
-            // internal scrollbars of MarkdownViewer behave as desired.
-            // Test this part carefully. If the default scrolling feels off,
-            // re-introduce the scrollViewer.LineDown/Up logic here.
-
             // Example: Letting MarkdownViewer handle it (remove custom scroll)
             if (sender is ScrollViewer && MarkdownViewer != null)
             {
@@ -374,21 +343,6 @@ public partial class MainWindow
             }
 
             e.Handled = false; // Allow normal scrolling
-
-            /* // --- Original custom scrolling (keep if needed) ---
-            var scrollViewer = (ScrollViewer)sender; // This was the outer one
-            if (e.Delta < 0)
-            {
-                MarkdownViewer.LineDown(); // Target the inner viewer now
-                MarkdownViewer.LineDown();
-            }
-            else
-            {
-                MarkdownViewer.LineUp(); // Target the inner viewer now
-                MarkdownViewer.LineUp();
-            }
-            e.Handled = true;
-            */
         }
     }
 
@@ -408,7 +362,7 @@ public partial class MainWindow
         TxtApiKey.Clear();
     }
 
-    private string MaskKey(string key)
+    private static string MaskKey(string key)
     {
         if (string.IsNullOrEmpty(key) || key.Length < 8)
             return "*****";
@@ -443,11 +397,6 @@ public partial class MainWindow
         UpdatePreviousKeys(apiSelection);
 
         MessageBox.Show("API key saved successfully.", "Key Saved", MessageBoxButton.OK, MessageBoxImage.Information);
-    }
-
-    private void MenuExit_Click(object sender, RoutedEventArgs e)
-    {
-        Application.Current.Shutdown();
     }
 
     private void MenuAbout_Click(object sender, RoutedEventArgs e)
@@ -508,7 +457,6 @@ public partial class MainWindow
             DisplayFilesByFolder();
 
             EndOperationTimer("FolderScan");
-
             CalculateTotalTokens();
         }
         catch (Exception ex)
@@ -634,7 +582,7 @@ public partial class MainWindow
         }
     }
 
-    private string GetLanguageGroupForExtension(string ext)
+    private static string GetLanguageGroupForExtension(string ext)
     {
         return ext switch
         {
@@ -1044,7 +992,7 @@ public partial class MainWindow
         return consolidatedFiles;
     }
 
-    private string GetLanguageForExtension(string ext)
+    private static string GetLanguageForExtension(string ext)
     {
         return ext switch
         {
@@ -1175,11 +1123,6 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>
-    /// Appends content of the selected files to the prompt
-    /// </summary>
-    /// <param name="originalPrompt">The original prompt text</param>
-    /// <returns>Enhanced prompt with selected file contents</returns>
     private string AppendSelectedFilesToPrompt(string originalPrompt)
     {
         var promptBuilder = new StringBuilder(originalPrompt);
@@ -1423,9 +1366,6 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>
-    /// Populate the model dropdown based on the selected provider
-    /// </summary>
     private void PopulateModelDropdown()
     {
         CboModel.Items.Clear();
@@ -1558,22 +1498,16 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>
-    /// Handle selection change in the API provider dropdown
-    /// </summary>
     private void CboAiApi_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (CboAiApi.SelectedItem != null)
         {
             var apiSelection = CboAiApi.SelectedItem.ToString() ?? string.Empty;
             UpdatePreviousKeys(apiSelection);
-            PopulateModelDropdown(); // Add this line to existing method
+            PopulateModelDropdown();
         }
     }
 
-    /// <summary>
-    /// Handle selection change in the model dropdown
-    /// </summary>
     private void CboModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (CboModel.SelectedItem is ModelDropdownItem selectedModel)
@@ -1695,9 +1629,6 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>
-    /// Navigates to a specific response in the conversation history
-    /// </summary>
     private void NavigateToResponse(int index)
     {
         // Get all assistant responses from the conversation history
@@ -1744,9 +1675,6 @@ public partial class MainWindow
         LogOperation($"Navigated to response #{index + 1} of {assistantResponses.Count}");
     }
 
-    /// <summary>
-    /// Updates the message counter display
-    /// </summary>
     private void UpdateMessageCounter()
     {
         var assistantResponses = _conversationHistory.Count(m => m.Role == "assistant");
@@ -1762,9 +1690,6 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>
-    /// Updates the enabled state of navigation buttons
-    /// </summary>
     private void UpdateNavigationControls()
     {
         var totalResponses = _conversationHistory.Count(m => m.Role == "assistant");
@@ -1776,9 +1701,6 @@ public partial class MainWindow
         BtnNextResponse.IsEnabled = _currentResponseIndex < totalResponses - 1;
     }
 
-    /// <summary>
-    /// Handler for the Previous Response button
-    /// </summary>
     private void BtnPreviousResponse_Click(object sender, RoutedEventArgs e)
     {
         if (_currentResponseIndex > 0)
@@ -1787,9 +1709,6 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>
-    /// Handler for the Next Response button
-    /// </summary>
     private void BtnNextResponse_Click(object sender, RoutedEventArgs e)
     {
         var totalResponses = _conversationHistory.Count(m => m.Role == "assistant");
@@ -1800,9 +1719,6 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>
-    /// Updates the response display and configures navigation
-    /// </summary>
     private void UpdateResponseDisplay(string responseText, bool isNewResponse = false)
     {
         _currentResponseText = responseText;
@@ -1839,9 +1755,6 @@ public partial class MainWindow
         UpdateMessageCounter();
     }
 
-    /// <summary>
-    /// Loads available prompt templates into the dropdown
-    /// </summary>
     private void LoadPromptTemplates()
     {
         CboPromptTemplate.ItemsSource = null;
@@ -1868,9 +1781,6 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>
-    /// Event handler for prompt template selection change
-    /// </summary>
     private void CboPromptTemplate_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (CboPromptTemplate.SelectedItem is CodePrompt selectedPrompt)
@@ -1881,17 +1791,11 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>
-    /// Event handler for Configure Prompts button
-    /// </summary>
     private void BtnConfigurePrompts_Click(object sender, RoutedEventArgs e)
     {
         OpenConfigurationWindow();
     }
 
-    /// <summary>
-    /// Opens the configuration window with focus on prompt settings
-    /// </summary>
     private void OpenConfigurationWindow()
     {
         try
@@ -1917,11 +1821,6 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>
-    /// Automatically saves an AI response to the AiOutput folder
-    /// </summary>
-    /// <param name="responseText">The AI response text to save</param>
-    /// <param name="responseIndex">The index of this response in the conversation</param>
     private void AutoSaveResponse(string responseText, int responseIndex)
     {
         try
@@ -1956,19 +1855,13 @@ public partial class MainWindow
         }
     }
 
-    // 2. Add this method to MainWindow.xaml.cs to estimate tokens for text
-    /// <summary>
-    /// Estimates the number of tokens in a text string.
-    /// Uses a simple approximation of 4 characters per token on average.
-    /// </summary>
-    private int EstimateTokenCount(string text, string fileExtension = "")
+    private static int EstimateTokenCount(string text, string fileExtension = "")
     {
         if (string.IsNullOrEmpty(text))
             return 0;
 
-        // Use a more conservative base tokenization ratio - approximately 2.5 characters per token
-        // This is based on the error we received showing our estimates were too low
-        var charsPerToken = 2.5; // More conservative than the previous 4.0
+        // Base tokenization ratio - approximately 2.5 characters per token
+        var charsPerToken = 2.5;
 
         // Adjust based on file type - code files generally use more tokens per character
         if (!string.IsNullOrEmpty(fileExtension))
@@ -1996,10 +1889,6 @@ public partial class MainWindow
         return (int)Math.Ceiling(text.Length / charsPerToken);
     }
 
-    // 3. Add this method to calculate tokens for all files
-    /// <summary>
-    /// Calculates the total estimated token count for all selected files
-    /// </summary>
     private void CalculateTotalTokens()
     {
         _estimatedTokenCount = 0;
@@ -2035,115 +1924,23 @@ public partial class MainWindow
         UpdateTokenCountDisplay();
     }
 
-    // 4. Add this method to update the UI
-    /// <summary>
-    /// Updates the token count display in the UI
-    /// </summary>
-    // Modify the UpdateTokenCountDisplay method to show a range
     private void UpdateTokenCountDisplay()
     {
         Dispatcher.Invoke(() =>
         {
             // Calculate lower and upper bounds with wider range (±30%)
-            // Based on our observed error, we need a much wider range
             var lowerBound = (int)(_estimatedTokenCount * 0.80);
             var upperBound = (int)(_estimatedTokenCount * 1.50); // Wider upper bound for safety
 
             // Format the display text with the range
-            TxtTokenCount.Text = $"Estimated Input Tokens: {lowerBound:N0} - {upperBound:N0}";
+            TxtTokenCount.Text = $"Estimated Input Tokens: {_estimatedTokenCount:N0} (range {lowerBound:N0} - {upperBound:N0})";
 
             // Detailed tooltip with model-specific information
             var tooltipText = $"Base estimate: {_estimatedTokenCount:N0} tokens\n" +
                               $"Range: {lowerBound:N0} - {upperBound:N0} tokens\n\n" +
                               "⚠️ Token estimates are approximate and may vary by model\n";
 
-            // Get selected model information if available
-            var modelContextLimit = "Unknown";
-            var modelName = "the selected model";
-
-            if (CboAiApi.SelectedItem != null)
-            {
-                var provider = CboAiApi.SelectedItem.ToString();
-                switch (provider)
-                {
-                    case "Claude API":
-                        modelContextLimit = "100,000";
-                        modelName = "Claude";
-                        break;
-                    case "ChatGPT API":
-                        if (CboModel.SelectedItem is ModelDropdownItem model)
-                        {
-                            if (model.ModelId.Contains("gpt-4"))
-                            {
-                                modelContextLimit = "8,000 - 32,000";
-                                modelName = model.DisplayText;
-                            }
-                            else
-                            {
-                                modelContextLimit = "4,000 - 16,000";
-                                modelName = model.DisplayText;
-                            }
-                        }
-                        else
-                        {
-                            modelContextLimit = "8,000 - 32,000";
-                            modelName = "GPT models";
-                        }
-
-                        break;
-                    case "DeepSeek API":
-                        modelContextLimit = "65,536";
-                        modelName = "DeepSeek";
-                        break;
-                    case "Gemini API":
-                        modelContextLimit = "32,000 - 128,000";
-                        modelName = "Gemini";
-                        break;
-                    case "Grok API":
-                        modelContextLimit = "200,000";
-                        modelName = "Grok";
-                        break;
-                    default:
-                        modelContextLimit = "Unknown";
-                        modelName = provider;
-                        break;
-                }
-            }
-
-            // Add color coding based on the upper bound compared to model context limits
-            var modelMaxTokens = int.TryParse(modelContextLimit.Split('-')[0].Trim().Replace(",", ""),
-                out var parsed)
-                ? parsed
-                : 100000;
-
-            if (upperBound > modelMaxTokens)
-            {
-                TxtTokenCount.Foreground = Brushes.Red;
-                tooltipText += $"\n❌ ERROR: Your input likely exceeds {modelName}'s context limit of {modelContextLimit} tokens.\n" +
-                               "You must reduce the number of files or their size before analysis.";
-            }
-            else if (upperBound > modelMaxTokens * 0.8)
-            {
-                TxtTokenCount.Foreground = Brushes.Orange;
-                tooltipText += $"\n⚠️ WARNING: Your input is approaching {modelName}'s context limit of {modelContextLimit} tokens.\n" +
-                               "Consider reducing the number or size of files to ensure successful processing.";
-            }
-            else if (upperBound > modelMaxTokens * 0.5)
-            {
-                TxtTokenCount.Foreground = new SolidColorBrush(Colors.DarkGoldenrod);
-                tooltipText += $"\n⚠️ CAUTION: Your input is using a substantial portion of {modelName}'s context limit ({modelContextLimit} tokens).\n" +
-                               "This may leave limited space for the model's response.";
-            }
-            else
-            {
-                TxtTokenCount.Foreground = Brushes.Green;
-                tooltipText += $"\n✅ Your input is within {modelName}'s context limit of {modelContextLimit} tokens.";
-            }
-
             TxtTokenCount.ToolTip = tooltipText;
-
-            // Make the token count more prominent
-            TxtTokenCount.FontWeight = FontWeights.Bold;
 
             LogOperation($"Updated token estimate range: {lowerBound:N0} - {upperBound:N0} tokens (base: {_estimatedTokenCount:N0})");
         });
@@ -2173,12 +1970,6 @@ public partial class MainWindow
         UpdateTokenCountDisplay();
     }
 
-    // Add this helper method to preprocess markdown responses
-    /// <summary>
-    /// Preprocesses markdown content to fix common rendering issues
-    /// </summary>
-    /// <param name="markdownContent">The original markdown content</param>
-    /// <returns>Processed markdown content</returns>
     private string PreprocessMarkdown(string markdownContent)
     {
         if (string.IsNullOrEmpty(markdownContent))
@@ -2228,7 +2019,7 @@ public partial class MainWindow
 
     private FrameworkElement? FindNameInWindow(string name)
     {
-        return this.FindName(name) as FrameworkElement;
+        return FindName(name) as FrameworkElement;
     }
 
     private IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
@@ -2245,5 +2036,155 @@ public partial class MainWindow
             foreach (var childOfChild in FindVisualChildren<T>(child))
                 yield return childOfChild;
         }
+    }
+    
+    private void MenuStart_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // Ask for confirmation
+            var result = MessageBox.Show(
+                "Are you sure you want to restart the application? This will clear all current analysis data.",
+                "Restart Application",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                LogOperation("Restarting application...");
+
+                // Clear MarkdownViewer and response display
+                MarkdownViewer.Markdown = string.Empty;
+                TxtResponse.Text = string.Empty;
+                _currentResponseText = string.Empty;
+
+                // Reset response counter and navigation
+                _conversationHistory.Clear();
+                _currentResponseIndex = -1;
+                BtnPreviousResponse.IsEnabled = false;
+                BtnNextResponse.IsEnabled = false;
+                TxtResponseCounter.Text = "No responses";
+
+                // Reset zoom level
+                _markdownZoomLevel = 100.0;
+                UpdateZoomDisplay();
+
+                // Clear file list
+                _filesByExtension.Clear();
+                LvFiles.Items.Clear();
+                _selectedFolder = string.Empty;
+                TxtSelectedFolder.Text = string.Empty;
+                _estimatedTokenCount = 0;
+                UpdateTokenCountDisplay();
+
+                // Reset UI elements state
+                var analyzeButton = FindNameInWindow("BtnAnalyze") as Button ??
+                                    FindButtonByContent("Send Initial Prompt") as Button;
+                if (analyzeButton != null)
+                    analyzeButton.IsEnabled = true;
+                
+                BtnSendFollowup.IsEnabled = false;
+                ChkIncludeSelectedFiles.IsEnabled = false;
+                BtnSaveResponse.IsEnabled = false;
+                BtnToggleMarkdown.IsEnabled = false;
+
+                // Reset follow-up question
+                TxtFollowupQuestion.Text = string.Empty;
+                TxtFollowupQuestion.IsEnabled = true;
+                
+                // Reset AI provider
+                CboAiApi.SelectedIndex = -1; // Default to none
+
+                // Reset status
+                TxtStatus.Text = "Ready";
+
+                LogOperation("Application reset complete");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogOperation($"Error restarting application: {ex.Message}");
+            ErrorLogger.LogError(ex, "Restarting application");
+        }
+    }
+
+    private void MenuOpenPastResponses_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // Check if AiOutput directory exists
+            var outputDirectory = Path.Combine(AppContext.BaseDirectory, "AiOutput");
+            if (!Directory.Exists(outputDirectory))
+            {
+                MessageBox.Show(
+                    "No past responses found. The AiOutput folder doesn't exist yet.",
+                    "No Responses",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            // Create file selection dialog
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Open Past Response",
+                Filter = "Markdown files (*.md)|*.md|Text files (*.txt)|*.txt|All files (*.*)|*.*",
+                InitialDirectory = outputDirectory
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                LogOperation($"Opening past response file: {Path.GetFileName(dialog.FileName)}");
+                StartOperationTimer("LoadResponseFile");
+
+                // Read the file content
+                var responseText = File.ReadAllText(dialog.FileName);
+
+                // Display in the MarkdownViewer
+                _currentResponseText = responseText;
+                TxtResponse.Text = responseText;
+                
+                // Apply preprocessing to fix markdown rendering issues
+                var processedMarkdown = PreprocessMarkdown(responseText);
+                MarkdownViewer.Markdown = processedMarkdown;
+                
+                // Use the original file name in the response counter
+                TxtResponseCounter.Text = $"Viewing: {Path.GetFileName(dialog.FileName)}";
+                
+                // Enable relevant buttons
+                BtnSaveResponse.IsEnabled = true;
+                BtnToggleMarkdown.IsEnabled = true;
+                
+                // Ensure we're in markdown view mode
+                if (!_isMarkdownViewActive)
+                {
+                    // Instead of calling the click handler with null, directly update the view state
+                    _isMarkdownViewActive = true;
+                    TxtResponse.Visibility = Visibility.Collapsed;
+                    MarkdownScrollViewer.Visibility = Visibility.Visible;
+                    BtnToggleMarkdown.Content = "Show Raw Text";
+                    LogOperation("Switched to markdown view for past response");
+                }
+                
+                // Update the page width and zoom
+                _markdownZoomLevel = 100.0; // Reset zoom for new content
+                UpdateZoomDisplay();
+                UpdateMarkdownPageWidth();
+                
+                EndOperationTimer("LoadResponseFile");
+                TxtStatus.Text = "Past response loaded successfully";
+            }
+        }
+        catch (Exception ex)
+        {
+            LogOperation($"Error opening past response: {ex.Message}");
+            ErrorLogger.LogError(ex, "Opening past response");
+            TxtStatus.Text = "Error opening past response.";
+        }
+    }
+    
+    private void MenuExit_Click(object sender, RoutedEventArgs e)
+    {
+        Application.Current.Shutdown();
     }
 }

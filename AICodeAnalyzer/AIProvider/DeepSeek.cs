@@ -14,28 +14,26 @@ public class DeepSeek : IAiApiProvider
 {
     private readonly HttpClient _httpClient = new();
 
+    public DeepSeek()
+    {
+        // Increase the timeout to something more reasonable, e.g., 300 seconds (5 minutes)
+        _httpClient.Timeout = TimeSpan.FromSeconds(300);
+    }
+
     public string Name => "DeepSeek API";
-    public string DefaultModel => "deepseek-coder"; // Keep deepseek-coder as default for backward compatibility
+    public string DefaultModel => "deepseek-chat";
 
     public Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
     {
         throw new NotImplementedException();
     }
 
-    /// <summary>
-    /// Available DeepSeek models
-    /// </summary>
     private static class Models
     {
-        // General purpose models
         public const string DeepSeekChat = "deepseek-chat"; // DeepSeek-V3
         public const string DeepSeekReasoner = "deepseek-reasoner"; // DeepSeek-R1
     }
 
-    /// <summary>
-    /// Gets all available DeepSeek models with their descriptions
-    /// </summary>
-    /// <returns>List of model options</returns>
     public List<DeepSeekModelInfo> GetAvailableModels()
     {
         return new List<DeepSeekModelInfo>
@@ -45,25 +43,22 @@ public class DeepSeek : IAiApiProvider
                 Id = Models.DeepSeekChat,
                 Name = "DeepSeek Chat (V3)",
                 Description = "Context window 64,000 tokens. Input $0,27. Output $1,10.",
-                ContextLength = 64000,
-                MaxOutputTokens = 8192
+                ContextLength = 64000
             },
             new()
             {
                 Id = Models.DeepSeekReasoner,
                 Name = "DeepSeek Reasoner (R1)",
                 Description = "Context window 64,000 tokens. Input $0,55. Output $2,19.",
-                ContextLength = 64000,
-                MaxOutputTokens = 8192
+                ContextLength = 64000
             }
         };
     }
 
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
     {
-        // Use specified model or fall back to default
-        var model = modelId; // Fix: Use null-coalescing operator to handle null modelId
-        var apiUrl = "https://api.deepseek.com/v1/chat/completions";
+        var model = modelId;
+        const string apiUrl = "https://api.deepseek.com/v1/chat/completions";
 
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -71,23 +66,85 @@ public class DeepSeek : IAiApiProvider
         // Properly format the message history for DeepSeek API
         var messages = new List<object>();
 
-        // First add system message if this is the first message
-        if (conversationHistory.Count == 0)
+        // Handle the DeepSeek Reasoner model which requires strict user/assistant alternation
+        if (model == Models.DeepSeekReasoner)
         {
+            // For DeepSeek Reasoner, we need to ensure strict alternation between user and assistant
             var systemPrompt = GetSystemPromptForModel(model);
+            
+            // Always add a system message first
             messages.Add(new { role = "system", content = systemPrompt });
+            
+            if (conversationHistory.Count == 0)
+            {
+                // If this is the first message, just add the user prompt
+                messages.Add(new { role = "user", content = prompt });
+            }
+            else
+            {
+                // For existing conversations, we need to ensure user/assistant alternation
+                // Start with determining what the first role should be
+                var expectedRole = "user";
+                
+                // Process history and force proper alternation
+                foreach (var msg in conversationHistory)
+                {
+                    // Skip messages that don't fit the expected alternating pattern
+                    if (msg.Role != expectedRole)
+                    {
+                        continue;
+                    }
+                    
+                    // Add the message and flip the expected role
+                    messages.Add(new { role = msg.Role, content = msg.Content });
+                    expectedRole = expectedRole == "user" ? "assistant" : "user";
+                }
+                
+                // Add the current prompt only if the last message was from the assistant
+                if (expectedRole == "user")
+                {
+                    messages.Add(new { role = "user", content = prompt });
+                }
+                else
+                {
+                    // If the last message was from a user, we need to combine the prompts
+                    // to maintain the alternating pattern
+                    var lastMessage = messages[^1];
+                    var lastContent = ((dynamic)lastMessage).content;
+                    
+                    // Remove the last message
+                    messages.RemoveAt(messages.Count - 1);
+                    
+                    // Add a combined message
+                    messages.Add(new
+                    { 
+                        role = "user", 
+                        content = $"{lastContent}\n\nFollow-up question: {prompt}" 
+                    });
+                }
+            }
         }
         else
         {
-            // Add each message from history with the proper format
-            foreach (var msg in conversationHistory)
+            // For standard DeepSeek Chat, use the original behavior
+            // First add system message if this is the first message
+            if (conversationHistory.Count == 0)
             {
-                messages.Add(new { role = msg.Role, content = msg.Content });
+                var systemPrompt = GetSystemPromptForModel(model);
+                messages.Add(new { role = "system", content = systemPrompt });
             }
+            else
+            {
+                // Add each message from history with the proper format
+                foreach (var msg in conversationHistory)
+                {
+                    messages.Add(new { role = msg.Role, content = msg.Content });
+                }
+            }
+            
+            // Add the current prompt
+            messages.Add(new { role = "user", content = prompt });
         }
-
-        // Add the current prompt
-        messages.Add(new { role = "user", content = prompt });
 
         // Determine max tokens based on model
         var maxTokens = GetMaxTokensForModel(model);
@@ -104,26 +161,39 @@ public class DeepSeek : IAiApiProvider
             Encoding.UTF8,
             "application/json");
 
-        var response = await _httpClient.PostAsync(apiUrl, content);
-
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            var errorText = await response.Content.ReadAsStringAsync();
-            throw new Exception($"API error ({response.StatusCode}): {errorText}");
+            var response = await _httpClient.PostAsync(apiUrl, content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorText = await response.Content.ReadAsStringAsync();
+                throw new Exception($"API error ({response.StatusCode}): {errorText}");
+            }
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(responseJson);
+
+            return doc.RootElement.GetProperty("choices")[0]
+                .GetProperty("message")
+                .GetProperty("content").GetString() ?? "No response";
         }
-
-        var responseJson = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(responseJson);
-
-        return doc.RootElement.GetProperty("choices")[0]
-            .GetProperty("message")
-            .GetProperty("content").GetString() ?? "No response";
+        catch (TaskCanceledException ex)
+        {
+            // Log the exception or handle it appropriately.
+            Console.WriteLine($"Request timed out: {ex.Message}");
+            throw; // Re-throw the exception to be handled upstream.
+        }
+        catch (Exception ex)
+        {
+            // Handle other exceptions as needed.
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            throw;
+        }
     }
-
-    /// <summary>
-    /// Gets the appropriate system prompt based on the model
-    /// </summary>
-    private string GetSystemPromptForModel(string model)
+    
+    
+    private static string GetSystemPromptForModel(string model)
     {
         return model switch
         {
@@ -132,10 +202,7 @@ public class DeepSeek : IAiApiProvider
         };
     }
 
-    /// <summary>
-    /// Gets the maximum output tokens for the specified model
-    /// </summary>
-    private int GetMaxTokensForModel(string model)
+    private static int GetMaxTokensForModel(string model)
     {
         return model switch
         {
@@ -146,33 +213,10 @@ public class DeepSeek : IAiApiProvider
     }
 }
 
-/// <summary>
-/// Represents information about an AI model
-/// </summary>
 public class DeepSeekModelInfo
 {
-    /// <summary>
-    /// The model identifier used in API calls
-    /// </summary>
     public required string Id { get; set; }
-
-    /// <summary>
-    /// Display name for the model
-    /// </summary>
     public required string Name { get; set; }
-
-    /// <summary>
-    /// Description of the model's capabilities
-    /// </summary>
     public required string Description { get; set; }
-
-    /// <summary>
-    /// Maximum context length in tokens
-    /// </summary>
     public int ContextLength { get; set; }
-
-    /// <summary>
-    /// Maximum number of output tokens
-    /// </summary>
-    public int MaxOutputTokens { get; set; } // Removed redundant initialization
 }

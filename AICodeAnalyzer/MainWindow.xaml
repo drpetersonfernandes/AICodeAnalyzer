@@ -18,6 +18,17 @@
         <!-- Menu at the top -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File" Style="{StaticResource MenuItemStyle}">
+                <MenuItem Header="_Start" Click="MenuStart_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="⟳" FontSize="14" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Open Past Responses..." Click="MenuOpenPastResponses_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📂" FontSize="14" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator />
                 <MenuItem Header="_Exit" Click="MenuExit_Click" />
             </MenuItem>
             <MenuItem Header="_Settings" Style="{StaticResource MenuItemStyle}">
@@ -91,7 +102,7 @@
                        Grid.Row="2" 
                        Grid.Column="0" 
                        Margin="0,5,5,10"
-                       Text="Estimated Input Tokens: 0" 
+                       Text="Estimated Input Tokens: 0 (range 0 - 0)" 
                        ToolTip="Estimated number of tokens that will be sent to the AI API" />
 
             <!-- API Selection Area -->
@@ -101,37 +112,35 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
                     <!-- AI API ComboBox -->
-                    <ComboBox x:Name="CboAiApi" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,5"
+                    <ComboBox x:Name="CboAiApi" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,5,5,5"
                               SelectionChanged="CboAiApi_SelectionChanged" />
 
                     <!-- Model Selection -->
-                    <Label Content="Model:" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,5,5" />
+                    <Label Content="Model:" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,5,0" />
                     <ComboBox x:Name="CboModel"
-                              Grid.Row="1" Grid.Column="1"
+                              Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
                               IsEnabled="False"
                               Margin="0,0,5,5"
                               HorizontalAlignment="Stretch"
+                              VerticalAlignment="Center"
                               SelectionChanged="CboModel_SelectionChanged" />
 
                     <!-- API Key Section -->
                     <TextBlock Text="API Key:" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,5,5" />
-                    <PasswordBox x:Name="TxtApiKey" Grid.Row="2" Grid.Column="1" Margin="0,0,5,5" />
-                    <ComboBox x:Name="CboPreviousKeys" Grid.Row="2" Grid.Column="2" Width="100"
-                              Margin="0,0,5,5"
-                              SelectionChanged="CboPreviousKeys_SelectionChanged" />
-
-                    <!-- Save Button -->
-                    <Button x:Name="BtnSaveKey" Content="Save Current Key" Grid.Row="3" Grid.Column="0"
-                            Grid.ColumnSpan="3" Margin="0,0,0,0" Click="BtnSaveKey_Click" Height="25" />
+                    <PasswordBox x:Name="TxtApiKey" Grid.Row="2" Grid.Column="1" Margin="0,0,5,5"  />
+                    <Button x:Name="BtnSaveKey" Content="Save" Grid.Row="2" Grid.Column="2" Margin="0,0,5,5"  Click="BtnSaveKey_Click" Padding="8,3" />
+                    <ComboBox x:Name="CboPreviousKeys" Grid.Row="2" Grid.Column="3" Margin="0,0,5,5"  SelectionChanged="CboPreviousKeys_SelectionChanged" Width="90"/>
+                    
+                    
                 </Grid>
             </GroupBox>
 

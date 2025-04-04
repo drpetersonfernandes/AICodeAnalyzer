@@ -17,37 +17,17 @@ public class OpenAi : IAiApiProvider
     public string Name => "ChatGPT API";
     public string DefaultModel => "gpt-4o";
 
-    /// <summary>
-    /// Available OpenAI model identifiers
-    /// </summary>
     private static class Models
     {
-        // GPT-4.5 models
         public const string Gpt45Preview = "gpt-4.5-preview";
-
-        // GPT-4o models
         public const string Gpt4O = "gpt-4o";
-
-        // GPT-4o Mini models
         public const string Gpt4OMini = "gpt-4o-mini";
-
-        // O1 models
         public const string O1 = "o1";
-
-        // O1 Pro models
         public const string O1Pro = "o1-pro";
-
-        // O3 Mini models
         public const string O3Mini = "o3-mini";
-
-        // O1 Mini models
         public const string O1Mini = "o1-mini";
     }
 
-    /// <summary>
-    /// Gets all available OpenAI models with their descriptions
-    /// </summary>
-    /// <returns>List of model options</returns>
     public List<OpenAiModelInfo> GetAvailableModels()
     {
         return new List<OpenAiModelInfo>
@@ -59,7 +39,6 @@ public class OpenAi : IAiApiProvider
                 Name = "GPT-4.5 Preview",
                 Description = "Context window 128,000 tokens. Input $75,00. Output $150,00.",
                 ContextLength = 128000,
-                MaxTokens = 4096,
                 Category = "GPT-4.5 Models"
             },
 
@@ -70,7 +49,6 @@ public class OpenAi : IAiApiProvider
                 Name = "GPT-4o",
                 Description = "Context window 128,000 tokens. Input $2,50. Output $10,00.",
                 ContextLength = 128000,
-                MaxTokens = 4096,
                 Category = "GPT-4o Models"
             },
 
@@ -81,7 +59,6 @@ public class OpenAi : IAiApiProvider
                 Name = "GPT-4o Mini",
                 Description = "Context window 128,000 tokens. Input $0,15. Output $0,60.",
                 ContextLength = 128000,
-                MaxTokens = 4096,
                 Category = "GPT-4o Mini Models"
             },
 
@@ -92,7 +69,6 @@ public class OpenAi : IAiApiProvider
                 Name = "o1",
                 Description = "Context window 200,000 tokens. Input $15,00. Output $60,00.",
                 ContextLength = 200000,
-                MaxTokens = 4096,
                 Category = "o1 Models"
             },
 
@@ -103,7 +79,6 @@ public class OpenAi : IAiApiProvider
                 Name = "o1 Pro",
                 Description = "Context window 200,000 tokens. Input $150,00. Output $600,00.",
                 ContextLength = 200000,
-                MaxTokens = 4096,
                 Category = "o1 Pro Models"
             },
 
@@ -114,7 +89,6 @@ public class OpenAi : IAiApiProvider
                 Name = "o3 Mini",
                 Description = "Context window 200,000 tokens. Input $1,10. Output $4,40.",
                 ContextLength = 200000,
-                MaxTokens = 4096,
                 Category = "o3 Models"
             },
 
@@ -125,30 +99,21 @@ public class OpenAi : IAiApiProvider
                 Name = "o1 Mini",
                 Description = "Context window 131,000 tokens. Input $3,00. Output $12,00.",
                 ContextLength = 131000,
-                MaxTokens = 4096,
                 Category = "o1 Mini Models"
             }
         };
     }
 
-    /// <summary>
-    /// Sends a prompt to the OpenAI API using the default model
-    /// Implements the interface method
-    /// </summary>
     public Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
     {
         // Call the overloaded method with the default model
         return SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
     }
 
-    /// <summary>
-    /// Sends a prompt to the OpenAI API using the specified model
-    /// Extended method for model selection
-    /// </summary>
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
     {
         var model = modelId;
-        var apiUrl = "https://api.openai.com/v1/chat/completions";
+        const string apiUrl = "https://api.openai.com/v1/chat/completions";
 
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -156,7 +121,7 @@ public class OpenAi : IAiApiProvider
         // Properly format the message history for OpenAI API
         var messages = new List<object>();
 
-        // First add system message if this is the first message
+        // First add a system message if this is the first message
         if (conversationHistory.Count == 0)
         {
             messages.Add(new { role = "system", content = "You are a helpful assistant specializing in code review and analysis." });
@@ -221,10 +186,7 @@ public class OpenAi : IAiApiProvider
             .GetProperty("content").GetString() ?? "No response";
     }
 
-    /// <summary>
-    /// Gets the maximum output tokens for the specified model
-    /// </summary>
-    private int GetMaxTokensForModel(string model)
+    private static int GetMaxTokensForModel(string model)
     {
         // Most OpenAI models support up to 4096 output tokens
         // This could be adjusted for specific models if needed
@@ -232,38 +194,11 @@ public class OpenAi : IAiApiProvider
     }
 }
 
-/// <summary>
-/// Represents information about an OpenAI model
-/// </summary>
 public class OpenAiModelInfo
 {
-    /// <summary>
-    /// The model identifier used in API calls
-    /// </summary>
     public required string Id { get; set; }
-
-    /// <summary>
-    /// Display name for the model
-    /// </summary>
     public required string Name { get; set; }
-
-    /// <summary>
-    /// Description of the model's capabilities
-    /// </summary>
     public required string Description { get; set; }
-
-    /// <summary>
-    /// Maximum context length in tokens
-    /// </summary>
     public int ContextLength { get; set; }
-
-    /// <summary>
-    /// Maximum number of output tokens
-    /// </summary>
-    public int MaxTokens { get; set; }
-
-    /// <summary>
-    /// Category for grouping models in the UI
-    /// </summary>
     public string Category { get; set; } = string.Empty;
 }

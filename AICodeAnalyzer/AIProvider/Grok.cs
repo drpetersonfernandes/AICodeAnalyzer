@@ -17,10 +17,6 @@ public class Grok : IAiApiProvider
     public string Name => "Grok API";
     public string DefaultModel => "grok-2-1212";
 
-    /// <summary>
-    /// Gets the list of available models for this provider
-    /// </summary>
-    /// <returns>A list of available models</returns>
     public List<GrokModelInfo> GetAvailableModels()
     {
         return new List<GrokModelInfo>
@@ -34,24 +30,16 @@ public class Grok : IAiApiProvider
         };
     }
 
-    /// <summary>
-    /// Sends a prompt to the Grok API using the default model
-    /// Implements the interface method
-    /// </summary>
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
     {
         // Call the overloaded method with the default model
         return await SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
     }
 
-    /// <summary>
-    /// Sends a prompt to the Grok API using the specified model
-    /// Extended method for model selection
-    /// </summary>
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
     {
         var model = modelId;
-        var apiUrl = "https://api.grok.x/v1/chat/completions";
+        const string apiUrl = "https://api.grok.x/v1/chat/completions";
 
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -59,7 +47,7 @@ public class Grok : IAiApiProvider
         // Properly format the message history for Grok API
         var messages = new List<object>();
 
-        // First add system message if this is the first message
+        // First add a system message if this is the first message
         if (conversationHistory.Count == 0)
         {
             messages.Add(new { role = "system", content = "You are a helpful assistant specializing in code review and analysis." });
@@ -105,23 +93,9 @@ public class Grok : IAiApiProvider
     }
 }
 
-/// <summary>
-/// Represents an AI model that can be selected in the UI
-/// </summary>
 public class GrokModelInfo
 {
-    /// <summary>
-    /// Gets or sets the display name of the model
-    /// </summary>
-    public required string Name { get; set; }
-
-    /// <summary>
-    /// Gets or sets the model identifier used in API calls
-    /// </summary>
     public required string Id { get; set; }
-
-    /// <summary>
-    /// Gets or sets a description of the model
-    /// </summary>
+    public required string Name { get; set; }
     public required string Description { get; set; }
 }

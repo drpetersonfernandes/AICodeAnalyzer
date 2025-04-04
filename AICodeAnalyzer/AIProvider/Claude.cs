@@ -22,26 +22,14 @@ public class Claude : IAiApiProvider
         return SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
     }
 
-    /// <summary>
-    /// Available Claude models
-    /// </summary>
     private static class Models
     {
-        // Claude 3.7 models
         public const string Claude37Sonnet = "claude-3-7-sonnet-20250219";
-
-        // Claude 3.5 models
         public const string Claude35Sonnet = "claude-3-5-sonnet-20240620";
         public const string Claude35Haiku = "claude-3-5-haiku-20240307";
-
-        // Claude 3 models
         public const string Claude3Opus = "claude-3-opus-20240229";
     }
 
-    /// <summary>
-    /// Gets all available Claude models with their descriptions
-    /// </summary>
-    /// <returns>List of model options</returns>
     public List<ClaudeModelInfo> GetAvailableModels()
     {
         return new List<ClaudeModelInfo>
@@ -52,8 +40,7 @@ public class Claude : IAiApiProvider
                 Id = Models.Claude37Sonnet,
                 Name = "Claude 3.7 Sonnet",
                 Description = "Context window 200,000 tokens. Input $3,00. Output $15,00.",
-                ContextLength = 200000,
-                MaxOutputTokens = 4096
+                ContextLength = 200000
             },
 
             // Claude 3.5
@@ -62,16 +49,14 @@ public class Claude : IAiApiProvider
                 Id = Models.Claude35Sonnet,
                 Name = "Claude 3.5 Sonnet",
                 Description = "Context window 200,000 tokens. Input $3,00. Output $15,00.",
-                ContextLength = 200000,
-                MaxOutputTokens = 4096
+                ContextLength = 200000
             },
             new()
             {
                 Id = Models.Claude35Haiku,
                 Name = "Claude 3.5 Haiku",
                 Description = "Context window 200,000 tokens. Input $0,8. Output $4,00.",
-                ContextLength = 200000,
-                MaxOutputTokens = 4096
+                ContextLength = 200000
             },
 
             // Claude 3
@@ -80,8 +65,7 @@ public class Claude : IAiApiProvider
                 Id = Models.Claude3Opus,
                 Name = "Claude 3 Opus",
                 Description = "Context window 200,000 tokens. Input $15,00. Output $75,00.",
-                ContextLength = 200000,
-                MaxOutputTokens = 4096
+                ContextLength = 200000
             }
         };
     }
@@ -89,7 +73,7 @@ public class Claude : IAiApiProvider
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
     {
         var model = modelId;
-        var apiUrl = "https://api.anthropic.com/v1/messages";
+        const string apiUrl = "https://api.anthropic.com/v1/messages";
 
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
@@ -136,33 +120,10 @@ public class Claude : IAiApiProvider
     }
 }
 
-/// <summary>
-/// Represents information about a Claude model
-/// </summary>
 public class ClaudeModelInfo
 {
-    /// <summary>
-    /// The model identifier used in API calls
-    /// </summary>
     public required string Id { get; set; }
-
-    /// <summary>
-    /// Display name for the model
-    /// </summary>
     public required string Name { get; set; }
-
-    /// <summary>
-    /// Description of the model's capabilities
-    /// </summary>
     public required string Description { get; set; }
-
-    /// <summary>
-    /// Maximum context length in tokens
-    /// </summary>
     public int ContextLength { get; set; }
-
-    /// <summary>
-    /// Maximum number of output tokens
-    /// </summary>
-    public int MaxOutputTokens { get; set; }
 }
