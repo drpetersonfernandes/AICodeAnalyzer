@@ -56,7 +56,7 @@ public partial class MainWindow
         var providers = _apiProviderFactory.AllProviders
             .OrderBy(p => p.Name)
             .ToList();
-    
+
         foreach (var provider in providers)
         {
             CboAiApi.Items.Add(provider.Name);
@@ -2037,7 +2037,7 @@ public partial class MainWindow
                 yield return childOfChild;
         }
     }
-    
+
     private void MenuStart_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -2082,7 +2082,7 @@ public partial class MainWindow
                                     FindButtonByContent("Send Initial Prompt") as Button;
                 if (analyzeButton != null)
                     analyzeButton.IsEnabled = true;
-                
+
                 BtnSendFollowup.IsEnabled = false;
                 ChkIncludeSelectedFiles.IsEnabled = false;
                 BtnSaveResponse.IsEnabled = false;
@@ -2091,7 +2091,7 @@ public partial class MainWindow
                 // Reset follow-up question
                 TxtFollowupQuestion.Text = string.Empty;
                 TxtFollowupQuestion.IsEnabled = true;
-                
+
                 // Reset AI provider
                 CboAiApi.SelectedIndex = -1; // Default to none
 
@@ -2143,18 +2143,18 @@ public partial class MainWindow
                 // Display in the MarkdownViewer
                 _currentResponseText = responseText;
                 TxtResponse.Text = responseText;
-                
+
                 // Apply preprocessing to fix markdown rendering issues
                 var processedMarkdown = PreprocessMarkdown(responseText);
                 MarkdownViewer.Markdown = processedMarkdown;
-                
+
                 // Use the original file name in the response counter
                 TxtResponseCounter.Text = $"Viewing: {Path.GetFileName(dialog.FileName)}";
-                
+
                 // Enable relevant buttons
                 BtnSaveResponse.IsEnabled = true;
                 BtnToggleMarkdown.IsEnabled = true;
-                
+
                 // Ensure we're in markdown view mode
                 if (!_isMarkdownViewActive)
                 {
@@ -2165,12 +2165,12 @@ public partial class MainWindow
                     BtnToggleMarkdown.Content = "Show Raw Text";
                     LogOperation("Switched to markdown view for past response");
                 }
-                
+
                 // Update the page width and zoom
                 _markdownZoomLevel = 100.0; // Reset zoom for new content
                 UpdateZoomDisplay();
                 UpdateMarkdownPageWidth();
-                
+
                 EndOperationTimer("LoadResponseFile");
                 TxtStatus.Text = "Past response loaded successfully";
             }
@@ -2182,7 +2182,7 @@ public partial class MainWindow
             TxtStatus.Text = "Error opening past response.";
         }
     }
-    
+
     private void MenuExit_Click(object sender, RoutedEventArgs e)
     {
         Application.Current.Shutdown();

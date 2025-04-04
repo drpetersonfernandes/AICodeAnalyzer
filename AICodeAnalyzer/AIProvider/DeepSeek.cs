@@ -71,13 +71,13 @@ public class DeepSeek : IAiApiProvider
         {
             // For DeepSeek Reasoner, we need to ensure strict alternation between user and assistant
             var systemPrompt = GetSystemPromptForModel(model);
-            
+
             // Always add a system message first
             messages.Add(new { role = "system", content = systemPrompt });
-            
+
             if (conversationHistory.Count == 0)
             {
-                // If this is the first message, just add the user prompt
+                // If this is the first message, add the user prompt
                 messages.Add(new { role = "user", content = prompt });
             }
             else
@@ -85,7 +85,7 @@ public class DeepSeek : IAiApiProvider
                 // For existing conversations, we need to ensure user/assistant alternation
                 // Start with determining what the first role should be
                 var expectedRole = "user";
-                
+
                 // Process history and force proper alternation
                 foreach (var msg in conversationHistory)
                 {
@@ -94,12 +94,12 @@ public class DeepSeek : IAiApiProvider
                     {
                         continue;
                     }
-                    
+
                     // Add the message and flip the expected role
                     messages.Add(new { role = msg.Role, content = msg.Content });
                     expectedRole = expectedRole == "user" ? "assistant" : "user";
                 }
-                
+
                 // Add the current prompt only if the last message was from the assistant
                 if (expectedRole == "user")
                 {
@@ -111,15 +111,15 @@ public class DeepSeek : IAiApiProvider
                     // to maintain the alternating pattern
                     var lastMessage = messages[^1];
                     var lastContent = ((dynamic)lastMessage).content;
-                    
+
                     // Remove the last message
                     messages.RemoveAt(messages.Count - 1);
-                    
+
                     // Add a combined message
                     messages.Add(new
-                    { 
-                        role = "user", 
-                        content = $"{lastContent}\n\nFollow-up question: {prompt}" 
+                    {
+                        role = "user",
+                        content = $"{lastContent}\n\nFollow-up question: {prompt}"
                     });
                 }
             }
@@ -141,7 +141,7 @@ public class DeepSeek : IAiApiProvider
                     messages.Add(new { role = msg.Role, content = msg.Content });
                 }
             }
-            
+
             // Add the current prompt
             messages.Add(new { role = "user", content = prompt });
         }
@@ -191,8 +191,8 @@ public class DeepSeek : IAiApiProvider
             throw;
         }
     }
-    
-    
+
+
     private static string GetSystemPromptForModel(string model)
     {
         return model switch
