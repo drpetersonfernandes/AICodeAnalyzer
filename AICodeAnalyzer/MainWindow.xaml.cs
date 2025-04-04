@@ -64,10 +64,44 @@ public partial class MainWindow
 
         CboAiApi.SelectedIndex = -1; // Default to none
 
+        // Check if a startup file path was passed from App.xaml.cs
+        if (Application.Current.Properties["StartupFilePath"] is string filePath)
+        {
+            LoadMarkdownFile(filePath);
+        }
+
         LogOperation("Application started");
         InitializePromptSelection();
         UpdateZoomDisplay();
         SetupStatusUpdateTimer();
+    }
+
+    public void LoadMarkdownFile(string filePath)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+            {
+                LogOperation($"Invalid file path: {filePath}");
+                MessageBox.Show("The specified file does not exist.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var fileContent = File.ReadAllText(filePath);
+            _currentResponseText = fileContent;
+            TxtResponse.Text = fileContent;
+            MarkdownViewer.Markdown = PreprocessMarkdown(fileContent);
+            TxtResponseCounter.Text = $"Viewing: {Path.GetFileName(filePath)}";
+            BtnToggleMarkdown.IsEnabled = true;
+            BtnSaveResponse.IsEnabled = true;
+            LogOperation($"Loaded markdown file: {filePath}");
+        }
+        catch (Exception ex)
+        {
+            LogOperation($"Error loading markdown file: {ex.Message}");
+            ErrorLogger.LogError(ex, $"Loading markdown file: {filePath}");
+            MessageBox.Show($"Error loading file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void SetupStatusUpdateTimer()

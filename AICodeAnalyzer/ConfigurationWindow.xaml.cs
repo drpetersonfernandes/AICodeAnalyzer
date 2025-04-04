@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -12,6 +13,7 @@ public partial class ConfigurationWindow
     private readonly SettingsManager _settingsManager;
     private ApplicationSettings _workingSettings;
     private CodePrompt? _currentPrompt;
+    private bool _isCurrentlyRegistered;
 
     public ConfigurationWindow(SettingsManager settingsManager)
     {
@@ -58,6 +60,22 @@ public partial class ConfigurationWindow
         }
 
         LoadSettingsToUi();
+    }
+
+    private void InitializeFileAssociationTab()
+    {
+        // Check if the application is currently registered
+        _isCurrentlyRegistered = IsApplicationRegisteredForMdFiles();
+
+        // Set the checkbox state based on the ACTUAL current registration status
+        ChkRegisterFileAssociation.IsChecked = _isCurrentlyRegistered;
+
+        // Also update the working settings to match the actual state
+        // This ensures the setting reflects reality if the user doesn't change anything
+        _workingSettings.RegisterAsDefaultMdHandler = _isCurrentlyRegistered;
+
+        // Update the status text
+        UpdateFileAssociationStatus();
     }
 
     private void LoadSettingsToUi()
@@ -129,6 +147,50 @@ public partial class ConfigurationWindow
 
         // Update buttons based on selection
         UpdatePromptButtons();
+
+        InitializeFileAssociationTab();
+    }
+
+    private bool IsApplicationRegisteredForMdFiles()
+    {
+        try
+        {
+            using var extensionKey = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(".md");
+            if (extensionKey == null)
+                return false;
+
+            var progId = extensionKey.GetValue(null) as string;
+            if (string.IsNullOrEmpty(progId) || progId != "AICodeAnalyzer")
+                return false;
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // Log the error
+            System.Diagnostics.Debug.WriteLine($"Error checking file association: {ex.Message}");
+            return false;
+        }
+    }
+
+    private void UpdateFileAssociationStatus()
+    {
+        if (_isCurrentlyRegistered)
+        {
+            TxtAssociationStatus.Text = "Status: AI Code Analyzer is currently registered as the default application for .md files.";
+            TxtAssociationStatus.Foreground = System.Windows.Media.Brushes.Green;
+        }
+        else
+        {
+            TxtAssociationStatus.Text = "Status: AI Code Analyzer is NOT currently registered as the default application for .md files.";
+            TxtAssociationStatus.Foreground = System.Windows.Media.Brushes.Red;
+        }
+    }
+
+    private void ChkRegisterFileAssociation_CheckedChanged(object sender, RoutedEventArgs e)
+    {
+        // Update the working settings
+        _workingSettings.RegisterAsDefaultMdHandler = ChkRegisterFileAssociation.IsChecked == true;
     }
 
     private void UpdateFileSizeDisplay()
@@ -489,6 +551,25 @@ public partial class ConfigurationWindow
 
         // Save to file
         _settingsManager.SaveSettings();
+
+        if (_workingSettings.RegisterAsDefaultMdHandler != _isCurrentlyRegistered)
+        {
+            // Registration state needs to be changed
+            var app = Application.Current as App;
+            if (_workingSettings.RegisterAsDefaultMdHandler)
+            {
+                app?.RegisterFileAssociation();
+                _isCurrentlyRegistered = true;
+            }
+            else
+            {
+                app?.UnregisterFileAssociation();
+                _isCurrentlyRegistered = false;
+            }
+
+            // Update UI
+            UpdateFileAssociationStatus();
+        }
 
         DialogResult = true;
         Close();
