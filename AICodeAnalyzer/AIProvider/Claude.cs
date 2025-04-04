@@ -51,7 +51,7 @@ public class Claude : IAiApiProvider
             {
                 Id = Models.Claude37Sonnet,
                 Name = "Claude 3.7 Sonnet",
-                Description = "Latest and most advanced model with enhanced reasoning",
+                Description = "Context window 200,000 tokens. Input $3,00. Output $15,00.",
                 ContextLength = 200000,
                 MaxOutputTokens = 4096
             },
@@ -61,7 +61,7 @@ public class Claude : IAiApiProvider
             {
                 Id = Models.Claude35Sonnet,
                 Name = "Claude 3.5 Sonnet",
-                Description = "Enhanced model with improved reasoning capabilities",
+                Description = "Context window 200,000 tokens. Input $3,00. Output $15,00.",
                 ContextLength = 200000,
                 MaxOutputTokens = 4096
             },
@@ -69,7 +69,7 @@ public class Claude : IAiApiProvider
             {
                 Id = Models.Claude35Haiku,
                 Name = "Claude 3.5 Haiku",
-                Description = "Fast and efficient model with 3.5 improvements",
+                Description = "Context window 200,000 tokens. Input $0,8. Output $4,00.",
                 ContextLength = 200000,
                 MaxOutputTokens = 4096
             },
@@ -79,7 +79,7 @@ public class Claude : IAiApiProvider
             {
                 Id = Models.Claude3Opus,
                 Name = "Claude 3 Opus",
-                Description = "Most powerful model for highly complex tasks",
+                Description = "Context window 200,000 tokens. Input $15,00. Output $75,00.",
                 ContextLength = 200000,
                 MaxOutputTokens = 4096
             }

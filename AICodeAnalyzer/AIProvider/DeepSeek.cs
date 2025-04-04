@@ -44,16 +44,16 @@ public class DeepSeek : IAiApiProvider
             {
                 Id = Models.DeepSeekChat,
                 Name = "DeepSeek Chat (V3)",
-                Description = "General purpose chat model with 64K context window",
-                ContextLength = 65536,
+                Description = "Context window 64,000 tokens. Input $0,27. Output $1,10.",
+                ContextLength = 64000,
                 MaxOutputTokens = 8192
             },
             new()
             {
                 Id = Models.DeepSeekReasoner,
                 Name = "DeepSeek Reasoner (R1)",
-                Description = "Reasoning model with chain-of-thought capabilities, 64K context",
-                ContextLength = 65536,
+                Description = "Context window 64,000 tokens. Input $0,55. Output $2,19.",
+                ContextLength = 64000,
                 MaxOutputTokens = 8192
             }
         };

@@ -29,7 +29,7 @@ public class Grok : IAiApiProvider
             {
                 Name = "Grok 2",
                 Id = "grok-2-1212",
-                Description = "Grok 2 model supporting function calling and structured outputs (131K context)"
+                Description = "Context window 131,072 tokens. Input $2,00. Output $10,00."
             }
         };
     }

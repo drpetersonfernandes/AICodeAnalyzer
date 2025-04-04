@@ -55,13 +55,17 @@ public partial class MainWindow
         BtnSendFollowup.IsEnabled = false;
         ChkIncludeSelectedFiles.IsEnabled = false;
 
-        // Populate API dropdown using provider names from the factory
-        foreach (var provider in _apiProviderFactory.AllProviders)
+        // Populate API dropdown using provider names from the factory, sorted alphabetically
+        var providers = _apiProviderFactory.AllProviders
+            .OrderBy(p => p.Name)
+            .ToList();
+    
+        foreach (var provider in providers)
         {
             CboAiApi.Items.Add(provider.Name);
         }
 
-        CboAiApi.SelectedIndex = 0; // Default to first provider (Claude)
+        CboAiApi.SelectedIndex = 3; // Default to first provider (now alphabetically first)
 
         // Initialize log
         LogOperation("Application started");

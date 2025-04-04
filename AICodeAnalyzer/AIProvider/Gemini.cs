@@ -40,7 +40,7 @@ public class Gemini : IAiApiProvider
             {
                 Id = Models.Gemini25ProExp,
                 Name = "Gemini 2.5 Pro Experimental",
-                Description = "Latest experimental model with enhanced multimodal capabilities and extended context",
+                Description = "Context window 1,000,000 tokens. Input TBA. Output TBA.",
                 ContextLength = 1000000,
                 MaxOutputTokens = 8192,
                 ApiVersion = "v1beta"
@@ -49,8 +49,8 @@ public class Gemini : IAiApiProvider
             {
                 Id = Models.Gemini20Flash,
                 Name = "Gemini 2.0 Flash",
-                Description = "High-performance model balancing speed and quality",
-                ContextLength = 131072,
+                Description = "Context window 1,000,000 tokens. Input $0,10. Output $0,40.",
+                ContextLength = 1000000,
                 MaxOutputTokens = 8192,
                 ApiVersion = "v1beta"
             },
@@ -58,8 +58,8 @@ public class Gemini : IAiApiProvider
             {
                 Id = Models.Gemini20FlashLite,
                 Name = "Gemini 2.0 Flash-Lite",
-                Description = "Lightweight, efficient model optimized for speed",
-                ContextLength = 131072,
+                Description = "Context window 1,000,000 tokens. Input $0,075. Output $0,30.",
+                ContextLength = 1000000,
                 MaxOutputTokens = 8192,
                 ApiVersion = "v1beta"
             },
@@ -67,8 +67,8 @@ public class Gemini : IAiApiProvider
             {
                 Id = Models.Gemini15Flash,
                 Name = "Gemini 1.5 Flash",
-                Description = "Fast model optimized for efficient responses",
-                ContextLength = 131072,
+                Description = "Context window 100,000,000 tokens. Input $0,075. Output $0,30.",
+                ContextLength = 1000000,
                 MaxOutputTokens = 8192,
                 ApiVersion = "v1"
             },
@@ -76,8 +76,8 @@ public class Gemini : IAiApiProvider
             {
                 Id = Models.Gemini15Pro,
                 Name = "Gemini 1.5 Pro",
-                Description = "Flagship model with superior reasoning and problem-solving",
-                ContextLength = 1000000,
+                Description = "Context window 2,000,000 tokens. Input $2,5. Output $10,00.",
+                ContextLength = 2000000,
                 MaxOutputTokens = 8192,
                 ApiVersion = "v1"
             }

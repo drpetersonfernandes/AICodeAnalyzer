@@ -57,7 +57,7 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.Gpt45Preview,
                 Name = "GPT-4.5 Preview",
-                Description = "Most advanced GPT model with enhanced reasoning capabilities (128K context)",
+                Description = "Context window 128,000 tokens. Input $75,00. Output $150,00.",
                 ContextLength = 128000,
                 MaxTokens = 4096,
                 Category = "GPT-4.5 Models"
@@ -68,7 +68,7 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.Gpt4O,
                 Name = "GPT-4o",
-                Description = "GPT-4o model - points to latest version (128K context)",
+                Description = "Context window 128,000 tokens. Input $2,50. Output $10,00.",
                 ContextLength = 128000,
                 MaxTokens = 4096,
                 Category = "GPT-4o Models"
@@ -79,7 +79,7 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.Gpt4OMini,
                 Name = "GPT-4o Mini",
-                Description = "Smaller, faster, more affordable version of GPT-4o (128K context)",
+                Description = "Context window 128,000 tokens. Input $0,15. Output $0,60.",
                 ContextLength = 128000,
                 MaxTokens = 4096,
                 Category = "GPT-4o Mini Models"
@@ -90,8 +90,8 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.O1,
                 Name = "o1",
-                Description = "Next generation model with advanced reasoning capabilities (128K context)",
-                ContextLength = 128000,
+                Description = "Context window 200,000 tokens. Input $15,00. Output $60,00.",
+                ContextLength = 200000,
                 MaxTokens = 4096,
                 Category = "o1 Models"
             },
@@ -101,8 +101,8 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.O1Pro,
                 Name = "o1 Pro",
-                Description = "Premium version of o1 with enhanced capabilities (128K context)",
-                ContextLength = 128000,
+                Description = "Context window 200,000 tokens. Input $150,00. Output $600,00.",
+                ContextLength = 200000,
                 MaxTokens = 4096,
                 Category = "o1 Pro Models"
             },
@@ -112,8 +112,8 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.O3Mini,
                 Name = "o3 Mini",
-                Description = "Compact and efficient o3 model (128K context)",
-                ContextLength = 128000,
+                Description = "Context window 200,000 tokens. Input $1,10. Output $4,40.",
+                ContextLength = 200000,
                 MaxTokens = 4096,
                 Category = "o3 Models"
             },
@@ -123,8 +123,8 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.O1Mini,
                 Name = "o1 Mini",
-                Description = "Compact version of o1 (128K context)",
-                ContextLength = 128000,
+                Description = "Context window 131,000 tokens. Input $3,00. Output $12,00.",
+                ContextLength = 131000,
                 MaxTokens = 4096,
                 Category = "o1 Mini Models"
             }
