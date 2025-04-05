@@ -41,7 +41,7 @@ public class Gemini : IAiApiProvider
             {
                 Id = Models.Gemini20Flash,
                 Name = "Gemini 2.0 Flash",
-                Description = "Context window 1,000,000 tokens. Input $0,10. Output $0,40.",
+                Description = "Context window 1,000,000 tokens. Input price $0,10. Output price $0,40.",
                 ContextLength = 1000000,
                 ApiVersion = "v1beta"
             },
@@ -49,7 +49,7 @@ public class Gemini : IAiApiProvider
             {
                 Id = Models.Gemini20FlashLite,
                 Name = "Gemini 2.0 Flash-Lite",
-                Description = "Context window 1,000,000 tokens. Input $0,075. Output $0,30.",
+                Description = "Context window 1,000,000 tokens. Input price $0,075. Output price $0,30.",
                 ContextLength = 1000000,
                 ApiVersion = "v1beta"
             },
@@ -57,7 +57,7 @@ public class Gemini : IAiApiProvider
             {
                 Id = Models.Gemini15Flash,
                 Name = "Gemini 1.5 Flash",
-                Description = "Context window 100,000,000 tokens. Input $0,075. Output $0,30.",
+                Description = "Context window 100,000,000 tokens. Input price $0,075. Output price $0,30.",
                 ContextLength = 1000000,
                 ApiVersion = "v1"
             },
@@ -65,7 +65,7 @@ public class Gemini : IAiApiProvider
             {
                 Id = Models.Gemini15Pro,
                 Name = "Gemini 1.5 Pro",
-                Description = "Context window 2,000,000 tokens. Input $2,5. Output $10,00.",
+                Description = "Context window 2,000,000 tokens. Input price $2,5. Output price $10,00.",
                 ContextLength = 2000000,
                 ApiVersion = "v1"
             }

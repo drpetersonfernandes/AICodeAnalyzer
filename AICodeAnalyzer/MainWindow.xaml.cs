@@ -34,6 +34,8 @@ public partial class MainWindow
     private readonly string[] _loadingDots = { ".", "..", "...", "....", "....." };
     private int _dotsIndex;
     private string _baseStatusMessage = string.Empty;
+    
+    private readonly RecentFilesManager _recentFilesManager = new RecentFilesManager();
 
     private const double ZoomIncrement = 10.0; // Zoom step (10%)
     private const double MinZoom = 20.0; // Minimum zoom level (20%)
@@ -63,6 +65,9 @@ public partial class MainWindow
         }
 
         CboAiApi.SelectedIndex = -1; // Default to none
+
+        // Initialize the Recent Files menu
+        UpdateRecentFilesMenu();
 
         // Check if a startup file path was passed from App.xaml.cs
         if (Application.Current.Properties["StartupFilePath"] is string filePath)
@@ -94,6 +99,13 @@ public partial class MainWindow
             TxtResponseCounter.Text = $"Viewing: {Path.GetFileName(filePath)}";
             BtnToggleMarkdown.IsEnabled = true;
             BtnSaveResponse.IsEnabled = true;
+        
+            // Update UI to reflect we're viewing a standalone file
+            TxtStatus.Text = $"Viewing file: {Path.GetFileName(filePath)}";
+        
+            // Add to recent files
+            AddToRecentFiles(filePath);
+        
             LogOperation($"Loaded markdown file: {filePath}");
         }
         catch (Exception ex)
@@ -103,11 +115,94 @@ public partial class MainWindow
             MessageBox.Show($"Error loading file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
+    
+    private void AddToRecentFiles(string filePath)
+    {
+        _recentFilesManager.AddRecentFile(filePath);
+        UpdateRecentFilesMenu();
+        LogOperation($"Added file to recent files: {Path.GetFileName(filePath)}");
+    }
+    
+    private void UpdateRecentFilesMenu()
+    {
+        // Clear current recent files menu items
+        MenuRecentFiles.Items.Clear();
+
+        var recentFiles = _recentFilesManager.GetRecentFiles();
+    
+        if (recentFiles.Count == 0)
+        {
+            var noRecentFilesItem = new MenuItem { Header = "(No recent files)", IsEnabled = false };
+            MenuRecentFiles.Items.Add(noRecentFilesItem);
+        }
+        else
+        {
+            // Add each recent file to the menu
+            foreach (var filePath in recentFiles)
+            {
+                var menuItem = new MenuItem
+                {
+                    Header = Path.GetFileName(filePath),
+                    ToolTip = filePath,
+                    Tag = filePath
+                };
+                menuItem.Click += RecentFileMenuItem_Click;
+                MenuRecentFiles.Items.Add(menuItem);
+            }
+        
+            // Add separator and "Clear Recent Files" option
+            MenuRecentFiles.Items.Add(new Separator());
+        
+            var clearMenuItem = new MenuItem { Header = "Clear Recent Files" };
+            clearMenuItem.Click += ClearRecentFiles_Click;
+            MenuRecentFiles.Items.Add(clearMenuItem);
+        }
+    }
+    
+    private void RecentFileMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && menuItem.Tag is string filePath)
+        {
+            LoadMarkdownFile(filePath);
+        }
+    }
+
+// Event handler for clearing recent files
+    private void ClearRecentFiles_Click(object sender, RoutedEventArgs e)
+    {
+        _recentFilesManager.ClearRecentFiles();
+        UpdateRecentFilesMenu();
+        LogOperation("Cleared recent files list");
+    }
 
     private void SetupStatusUpdateTimer()
     {
         _statusUpdateTimer.Interval = TimeSpan.FromMilliseconds(300);
         _statusUpdateTimer.Tick += StatusUpdateTimer_Tick;
+    }
+    
+    private void MenuOpenFile_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Open Markdown File",
+                Filter = "Markdown files (*.md)|*.md|Text files (*.txt)|*.txt|All files (*.*)|*.*",
+                DefaultExt = "md"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                LogOperation($"Opening file: {Path.GetFileName(dialog.FileName)}");
+                LoadMarkdownFile(dialog.FileName);
+            }
+        }
+        catch (Exception ex)
+        {
+            LogOperation($"Error opening file: {ex.Message}");
+            ErrorLogger.LogError(ex, "Opening file dialog");
+        }
     }
 
     private void StatusUpdateTimer_Tick(object? sender, EventArgs e)
@@ -1428,10 +1523,7 @@ public partial class MainWindow
                 }
 
                 CboModel.IsEnabled = true;
-                CboModel.SelectedIndex = 0;
-
-                // Show tooltip with model description
-                CboModel.ToolTip = ((ModelDropdownItem)CboModel.SelectedItem).Description;
+                // No automatic selection
             }
             else if (providerName == "Claude API")
             {
@@ -1449,10 +1541,7 @@ public partial class MainWindow
                 }
 
                 CboModel.IsEnabled = true;
-                CboModel.SelectedIndex = 0;
-
-                // Show tooltip with model description
-                CboModel.ToolTip = ((ModelDropdownItem)CboModel.SelectedItem).Description;
+                // No automatic selection
             }
             else if (providerName == "Grok API")
             {
@@ -1470,10 +1559,7 @@ public partial class MainWindow
                 }
 
                 CboModel.IsEnabled = true;
-                CboModel.SelectedIndex = 0;
-
-                // Show tooltip with model description
-                CboModel.ToolTip = ((ModelDropdownItem)CboModel.SelectedItem).Description;
+                // No automatic selection
             }
             else if (providerName == "Gemini API")
             {
@@ -1491,10 +1577,7 @@ public partial class MainWindow
                 }
 
                 CboModel.IsEnabled = true;
-                CboModel.SelectedIndex = 0;
-
-                // Show tooltip with model description
-                CboModel.ToolTip = ((ModelDropdownItem)CboModel.SelectedItem).Description;
+                // No automatic selection
             }
             else if (providerName == "ChatGPT API")
             {
@@ -1512,17 +1595,14 @@ public partial class MainWindow
                 }
 
                 CboModel.IsEnabled = true;
-                CboModel.SelectedIndex = 0;
-
-                // Show tooltip with model description
-                CboModel.ToolTip = ((ModelDropdownItem)CboModel.SelectedItem).Description;
+                // No automatic selection
             }
             else
             {
                 // For other providers, disable the model dropdown
                 CboModel.IsEnabled = false;
                 CboModel.Items.Add("Default model");
-                CboModel.SelectedIndex = 0;
+                CboModel.SelectedIndex = 0; // Only set this for unsupported providers
                 CboModel.ToolTip = null;
             }
         }
@@ -1539,6 +1619,15 @@ public partial class MainWindow
             var apiSelection = CboAiApi.SelectedItem.ToString() ?? string.Empty;
             UpdatePreviousKeys(apiSelection);
             PopulateModelDropdown();
+        
+            // Clear the model description initially
+            TxtModelDescription.Text = string.Empty;
+        
+            // Add an instruction to select a model
+            if (CboModel.IsEnabled)
+            {
+                TxtModelDescription.Text = "Please select a model from the dropdown above.";
+            }
         }
     }
 
@@ -1546,8 +1635,13 @@ public partial class MainWindow
     {
         if (CboModel.SelectedItem is ModelDropdownItem selectedModel)
         {
-            // Update tooltip with model description
-            CboModel.ToolTip = selectedModel.Description;
+            // Update the model description TextBlock
+            TxtModelDescription.Text = selectedModel.Description;
+        }
+        else
+        {
+            // Clear the description if no valid model is selected
+            TxtModelDescription.Text = string.Empty;
         }
     }
 
@@ -1561,17 +1655,30 @@ public partial class MainWindow
             // Get the selected provider
             var provider = _apiProviderFactory.GetProvider(apiSelection);
 
-            // Start timer for API request
-            StartOperationTimer($"ApiRequest-{apiSelection}");
-            LogOperation($"Sending prompt to {apiSelection} ({prompt.Length} characters)");
-
             // Get selected model ID for providers that support model selection
             string? modelId = null;
             if (CboModel.IsEnabled && CboModel.SelectedItem is ModelDropdownItem selectedModel)
             {
-                modelId = selectedModel.ModelId;
-                LogOperation($"Using model: {selectedModel.DisplayText} ({modelId})");
+                // Check if it's not the placeholder item (which has empty ModelId)
+                if (!string.IsNullOrEmpty(selectedModel.ModelId))
+                {
+                    modelId = selectedModel.ModelId;
+                    LogOperation($"Using model: {selectedModel.DisplayText} ({modelId})");
+                }
+                else
+                {
+                    // No model selected or placeholder selected
+                    MessageBox.Show("Please select a model before sending your request.", 
+                        "Model Selection Required", 
+                        MessageBoxButton.OK, 
+                        MessageBoxImage.Warning);
+                    throw new ApplicationException("No model selected");
+                }
             }
+
+            // Start timer for API request
+            StartOperationTimer($"ApiRequest-{apiSelection}");
+            LogOperation($"Sending prompt to {apiSelection} ({prompt.Length} characters)");
 
             // Send the prompt and return the response
             string response;
@@ -1657,8 +1764,13 @@ public partial class MainWindow
                 }
             }
 
-            // For non-token limit errors, log as normal
-            ErrorLogger.LogError(ex, $"Sending prompt to {apiSelection}");
+            // Don't log the "No model selected" exception that we throw ourselves
+            if (ex.Message != "No model selected")
+            {
+                // For non-token limit errors, log as normal
+                ErrorLogger.LogError(ex, $"Sending prompt to {apiSelection}");
+            }
+        
             throw; // Re-throw to let the caller handle it
         }
     }
@@ -2109,7 +2221,7 @@ public partial class MainWindow
                 _selectedFolder = string.Empty;
                 TxtSelectedFolder.Text = string.Empty;
                 _estimatedTokenCount = 0;
-                UpdateTokenCountDisplay();
+                TxtTokenCount.Text = string.Empty;
 
                 // Reset UI elements state
                 var analyzeButton = FindNameInWindow("BtnAnalyze") as Button ??
@@ -2128,6 +2240,12 @@ public partial class MainWindow
 
                 // Reset AI provider
                 CboAiApi.SelectedIndex = -1; // Default to none
+                
+                // Reset AI Model
+                CboModel.SelectedIndex = -1; // Default to none
+                
+                // Reset Model description
+                TxtModelDescription.Text = string.Empty;
 
                 // Reset status
                 TxtStatus.Text = "Ready";

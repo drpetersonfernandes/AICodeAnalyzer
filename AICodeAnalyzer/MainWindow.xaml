@@ -23,10 +23,18 @@
                         <TextBlock Text="⟳" FontSize="14" />
                     </MenuItem.Icon>
                 </MenuItem>
+                <MenuItem Header="_Open..." Click="MenuOpenFile_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📄" FontSize="14" />
+                    </MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="_Open Past Responses..." Click="MenuOpenPastResponses_Click">
                     <MenuItem.Icon>
                         <TextBlock Text="📂" FontSize="14" />
                     </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem x:Name="MenuRecentFiles" Header="Recent _Files">
+                    <MenuItem Header="(No recent files)" IsEnabled="False" />
                 </MenuItem>
                 <Separator />
                 <MenuItem Header="_Exit" Click="MenuExit_Click" />
@@ -49,13 +57,11 @@
             <!-- Grid content remains unchanged -->
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" /> <!-- Row 0: Project Selection -->
-                <RowDefinition Height="*" />    <!-- Row 1: Files List -->
-                <RowDefinition Height="Auto" /> <!-- Row 2: NEW Token Count -->
-                <RowDefinition Height="Auto" /> <!-- Row 3: API Selection (previously 2) -->
-                <RowDefinition Height="Auto" /> <!-- Row 4: Initial Prompt (previously 3) -->
-                <RowDefinition Height="Auto" /> <!-- Row 5: Analyze Button (previously 4) -->
-                <RowDefinition Height="Auto" /> <!-- Row 6: Follow-up Question (previously 5) -->
-                <RowDefinition Height="120" />  <!-- Row 7: Log Panel (previously 6) -->
+                <RowDefinition Height="*" />    <!-- Row 1: Files List (includes token count) -->
+                <RowDefinition Height="Auto" /> <!-- Row 2: API Selection -->
+                <RowDefinition Height="Auto" /> <!-- Row 3: Initial Prompt (now includes analyze button) -->
+                <RowDefinition Height="Auto" /> <!-- Row 4: Follow-up Question -->
+                <RowDefinition Height="120" />  <!-- Row 5: Log Panel -->
             </Grid.RowDefinitions>
 
             <Grid.ColumnDefinitions>
@@ -66,7 +72,7 @@
 
             <!-- Project Selection Area -->
             <GroupBox Grid.Row="0" Grid.Column="0" Header="Select Files" Margin="0,0,5,0" Padding="0">
-                <StackPanel Margin="10">
+                <StackPanel Margin="5">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -76,11 +82,11 @@
                         </Grid.ColumnDefinitions>
                         <TextBox x:Name="TxtSelectedFolder" IsReadOnly="True" Grid.Column="0" Margin="0,0,5,0" />
                         <Button x:Name="BtnSelectFolder" Content="Select Folder" Grid.Column="1"
-                                Click="BtnSelectFolder_Click" Padding="8,3" Margin="0,0,5,0" />
+                                Click="BtnSelectFolder_Click" Padding="8,3" Margin="0,0,5,0" Height="25"/>
                         <Button x:Name="BtnSelectFiles" Content="Add Files" Grid.Column="2"
-                                Click="BtnSelectFiles_Click" Padding="8,3" Margin="0,0,5,0"
+                                Click="BtnSelectFiles_Click" Padding="8,3" Margin="0,0,5,0" Height="25"
                                 ToolTip="Add specific files to the analysis" />
-                        <Button x:Name="BtnClearFiles" Content="Clear" Grid.Column="3" Click="BtnClearFiles_Click"
+                        <Button x:Name="BtnClearFiles" Content="Clear" Grid.Column="3" Click="BtnClearFiles_Click" Height="25"
                                 Padding="8,3" ToolTip="Clear all selected files" />
                     </Grid>
                 </StackPanel>
@@ -89,26 +95,29 @@
             <!-- Files List -->
             <GroupBox Grid.Row="1" Grid.Column="0" Header="Files List" Margin="0,0,5,0" Padding="0"
                       VerticalAlignment="Stretch">
-                <ListView x:Name="LvFiles" Margin="0,5" VerticalAlignment="Stretch">
-                    <ListView.ItemContainerStyle>
-                        <Style TargetType="ListViewItem">
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                        </Style>
-                    </ListView.ItemContainerStyle>
-                </ListView>
+                <DockPanel Margin="0,5" VerticalAlignment="Stretch">
+                    <!-- Token Count at the bottom -->
+                    <TextBlock x:Name="TxtTokenCount" 
+                               DockPanel.Dock="Bottom" 
+                               Margin="5,5,5,0"
+                               Text="" />
+        
+                    <!-- Files ListView fills the remaining space -->
+                    <ListView x:Name="LvFiles" VerticalAlignment="Stretch">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                    </ListView>
+                </DockPanel>
             </GroupBox>
-            
-            <TextBlock x:Name="TxtTokenCount" 
-                       Grid.Row="2" 
-                       Grid.Column="0" 
-                       Margin="0,5,5,10"
-                       Text="Estimated Input Tokens: 0 (range 0 - 0)" 
-                       ToolTip="Estimated number of tokens that will be sent to the AI API" />
 
             <!-- API Selection Area -->
-            <GroupBox Grid.Row="3" Grid.Column="0" Header="AI API Selection" Margin="0,0,5,0" Padding="0">
+            <GroupBox Grid.Row="2" Grid.Column="0" Header="AI API Selection" Margin="0,0,5,0" Padding="0">
                 <Grid>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -137,17 +146,26 @@
                     <!-- API Key Section -->
                     <TextBlock Text="API Key:" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,5,5" />
                     <PasswordBox x:Name="TxtApiKey" Grid.Row="2" Grid.Column="1" Margin="0,0,5,5"  />
-                    <Button x:Name="BtnSaveKey" Content="Save" Grid.Row="2" Grid.Column="2" Margin="0,0,5,5"  Click="BtnSaveKey_Click" Padding="8,3" />
+                    <Button x:Name="BtnSaveKey" Content="Save" Grid.Row="2" Grid.Column="2" Margin="0,0,5,5"  Click="BtnSaveKey_Click" Padding="8,3" Height="25"/>
                     <ComboBox x:Name="CboPreviousKeys" Grid.Row="2" Grid.Column="3" Margin="0,0,5,5"  SelectionChanged="CboPreviousKeys_SelectionChanged" Width="90"/>
                     
-                    
+                    <!-- Model Description -->
+                    <TextBlock x:Name="TxtModelDescription" 
+                               Grid.Row="3" 
+                               Grid.Column="0" 
+                               Grid.ColumnSpan="4"
+                               TextWrapping="Wrap"
+                               Margin="5,5,5,5"
+                               FontStyle="Italic"
+                               FontSize="11"
+                               Foreground="#707070" />
                 </Grid>
             </GroupBox>
 
             <!-- Initial Prompt -->
-            <GroupBox Grid.Row="4" Grid.Column="0" Header="Initial Prompt" Margin="0,0,5,5" Padding="0">
-                <StackPanel Margin="10">
-                    <Grid>
+            <GroupBox Grid.Row="3" Grid.Column="0" Header="Initial Prompt" Margin="0,0,5,5" Padding="0">
+                <StackPanel Margin="5">
+                    <Grid Margin="0,0,0,5">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -157,20 +175,20 @@
                                   DisplayMemberPath="Name"
                                   Margin="0,0,5,0" />
                         <Button x:Name="BtnConfigurePrompts" Content="Edit"
-                                Grid.Column="1" Padding="8,3"
+                                Grid.Column="1" Padding="8,3" Height="25"
                                 Click="BtnConfigurePrompts_Click" />
                     </Grid>
+        
+                    <!-- Analyze Button moved inside this GroupBox -->
+                    <Button Content="Send Initial Prompt" Height="25"
+                            Click="BtnAnalyze_Click" />
                 </StackPanel>
             </GroupBox>
-
-            <!-- Analyze Button -->
-            <Button Content="Send Initial Prompt" Grid.Row="5" Grid.Column="0" Height="25"
-                    Margin="0,0,5,5" Click="BtnAnalyze_Click" />
 
             <!-- GridSplitter -->
             <GridSplitter
                 Grid.Row="0"
-                Grid.RowSpan="7"
+                Grid.RowSpan="5"
                 Grid.Column="1"
                 Width="5"
                 HorizontalAlignment="Center"
@@ -181,7 +199,7 @@
                 Cursor="SizeWE" />
 
             <!-- Response Area -->
-            <GroupBox Grid.Row="0" Grid.Column="2" Grid.RowSpan="7" Header="AI Analysis" Margin="5,0,0,0" Padding="5">
+            <GroupBox Grid.Row="0" Grid.Column="2" Grid.RowSpan="5" Header="AI Analysis" Margin="5,0,0,0" Padding="5">
                 <DockPanel>
                     <!-- Top Control Bar (Navigation and Zoom) -->
                     <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
@@ -263,7 +281,7 @@
             </GroupBox>
 
             <!-- Follow-up Question -->
-            <GroupBox Grid.Row="6" Grid.Column="0" Header="Follow-up Question" Margin="5,0,0,0" Padding="5">
+            <GroupBox Grid.Row="4" Grid.Column="0" Header="Follow-up Question" Margin="5,0,0,0" Padding="5">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" /> <!-- For checkbox -->
@@ -273,19 +291,19 @@
                         <ColumnDefinition Width="*" /> <!-- Expanding space -->
                         <ColumnDefinition Width="Auto" /> <!-- For button -->
                     </Grid.ColumnDefinitions>
-                    <CheckBox x:Name="ChkIncludeSelectedFiles" Content="Include selected files with question"
+                    <CheckBox x:Name="ChkIncludeSelectedFiles" Content="Include files with follow-up question"
                               Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,5"
                               IsEnabled="False"
                               ToolTip="Include the files selected in the file list with your follow-up question" />
                     <TextBox x:Name="TxtFollowupQuestion" Grid.Row="1" Grid.Column="0" Height="60" TextWrapping="Wrap"
                              AcceptsReturn="True" VerticalScrollBarVisibility="Auto" IsEnabled="False" />
-                    <Button x:Name="BtnSendFollowup" Content="Send" Grid.Row="1" Grid.Column="1" Width="60"
+                    <Button x:Name="BtnSendFollowup" Content="Send" Grid.Row="1" Grid.Column="1" Width="60" 
                             Margin="5,0,0,0" IsEnabled="False" Click="BtnSendFollowup_Click" />
                 </Grid>
             </GroupBox>
 
             <!-- Log Panel -->
-            <GroupBox Grid.Row="7"
+            <GroupBox Grid.Row="5"
                       Grid.Column="0"
                       Grid.ColumnSpan="3"
                       Header="Operation Log"

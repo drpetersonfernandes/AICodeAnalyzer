@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Reflection;
 using System.Windows;
-using Microsoft.Win32;
 
 namespace AICodeAnalyzer;
 
@@ -11,18 +9,20 @@ namespace AICodeAnalyzer;
 /// </summary>
 public partial class App
 {
-    private const string FileExtension = ".md";
-    private const string AppName = "AICodeAnalyzer";
-
+    private FileAssociationManager? _fileAssociationManager;
+    
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        
+        // Initialize the file association manager
+        _fileAssociationManager = new FileAssociationManager(LogInformation, LogError);
 
         // Only register file association if the setting is enabled
         var settingsManager = new SettingsManager();
         if (settingsManager.Settings.RegisterAsDefaultMdHandler)
         {
-            RegisterFileAssociation();
+            _fileAssociationManager.RegisterApplication();
         }
 
         // Check for command-line arguments (file path)
@@ -42,120 +42,22 @@ public partial class App
 
     public void UnregisterFileAssociation()
     {
-        try
+        if (_fileAssociationManager == null)
         {
-            // Remove the file extension association
-            using (var extensionKey = Registry.ClassesRoot.OpenSubKey(".md", true))
-            {
-                if (extensionKey != null)
-                {
-                    var currentHandler = extensionKey.GetValue(null) as string;
-                    if (currentHandler == AppName)
-                    {
-                        extensionKey.DeleteValue(null!, false);
-                        LogInformation("File extension association removed.");
-                    }
-                }
-            }
-
-            // Remove the application registration
-            using (var appKey = Registry.ClassesRoot.OpenSubKey(AppName, true))
-            {
-                if (appKey != null)
-                {
-                    Registry.ClassesRoot.DeleteSubKeyTree(AppName);
-                    LogInformation("Application registration removed.");
-                }
-            }
-
-            LogInformation("File association unregistered successfully.");
+            _fileAssociationManager = new FileAssociationManager(LogInformation, LogError);
         }
-        catch (Exception ex)
-        {
-            LogError($"Error unregistering file association: {ex.Message}");
-            ErrorLogger.LogError(ex, "Unregistering file association");
-        }
+        
+        _fileAssociationManager.UnregisterApplication();
     }
 
     public void RegisterFileAssociation()
     {
-        try
+        if (_fileAssociationManager == null)
         {
-            var appPath = Assembly.GetEntryAssembly()?.Location;
-
-            // Create registry key for the file extension
-            using (var extensionKey = Registry.ClassesRoot.CreateSubKey(FileExtension))
-            {
-                if (extensionKey == null)
-                {
-                    LogError("Failed to create registry key for file extension.");
-                    return;
-                }
-
-                extensionKey.SetValue(null, AppName);
-                extensionKey.SetValue("PerceivedType", "text"); // Optional: Set perceived type
-            }
-
-            // Create registry key for the application
-            using (var appKey = Registry.ClassesRoot.CreateSubKey(AppName))
-            {
-                if (appKey == null)
-                {
-                    LogError("Failed to create registry key for application.");
-                    return;
-                }
-
-                appKey.SetValue(null, "Markdown File");
-
-                // Create registry key for the application's shell command
-                using (var shellKey = appKey.CreateSubKey("shell"))
-                {
-                    if (shellKey == null)
-                    {
-                        LogError("Failed to create registry key for shell command.");
-                        return;
-                    }
-
-                    using (var openKey = shellKey.CreateSubKey("open"))
-                    {
-                        if (openKey == null)
-                        {
-                            LogError("Failed to create registry key for open command.");
-                            return;
-                        }
-
-                        using (var commandKey = openKey.CreateSubKey("command"))
-                        {
-                            if (commandKey == null)
-                            {
-                                LogError("Failed to create registry key for command.");
-                                return;
-                            }
-
-                            commandKey.SetValue(null, $"\"{appPath}\" \"%1\"");
-                        }
-                    }
-                }
-
-                using (var defaultIcon = appKey.CreateSubKey("DefaultIcon"))
-                {
-                    if (defaultIcon == null)
-                    {
-                        LogError("Failed to create registry key for DefaultIcon command.");
-                        return;
-                    }
-
-                    defaultIcon.SetValue(null, appPath + ",0");
-                }
-            }
-
-            LogInformation("File association registered successfully.");
+            _fileAssociationManager = new FileAssociationManager(LogInformation, LogError);
         }
-        catch (Exception ex)
-        {
-            LogError($"Error registering file association: {ex.Message}");
-            ErrorLogger.LogError(ex, "Registering file association");
-        }
+        
+        _fileAssociationManager.RegisterApplication();
     }
 
     private static void LogError(string message)

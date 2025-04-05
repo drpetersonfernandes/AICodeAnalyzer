@@ -42,14 +42,14 @@ public class DeepSeek : IAiApiProvider
             {
                 Id = Models.DeepSeekChat,
                 Name = "DeepSeek Chat (V3)",
-                Description = "Context window 64,000 tokens. Input $0,27. Output $1,10.",
+                Description = "Context window 64,000 tokens. Input price $0,27. Output price $1,10.",
                 ContextLength = 64000
             },
             new()
             {
                 Id = Models.DeepSeekReasoner,
                 Name = "DeepSeek Reasoner (R1)",
-                Description = "Context window 64,000 tokens. Input $0,55. Output $2,19.",
+                Description = "Context window 64,000 tokens. Input price $0,55. Output price $2,19.",
                 ContextLength = 64000
             }
         };

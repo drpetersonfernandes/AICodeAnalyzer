@@ -155,15 +155,12 @@ public partial class ConfigurationWindow
     {
         try
         {
-            using var extensionKey = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(".md");
-            if (extensionKey == null)
-                return false;
-
-            var progId = extensionKey.GetValue(null) as string;
-            if (string.IsNullOrEmpty(progId) || progId != "AICodeAnalyzer")
-                return false;
-
-            return true;
+            var fileAssociationManager = new FileAssociationManager(
+                message => System.Diagnostics.Debug.WriteLine($"INFO: {message}"),
+                message => System.Diagnostics.Debug.WriteLine($"ERROR: {message}")
+            );
+        
+            return fileAssociationManager.IsApplicationRegistered();
         }
         catch (Exception ex)
         {

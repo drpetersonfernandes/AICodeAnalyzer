@@ -37,7 +37,7 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.Gpt45Preview,
                 Name = "GPT-4.5 Preview",
-                Description = "Context window 128,000 tokens. Input $75,00. Output $150,00.",
+                Description = "Context window 128,000 tokens. Input price $75,00. Output price $150,00.",
                 ContextLength = 128000,
                 Category = "GPT-4.5 Models"
             },
@@ -47,7 +47,7 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.Gpt4O,
                 Name = "GPT-4o",
-                Description = "Context window 128,000 tokens. Input $2,50. Output $10,00.",
+                Description = "Context window 128,000 tokens. Input price $2,50. Output price $10,00.",
                 ContextLength = 128000,
                 Category = "GPT-4o Models"
             },
@@ -57,7 +57,7 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.Gpt4OMini,
                 Name = "GPT-4o Mini",
-                Description = "Context window 128,000 tokens. Input $0,15. Output $0,60.",
+                Description = "Context window 128,000 tokens. Input price $0,15. Output price $0,60.",
                 ContextLength = 128000,
                 Category = "GPT-4o Mini Models"
             },
@@ -67,7 +67,7 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.O1,
                 Name = "o1",
-                Description = "Context window 200,000 tokens. Input $15,00. Output $60,00.",
+                Description = "Context window 200,000 tokens. Input price $15,00. Output price $60,00.",
                 ContextLength = 200000,
                 Category = "o1 Models"
             },
@@ -77,7 +77,7 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.O1Pro,
                 Name = "o1 Pro",
-                Description = "Context window 200,000 tokens. Input $150,00. Output $600,00.",
+                Description = "Context window 200,000 tokens. Input price $150,00. Output price $600,00.",
                 ContextLength = 200000,
                 Category = "o1 Pro Models"
             },
@@ -87,7 +87,7 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.O3Mini,
                 Name = "o3 Mini",
-                Description = "Context window 200,000 tokens. Input $1,10. Output $4,40.",
+                Description = "Context window 200,000 tokens. Input price $1,10. Output price $4,40.",
                 ContextLength = 200000,
                 Category = "o3 Models"
             },
@@ -97,7 +97,7 @@ public class OpenAi : IAiApiProvider
             {
                 Id = Models.O1Mini,
                 Name = "o1 Mini",
-                Description = "Context window 131,000 tokens. Input $3,00. Output $12,00.",
+                Description = "Context window 131,000 tokens. Input price $3,00. Output price $12,00.",
                 ContextLength = 131000,
                 Category = "o1 Mini Models"
             }

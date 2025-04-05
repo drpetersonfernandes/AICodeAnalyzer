@@ -39,7 +39,7 @@ public class Claude : IAiApiProvider
             {
                 Id = Models.Claude37Sonnet,
                 Name = "Claude 3.7 Sonnet",
-                Description = "Context window 200,000 tokens. Input $3,00. Output $15,00.",
+                Description = "Context window 200,000 tokens. Input price $3,00. Output price $15,00.",
                 ContextLength = 200000
             },
 
@@ -48,14 +48,14 @@ public class Claude : IAiApiProvider
             {
                 Id = Models.Claude35Sonnet,
                 Name = "Claude 3.5 Sonnet",
-                Description = "Context window 200,000 tokens. Input $3,00. Output $15,00.",
+                Description = "Context window 200,000 tokens. Input price $3,00. Output price $15,00.",
                 ContextLength = 200000
             },
             new()
             {
                 Id = Models.Claude35Haiku,
                 Name = "Claude 3.5 Haiku",
-                Description = "Context window 200,000 tokens. Input $0,8. Output $4,00.",
+                Description = "Context window 200,000 tokens. Input price $0,8. Output price $4,00.",
                 ContextLength = 200000
             },
 
@@ -64,7 +64,7 @@ public class Claude : IAiApiProvider
             {
                 Id = Models.Claude3Opus,
                 Name = "Claude 3 Opus",
-                Description = "Context window 200,000 tokens. Input $15,00. Output $75,00.",
+                Description = "Context window 200,000 tokens. Input price $15,00. Output price $75,00.",
                 ContextLength = 200000
             }
         };
