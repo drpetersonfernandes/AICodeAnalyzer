@@ -159,7 +159,7 @@ public partial class ConfigurationWindow
                 message => System.Diagnostics.Debug.WriteLine($"INFO: {message}"),
                 message => System.Diagnostics.Debug.WriteLine($"ERROR: {message}")
             );
-        
+
             return fileAssociationManager.IsApplicationRegistered();
         }
         catch (Exception ex)

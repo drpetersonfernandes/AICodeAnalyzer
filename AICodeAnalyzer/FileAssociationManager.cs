@@ -15,16 +15,16 @@ public class FileAssociationManager
     private const string ProgId = "AICodeAnalyzer";
     private const string FileTypeDescription = "Markdown Document";
     private const string DefaultValueName = ""; // Empty string for default registry value
-    
+
     private readonly Action<string> _logInfo;
     private readonly Action<string> _logError;
-    
+
     public FileAssociationManager(Action<string> logInfo, Action<string> logError)
     {
         _logInfo = logInfo;
         _logError = logError;
     }
-    
+
     /// <summary>
     /// Checks if the application is currently registered for MD files
     /// </summary>
@@ -35,7 +35,7 @@ public class FileAssociationManager
             // Check if our ProgID is registered for the .md extension
             using var key = Registry.ClassesRoot.OpenSubKey(FileExtension);
             if (key == null) return false;
-            
+
             var currentProgId = key.GetValue(DefaultValueName) as string;
             return currentProgId == ProgId;
         }
@@ -45,7 +45,7 @@ public class FileAssociationManager
             return false;
         }
     }
-    
+
     /// <summary>
     /// Registers the application as the handler for MD files
     /// </summary>
@@ -59,23 +59,23 @@ public class FileAssociationManager
                 _logError($"Cannot find executable path: {exePath}");
                 return false;
             }
-            
+
             _logInfo($"Registering with executable: {exePath}");
-            
+
             // Create ProgID entry
             using (var progIdKey = Registry.ClassesRoot.CreateSubKey(ProgId))
             {
                 if (progIdKey != null)
                 {
                     progIdKey.SetValue(DefaultValueName, FileTypeDescription);
-                    
+
                     // Set the default icon
                     using var iconKey = progIdKey.CreateSubKey("DefaultIcon");
                     if (iconKey != null)
                     {
                         iconKey.SetValue(DefaultValueName, $"\"{exePath}\",0");
                     }
-                    
+
                     // Set up the open command
                     using var shellKey = progIdKey.CreateSubKey("shell");
                     if (shellKey != null)
@@ -92,7 +92,7 @@ public class FileAssociationManager
                     }
                 }
             }
-            
+
             // Associate file extension with ProgID
             using (var extensionKey = Registry.ClassesRoot.CreateSubKey(FileExtension))
             {
@@ -100,15 +100,15 @@ public class FileAssociationManager
                 {
                     extensionKey.SetValue(DefaultValueName, ProgId);
                     extensionKey.SetValue("PerceivedType", "text");
-                    
+
                     // Add ContentType for additional information
                     extensionKey.SetValue("Content Type", "text/markdown");
                 }
             }
-            
+
             // Notify Windows of the change
             SHChangeNotify(0x08000000, 0x0000, IntPtr.Zero, IntPtr.Zero);
-            
+
             _logInfo("Successfully registered application as handler for .md files");
             return true;
         }
@@ -119,7 +119,7 @@ public class FileAssociationManager
             return false;
         }
     }
-    
+
     /// <summary>
     /// Unregisters the application as the handler for MD files
     /// </summary>
@@ -133,7 +133,7 @@ public class FileAssociationManager
                 _logInfo("Application is not registered as handler for .md files");
                 return true;
             }
-            
+
             // Remove file association
             using (var extensionKey = Registry.ClassesRoot.OpenSubKey(FileExtension, true))
             {
@@ -147,7 +147,7 @@ public class FileAssociationManager
                     }
                 }
             }
-            
+
             // Delete ProgID entry
             try
             {
@@ -159,10 +159,10 @@ public class FileAssociationManager
                 // Key doesn't exist, which is fine
                 _logInfo("ProgID entry was already removed");
             }
-            
+
             // Notify Windows of the change
             SHChangeNotify(0x08000000, 0x0000, IntPtr.Zero, IntPtr.Zero);
-            
+
             _logInfo("Successfully unregistered application");
             return true;
         }
@@ -173,7 +173,7 @@ public class FileAssociationManager
             return false;
         }
     }
-    
+
     /// <summary>
     /// Gets the path to the application executable
     /// </summary>
@@ -187,7 +187,7 @@ public class FileAssociationManager
             {
                 return processPath;
             }
-            
+
             // Second try: Use Assembly location
             var assemblyLocation = Assembly.GetEntryAssembly()?.Location;
             if (!string.IsNullOrEmpty(assemblyLocation))
@@ -203,7 +203,7 @@ public class FileAssociationManager
                     }
                 }
             }
-            
+
             // Third try: Use AppDomain.BaseDirectory
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
             var appName = AppDomain.CurrentDomain.FriendlyName.Replace(".dll", "");
@@ -212,14 +212,14 @@ public class FileAssociationManager
             {
                 return fallbackPath;
             }
-            
+
             // Last resort: Find any EXE in current directory
             var exeFiles = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.exe");
             if (exeFiles.Length > 0)
             {
                 return exeFiles[0];
             }
-            
+
             _logError("Could not determine executable path");
             return string.Empty;
         }
@@ -229,7 +229,7 @@ public class FileAssociationManager
             return string.Empty;
         }
     }
-    
+
     // Windows API for notifying the system of file association changes
     [System.Runtime.InteropServices.DllImport("shell32.dll")]
     private static extern void SHChangeNotify(int eventId, int flags, IntPtr item1, IntPtr item2);

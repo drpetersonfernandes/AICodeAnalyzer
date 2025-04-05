@@ -10,11 +10,11 @@ namespace AICodeAnalyzer;
 public partial class App
 {
     private FileAssociationManager? _fileAssociationManager;
-    
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        
+
         // Initialize the file association manager
         _fileAssociationManager = new FileAssociationManager(LogInformation, LogError);
 
@@ -46,7 +46,7 @@ public partial class App
         {
             _fileAssociationManager = new FileAssociationManager(LogInformation, LogError);
         }
-        
+
         _fileAssociationManager.UnregisterApplication();
     }
 
@@ -56,7 +56,7 @@ public partial class App
         {
             _fileAssociationManager = new FileAssociationManager(LogInformation, LogError);
         }
-        
+
         _fileAssociationManager.RegisterApplication();
     }
 

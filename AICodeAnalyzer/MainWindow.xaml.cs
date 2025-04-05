@@ -34,7 +34,7 @@ public partial class MainWindow
     private readonly string[] _loadingDots = { ".", "..", "...", "....", "....." };
     private int _dotsIndex;
     private string _baseStatusMessage = string.Empty;
-    
+
     private readonly RecentFilesManager _recentFilesManager = new RecentFilesManager();
 
     private const double ZoomIncrement = 10.0; // Zoom step (10%)
@@ -99,13 +99,13 @@ public partial class MainWindow
             TxtResponseCounter.Text = $"Viewing: {Path.GetFileName(filePath)}";
             BtnToggleMarkdown.IsEnabled = true;
             BtnSaveResponse.IsEnabled = true;
-        
+
             // Update UI to reflect we're viewing a standalone file
             TxtStatus.Text = $"Viewing file: {Path.GetFileName(filePath)}";
-        
+
             // Add to recent files
             AddToRecentFiles(filePath);
-        
+
             LogOperation($"Loaded markdown file: {filePath}");
         }
         catch (Exception ex)
@@ -115,21 +115,21 @@ public partial class MainWindow
             MessageBox.Show($"Error loading file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
-    
+
     private void AddToRecentFiles(string filePath)
     {
         _recentFilesManager.AddRecentFile(filePath);
         UpdateRecentFilesMenu();
         LogOperation($"Added file to recent files: {Path.GetFileName(filePath)}");
     }
-    
+
     private void UpdateRecentFilesMenu()
     {
         // Clear current recent files menu items
         MenuRecentFiles.Items.Clear();
 
         var recentFiles = _recentFilesManager.GetRecentFiles();
-    
+
         if (recentFiles.Count == 0)
         {
             var noRecentFilesItem = new MenuItem { Header = "(No recent files)", IsEnabled = false };
@@ -146,24 +146,24 @@ public partial class MainWindow
                     ToolTip = filePath,
                     Tag = filePath
                 };
-            
+
                 // Add document icon to each menu item
                 menuItem.Icon = new TextBlock { Text = "📄", FontSize = 14 };
-            
+
                 menuItem.Click += RecentFileMenuItem_Click;
                 MenuRecentFiles.Items.Add(menuItem);
             }
-        
+
             // Add separator and "Clear Recent Files" option
             MenuRecentFiles.Items.Add(new Separator());
-        
+
             var clearMenuItem = new MenuItem { Header = "Clear Recent Files" };
             clearMenuItem.Icon = new TextBlock { Text = "🗑️", FontSize = 14 }; // Trash icon for clear option
             clearMenuItem.Click += ClearRecentFiles_Click;
             MenuRecentFiles.Items.Add(clearMenuItem);
         }
     }
-    
+
     private void RecentFileMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is MenuItem menuItem && menuItem.Tag is string filePath)
@@ -185,7 +185,7 @@ public partial class MainWindow
         _statusUpdateTimer.Interval = TimeSpan.FromMilliseconds(300);
         _statusUpdateTimer.Tick += StatusUpdateTimer_Tick;
     }
-    
+
     private void MenuOpenFile_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -1624,10 +1624,10 @@ public partial class MainWindow
             var apiSelection = CboAiApi.SelectedItem.ToString() ?? string.Empty;
             UpdatePreviousKeys(apiSelection);
             PopulateModelDropdown();
-        
+
             // Clear the model description initially
             TxtModelDescription.Text = string.Empty;
-        
+
             // Add an instruction to select a model
             if (CboModel.IsEnabled)
             {
@@ -1673,9 +1673,9 @@ public partial class MainWindow
                 else
                 {
                     // No model selected or placeholder selected
-                    MessageBox.Show("Please select a model before sending your request.", 
-                        "Model Selection Required", 
-                        MessageBoxButton.OK, 
+                    MessageBox.Show("Please select a model before sending your request.",
+                        "Model Selection Required",
+                        MessageBoxButton.OK,
                         MessageBoxImage.Warning);
                     throw new ApplicationException("No model selected");
                 }
@@ -1775,7 +1775,7 @@ public partial class MainWindow
                 // For non-token limit errors, log as normal
                 ErrorLogger.LogError(ex, $"Sending prompt to {apiSelection}");
             }
-        
+
             throw; // Re-throw to let the caller handle it
         }
     }
@@ -2245,14 +2245,14 @@ public partial class MainWindow
 
                 // Reset AI provider
                 CboAiApi.SelectedIndex = -1; // Default to none
-                
+
                 // Reset AI Model
                 CboModel.SelectedIndex = -1; // Default to none
-                
+
                 // Reset API Key
                 TxtApiKey.Clear();
                 CboPreviousKeys.SelectedIndex = -1; // Default to none
-                
+
                 // Reset Model description
                 TxtModelDescription.Text = string.Empty;
 
