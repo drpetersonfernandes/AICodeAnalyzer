@@ -19,4 +19,19 @@
     <PackageReference Include="Microsoft-WindowsAPICodePack-Shell" Version="1.1.5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Remove="images\about.png" />
+    <Resource Include="images\about.png" />
+    <None Remove="images\exit.png" />
+    <Resource Include="images\exit.png" />
+    <None Remove="images\open.png" />
+    <Resource Include="images\open.png" />
+    <None Remove="images\recentfiles.png" />
+    <Resource Include="images\recentfiles.png" />
+    <None Remove="images\reset.png" />
+    <Resource Include="images\reset.png" />
+    <None Remove="images\settings.png" />
+    <Resource Include="images\settings.png" />
+  </ItemGroup>
+
 </Project>

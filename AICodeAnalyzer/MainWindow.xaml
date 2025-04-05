@@ -20,30 +20,40 @@
             <MenuItem Header="_File" Style="{StaticResource MenuItemStyle}">
                 <MenuItem Header="_Start" Click="MenuStart_Click">
                     <MenuItem.Icon>
-                        <TextBlock Text="⟳" FontSize="14" />
+                        <Image Source="pack://application:,,,/images/reset.png" Width="16" Height="16" />
                     </MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="_Open..." Click="MenuOpenFile_Click">
+                <MenuItem Header="_Open..." Click="MenuOpenPastResponses_Click">
                     <MenuItem.Icon>
-                        <TextBlock Text="📄" FontSize="14" />
-                    </MenuItem.Icon>
-                </MenuItem>
-                <MenuItem Header="_Open Past Responses..." Click="MenuOpenPastResponses_Click">
-                    <MenuItem.Icon>
-                        <TextBlock Text="📂" FontSize="14" />
+                        <Image Source="pack://application:,,,/images/open.png" Width="16" Height="16" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem x:Name="MenuRecentFiles" Header="Recent _Files">
+                    <MenuItem.Icon>
+                        <Image Source="pack://application:,,,/images/recentfiles.png" Width="16" Height="16" />
+                    </MenuItem.Icon>
                     <MenuItem Header="(No recent files)" IsEnabled="False" />
                 </MenuItem>
                 <Separator />
-                <MenuItem Header="_Exit" Click="MenuExit_Click" />
+                <MenuItem Header="_Exit" Click="MenuExit_Click">
+                    <MenuItem.Icon>
+                        <Image Source="pack://application:,,,/images/exit.png" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="_Settings" Style="{StaticResource MenuItemStyle}">
-                <MenuItem Header="_Configure..." Click="MenuConfigure_Click" />
+                <MenuItem Header="_Configure..." Click="MenuConfigure_Click">
+                    <MenuItem.Icon>
+                        <Image Source="pack://application:,,,/images/settings.png" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="_Help" Style="{StaticResource MenuItemStyle}">
-                <MenuItem Header="_About" Click="MenuAbout_Click" />
+                <MenuItem Header="_About" Click="MenuAbout_Click">
+                    <MenuItem.Icon>
+                        <Image Source="pack://application:,,,/images/about.png" Width="16" Height="16" />
+                    </MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
         </Menu>
 
@@ -82,11 +92,12 @@
                         </Grid.ColumnDefinitions>
                         <TextBox x:Name="TxtSelectedFolder" IsReadOnly="True" Grid.Column="0" Margin="0,0,5,0" />
                         <Button x:Name="BtnSelectFolder" Content="Select Folder" Grid.Column="1"
-                                Click="BtnSelectFolder_Click" Padding="8,3" Margin="0,0,5,0" Height="25"/>
+                                Click="BtnSelectFolder_Click" Padding="8,3" Margin="0,0,5,0" Height="25" />
                         <Button x:Name="BtnSelectFiles" Content="Add Files" Grid.Column="2"
                                 Click="BtnSelectFiles_Click" Padding="8,3" Margin="0,0,5,0" Height="25"
                                 ToolTip="Add specific files to the analysis" />
-                        <Button x:Name="BtnClearFiles" Content="Clear" Grid.Column="3" Click="BtnClearFiles_Click" Height="25"
+                        <Button x:Name="BtnClearFiles" Content="Clear" Grid.Column="3" Click="BtnClearFiles_Click"
+                                Height="25"
                                 Padding="8,3" ToolTip="Clear all selected files" />
                     </Grid>
                 </StackPanel>
@@ -97,11 +108,14 @@
                       VerticalAlignment="Stretch">
                 <DockPanel Margin="0,5" VerticalAlignment="Stretch">
                     <!-- Token Count at the bottom -->
-                    <TextBlock x:Name="TxtTokenCount" 
-                               DockPanel.Dock="Bottom" 
+                    <TextBlock x:Name="TxtTokenCount"
+                               DockPanel.Dock="Bottom"
                                Margin="5,5,5,0"
-                               Text="" />
-        
+                               Text=""
+                               FontStyle="Italic"
+                               FontSize="11"
+                               Foreground="#707070" />
+
                     <!-- Files ListView fills the remaining space -->
                     <ListView x:Name="LvFiles" VerticalAlignment="Stretch">
                         <ListView.ItemContainerStyle>
@@ -145,14 +159,16 @@
 
                     <!-- API Key Section -->
                     <TextBlock Text="API Key:" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,5,5" />
-                    <PasswordBox x:Name="TxtApiKey" Grid.Row="2" Grid.Column="1" Margin="0,0,5,5"  />
-                    <Button x:Name="BtnSaveKey" Content="Save" Grid.Row="2" Grid.Column="2" Margin="0,0,5,5"  Click="BtnSaveKey_Click" Padding="8,3" Height="25"/>
-                    <ComboBox x:Name="CboPreviousKeys" Grid.Row="2" Grid.Column="3" Margin="0,0,5,5"  SelectionChanged="CboPreviousKeys_SelectionChanged" Width="90"/>
-                    
+                    <PasswordBox x:Name="TxtApiKey" Grid.Row="2" Grid.Column="1" Margin="0,0,5,5" />
+                    <Button x:Name="BtnSaveKey" Content="Save" Grid.Row="2" Grid.Column="2" Margin="0,0,5,5"
+                            Click="BtnSaveKey_Click" Padding="8,3" Height="25" />
+                    <ComboBox x:Name="CboPreviousKeys" Grid.Row="2" Grid.Column="3" Margin="0,0,5,5"
+                              SelectionChanged="CboPreviousKeys_SelectionChanged" Width="90" />
+
                     <!-- Model Description -->
-                    <TextBlock x:Name="TxtModelDescription" 
-                               Grid.Row="3" 
-                               Grid.Column="0" 
+                    <TextBlock x:Name="TxtModelDescription"
+                               Grid.Row="3"
+                               Grid.Column="0"
                                Grid.ColumnSpan="4"
                                TextWrapping="Wrap"
                                Margin="5,5,5,5"
@@ -178,7 +194,7 @@
                                 Grid.Column="1" Padding="8,3" Height="25"
                                 Click="BtnConfigurePrompts_Click" />
                     </Grid>
-        
+
                     <!-- Analyze Button moved inside this GroupBox -->
                     <Button Content="Send Initial Prompt" Height="25"
                             Click="BtnAnalyze_Click" />
@@ -297,7 +313,7 @@
                               ToolTip="Include the files selected in the file list with your follow-up question" />
                     <TextBox x:Name="TxtFollowupQuestion" Grid.Row="1" Grid.Column="0" Height="60" TextWrapping="Wrap"
                              AcceptsReturn="True" VerticalScrollBarVisibility="Auto" IsEnabled="False" />
-                    <Button x:Name="BtnSendFollowup" Content="Send" Grid.Row="1" Grid.Column="1" Width="60" 
+                    <Button x:Name="BtnSendFollowup" Content="Send" Grid.Row="1" Grid.Column="1" Width="60"
                             Margin="5,0,0,0" IsEnabled="False" Click="BtnSendFollowup_Click" />
                 </Grid>
             </GroupBox>

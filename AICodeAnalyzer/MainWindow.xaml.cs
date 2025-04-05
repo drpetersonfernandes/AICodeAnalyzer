@@ -146,6 +146,10 @@ public partial class MainWindow
                     ToolTip = filePath,
                     Tag = filePath
                 };
+            
+                // Add document icon to each menu item
+                menuItem.Icon = new TextBlock { Text = "📄", FontSize = 14 };
+            
                 menuItem.Click += RecentFileMenuItem_Click;
                 MenuRecentFiles.Items.Add(menuItem);
             }
@@ -154,6 +158,7 @@ public partial class MainWindow
             MenuRecentFiles.Items.Add(new Separator());
         
             var clearMenuItem = new MenuItem { Header = "Clear Recent Files" };
+            clearMenuItem.Icon = new TextBlock { Text = "🗑️", FontSize = 14 }; // Trash icon for clear option
             clearMenuItem.Click += ClearRecentFiles_Click;
             MenuRecentFiles.Items.Add(clearMenuItem);
         }
