@@ -2249,6 +2249,10 @@ public partial class MainWindow
                 // Reset AI Model
                 CboModel.SelectedIndex = -1; // Default to none
                 
+                // Reset API Key
+                TxtApiKey.Clear();
+                CboPreviousKeys.SelectedIndex = -1; // Default to none
+                
                 // Reset Model description
                 TxtModelDescription.Text = string.Empty;
 
