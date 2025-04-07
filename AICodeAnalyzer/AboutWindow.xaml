@@ -1,33 +1,58 @@
 ﻿<Window x:Class="AICodeAnalyzer.AboutWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="About AI Code Analyzer" Height="300" Width="400" 
+        Title="About" Height="550" Width="550" 
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
-    <Grid Margin="20">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        
-        <TextBlock Grid.Row="0" Text="AI Code Analyzer" 
-                   FontSize="24" FontWeight="Bold" 
-                   HorizontalAlignment="Center" Margin="0,0,0,10"/>
-        
-        <TextBlock Grid.Row="1" Text="Version 1.0" 
-                   FontSize="14" HorizontalAlignment="Center" Margin="0,0,0,20"/>
-        
-        <TextBlock Grid.Row="2" TextWrapping="Wrap" Margin="0,0,0,20">
-            AI Code Analyzer lets you scan your entire code base and analyze it with different AI models.
-            <LineBreak/><LineBreak/>
-            Easily review code quality, identify bugs, detect security vulnerabilities, 
-            and get improvement suggestions for your projects.
-            <LineBreak/><LineBreak/>
-            Supports multiple AI providers including Claude, ChatGPT, DeepSeek, Grok, and Gemini.
-        </TextBlock>
-        
-        <Button Grid.Row="3" Content="OK" Width="80" Height="30" 
-                HorizontalAlignment="Center" Click="BtnOk_Click"/>
+
+        <StackPanel
+            Grid.Row="0"
+            Margin="10,20,10,10"
+            HorizontalAlignment="Center"
+            Orientation="Horizontal">
+            <Image
+                Width="150"
+                Height="150"
+                Source="pack://application:,,,/images/logo.png" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="10">
+            <TextBlock FontWeight="Bold" FontSize="24" Text="AI Code Analyzer" HorizontalAlignment="Center" />
+            <TextBlock Name="AppVersionTextBlock" Text="Version 1.0" FontSize="14" HorizontalAlignment="Center" Margin="0,5,0,30" />
+            
+            <TextBlock TextWrapping="Wrap" Margin="0,0,0,15">
+                AI Code Analyzer lets you scan your entire code base and analyze it with different AI models.
+                <LineBreak/><LineBreak/>
+                Easily review code quality, identify bugs, detect security vulnerabilities, 
+                and get improvement suggestions for your projects.
+                <LineBreak/><LineBreak/>
+                Supports multiple AI providers including Claude, ChatGPT, DeepSeek, Grok, and Gemini.
+            </TextBlock>
+            
+            <TextBlock Margin="0,5,0,0">
+                <Hyperlink NavigateUri="https://www.purelogiccode.com" RequestNavigate="Hyperlink_RequestNavigate">https://www.purelogiccode.com</Hyperlink>
+            </TextBlock>
+            <TextBlock Margin="0,5,0,5">
+                <Hyperlink NavigateUri="https://github.com/drpetersonfernandes/AICodeAnalyzer"
+                           RequestNavigate="Hyperlink_RequestNavigate">https://github.com/drpetersonfernandes/AICodeAnalyzer</Hyperlink>
+            </TextBlock>
+        </StackPanel>
+
+        <StackPanel
+            Grid.Row="2"
+            Margin="10"
+            HorizontalAlignment="Center"
+            Orientation="Horizontal">
+            <Button
+                Margin="0,0,0,0"
+                Click="CloseButton_Click"
+                Content="Close"
+                Padding="10,5" />
+        </StackPanel>
     </Grid>
 </Window>

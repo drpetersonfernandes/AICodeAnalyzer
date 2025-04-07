@@ -41,15 +41,19 @@ public partial class MainWindow
     private const double MinZoom = 20.0; // Minimum zoom level (20%)
     private const double MaxZoom = 500.0; // Maximum zoom level (500%)
     private double _markdownZoomLevel = 100.0; // Current zoom level (default 100%)
+    private readonly double _textBoxDefaultFontSize;
 
     public MainWindow()
     {
+        _textBoxDefaultFontSize = 12.0;
         InitializeComponent();
+
+        _textBoxDefaultFontSize = TxtResponse.FontSize;
         _filesByExtension = new Dictionary<string, List<SourceFile>>();
         _keyManager = new ApiKeyManager();
         _apiProviderFactory = new ApiProviderFactory();
         _settingsManager = new SettingsManager();
-
+        
         TxtFollowupQuestion.IsEnabled = true;
         BtnSendFollowup.IsEnabled = false;
         ChkIncludeSelectedFiles.IsEnabled = false;
@@ -330,38 +334,121 @@ public partial class MainWindow
 
     private void UpdateZoomDisplay()
     {
+        // Clamp the zoom level within min/max bounds
+        _markdownZoomLevel = Math.Max(MinZoom, Math.Min(MaxZoom, _markdownZoomLevel));
+
         if (MarkdownViewer != null)
         {
-            // Clamp the zoom level within min/max bounds
-            _markdownZoomLevel = Math.Max(MinZoom, Math.Min(MaxZoom, _markdownZoomLevel));
-
-            // Apply zoom using ScaleTransform instead of a direct Zoom property
+            // Apply zoom to Markdown view using ScaleTransform
             MarkdownViewer.LayoutTransform = new ScaleTransform(
                 _markdownZoomLevel / 100.0, // X scale factor
                 _markdownZoomLevel / 100.0 // Y scale factor
             );
-
-            // Update the TextBlock display
-            TxtZoomLevel.Text = $"{_markdownZoomLevel:F0}%";
-
-            LogOperation($"Markdown zoom set to {_markdownZoomLevel:F0}%");
-
-            // When zooming, we might want to update the page width as well
-            UpdateMarkdownPageWidth();
         }
+
+        if (TxtResponse != null)
+        {
+            // For raw text view, adjust font size based on zoom level
+            TxtResponse.FontSize = _textBoxDefaultFontSize * (_markdownZoomLevel / 100.0);
+        }
+
+        // Update the TextBlock display
+        TxtZoomLevel.Text = $"{_markdownZoomLevel:F0}%";
+
+        LogOperation($"Zoom set to {_markdownZoomLevel:F0}%");
+
+        // When zooming, we might want to update the page width as well
+        UpdateMarkdownPageWidth();
+    }
+    
+    private void TxtResponse_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        // Check if Ctrl key is pressed for zooming
+        if (Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            if (e.Delta > 0) // Wheel scrolled up (Zoom In)
+            {
+                ZoomIn();
+            }
+            else if (e.Delta < 0) // Wheel scrolled down (Zoom Out)
+            {
+                ZoomOut();
+            }
+
+            e.Handled = true; // Prevent default scroll behavior when zooming
+        }
+    }
+    
+    private void PreserveTextBoxScrollPosition(TextBox textBox, Action action)
+    {
+        if (textBox == null) return;
+    
+        // Store current caret position and scroll position
+        var caretIndex = textBox.CaretIndex;
+        double verticalOffset = 0;
+    
+        // Get the scroll viewer within the TextBox
+        var scrollViewer = FindVisualChild<ScrollViewer>(textBox);
+        if (scrollViewer != null)
+        {
+            verticalOffset = scrollViewer.VerticalOffset;
+        }
+    
+        // Perform the action (e.g., changing zoom)
+        action();
+    
+        // Restore caret position
+        if (caretIndex >= 0 && caretIndex <= textBox.Text.Length)
+        {
+            textBox.CaretIndex = caretIndex;
+        }
+    
+        // Schedule scroll position restore (needs to be delayed a bit)
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (scrollViewer != null)
+            {
+                scrollViewer.ScrollToVerticalOffset(verticalOffset);
+            }
+        }), DispatcherPriority.Loaded);
     }
 
     private void ZoomIn()
     {
-        _markdownZoomLevel += ZoomIncrement;
-        UpdateZoomDisplay();
+        if (_isMarkdownViewActive)
+        {
+            _markdownZoomLevel += ZoomIncrement;
+            UpdateZoomDisplay();
+        }
+        else
+        {
+            // For text view, preserve scroll position
+            PreserveTextBoxScrollPosition(TxtResponse, () =>
+            {
+                _markdownZoomLevel += ZoomIncrement;
+                UpdateZoomDisplay();
+            });
+        }
     }
 
     private void ZoomOut()
     {
-        _markdownZoomLevel -= ZoomIncrement;
-        UpdateZoomDisplay();
+        if (_isMarkdownViewActive)
+        {
+            _markdownZoomLevel -= ZoomIncrement;
+            UpdateZoomDisplay();
+        }
+        else
+        {
+            // For text view, preserve scroll position
+            PreserveTextBoxScrollPosition(TxtResponse, () =>
+            {
+                _markdownZoomLevel -= ZoomIncrement;
+                UpdateZoomDisplay();
+            });
+        }
     }
+
 
     private void BtnZoomIn_Click(object sender, RoutedEventArgs e)
     {
@@ -375,8 +462,20 @@ public partial class MainWindow
 
     private void BtnResetZoom_Click(object sender, RoutedEventArgs e)
     {
-        _markdownZoomLevel = 100.0; // Reset to default
-        UpdateZoomDisplay();
+        if (_isMarkdownViewActive)
+        {
+            _markdownZoomLevel = 100.0; // Reset to default
+            UpdateZoomDisplay();
+        }
+        else
+        {
+            // For text view, preserve scroll position
+            PreserveTextBoxScrollPosition(TxtResponse, () =>
+            {
+                _markdownZoomLevel = 100.0; // Reset to default
+                UpdateZoomDisplay();
+            });
+        }
     }
 
     private void InitializePromptSelection()
@@ -1430,10 +1529,42 @@ public partial class MainWindow
 
             if (_isMarkdownViewActive)
             {
+                // Check if content was edited before switching
+                var contentWasEdited = _currentResponseText != TxtResponse.Text;
+            
+                // If content was edited, ask user if they want to save
+                if (contentWasEdited)
+                {
+                    var result = MessageBox.Show(
+                        "You have made changes to the raw text. Do you want to apply these changes?",
+                        "Save Changes",
+                        MessageBoxButton.YesNoCancel,
+                        MessageBoxImage.Question);
+                
+                    if (result == MessageBoxResult.Cancel)
+                    {
+                        // User cancelled, stay in raw text view
+                        return;
+                    }
+                    else if (result == MessageBoxResult.Yes)
+                    {
+                        // User wants to save changes, update the response text
+                        _currentResponseText = TxtResponse.Text;
+                        LogOperation("Saved edited markdown content when switching to rendered view");
+                    }
+                    else
+                    {
+                        // User doesn't want to save, revert the TextBox content
+                        TxtResponse.Text = _currentResponseText;
+                        LogOperation("Discarded edited markdown content when switching to rendered view");
+                    }
+                }
+
                 // Switch to Markdown view
                 TxtResponse.Visibility = Visibility.Collapsed;
                 MarkdownScrollViewer.Visibility = Visibility.Visible;
                 BtnToggleMarkdown.Content = "Show Raw Text";
+                BtnSaveEdits.Visibility = Visibility.Visible;
 
                 // Set the markdown content with preprocessing
                 var processedMarkdown = PreprocessMarkdown(_currentResponseText);
@@ -1451,9 +1582,11 @@ public partial class MainWindow
                 TxtResponse.Visibility = Visibility.Visible;
                 MarkdownScrollViewer.Visibility = Visibility.Collapsed;
                 BtnToggleMarkdown.Content = "Show Markdown";
+                BtnSaveEdits.Visibility = Visibility.Visible;
+                BtnSaveEdits.IsEnabled = true;
 
                 // Log the switch to raw text view
-                LogOperation("Switched to raw text view");
+                LogOperation("Switched to raw text view (edit mode)");
             }
         }
         catch (Exception ex)
@@ -2150,6 +2283,21 @@ public partial class MainWindow
 
         return markdownContent;
     }
+    
+    private T? FindVisualChild<T>(DependencyObject depObj) where T : DependencyObject
+    {
+        if (depObj == null) return null;
+    
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+        {
+            var child = VisualTreeHelper.GetChild(depObj, i);
+        
+            var result = (child as T) ?? FindVisualChild<T>(child);
+            if (result != null) return result;
+        }
+
+        return null;
+    }
 
     private FrameworkElement? FindButtonByContent(string content)
     {
@@ -2347,5 +2495,39 @@ public partial class MainWindow
     private void MenuExit_Click(object sender, RoutedEventArgs e)
     {
         Application.Current.Shutdown();
+    }
+    
+    private void BtnSaveEdits_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // Update the current response text with the edited content
+            _currentResponseText = TxtResponse.Text;
+        
+            // Preview the changes in markdown view
+            _isMarkdownViewActive = true;
+            TxtResponse.Visibility = Visibility.Collapsed;
+            MarkdownScrollViewer.Visibility = Visibility.Visible;
+            BtnToggleMarkdown.Content = "Show Raw Text";
+            BtnSaveEdits.Visibility = Visibility.Collapsed;
+
+            // Set the markdown content with preprocessing
+            var processedMarkdown = PreprocessMarkdown(_currentResponseText);
+            MarkdownViewer.Markdown = processedMarkdown;
+
+            // Update the page width
+            UpdateMarkdownPageWidth();
+
+            LogOperation("Applied edits to markdown content");
+        
+            // Alert the user that the edits were applied
+            TxtStatus.Text = "Edits applied successfully";
+        }
+        catch (Exception ex)
+        {
+            LogOperation($"Error saving edits: {ex.Message}");
+            ErrorLogger.LogError(ex, "Saving edited markdown");
+            MessageBox.Show("An error occurred while saving your edits.", "Edit Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 }

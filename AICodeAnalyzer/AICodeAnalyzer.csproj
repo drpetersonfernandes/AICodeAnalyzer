@@ -32,6 +32,8 @@
     <Resource Include="images\reset.png" />
     <None Remove="images\settings.png" />
     <Resource Include="images\settings.png" />
+    <None Remove="images\logo.png" />
+    <Resource Include="images\logo.png" />
   </ItemGroup>
 
 </Project>

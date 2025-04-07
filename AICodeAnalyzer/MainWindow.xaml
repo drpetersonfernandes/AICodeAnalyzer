@@ -18,7 +18,7 @@
         <!-- Menu at the top -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File" Style="{StaticResource MenuItemStyle}">
-                <MenuItem Header="_Start" Click="MenuStart_Click">
+                <MenuItem Header="_Restart" Click="MenuStart_Click">
                     <MenuItem.Icon>
                         <Image Source="pack://application:,,,/images/reset.png" Width="16" Height="16" />
                     </MenuItem.Icon>
@@ -260,23 +260,31 @@
 
                     <!-- Bottom Control Bar (Save/Toggle) -->
                     <Grid DockPanel.Dock="Bottom" Margin="0,5,0,0">
-                        <!-- ... (Existing Save/Toggle buttons remain here) ... -->
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Button x:Name="BtnSaveResponse" Content="Save Response" Grid.Column="0" Height="30"
                                 Margin="0,0,2,0" Click="BtnSaveResponse_Click" IsEnabled="False" />
-                        <Button x:Name="BtnToggleMarkdown" Content="Show Raw Text" Grid.Column="1" Height="30"
+                        <Button x:Name="BtnSaveEdits" Content="Apply Edits" Grid.Column="1" Height="30"
+                                Margin="0,0,2,0" Click="BtnSaveEdits_Click" IsEnabled="False" />
+                        <Button x:Name="BtnToggleMarkdown" Content="Show Raw Text" Grid.Column="2" Height="30"
                                 Margin="2,0,0,0" Click="BtnToggleMarkdown_Click" IsEnabled="False" />
                     </Grid>
 
                     <!-- Markdown Display -->
                     <Grid>
                         <!-- Regular TextBox (for raw view) -->
-                        <TextBox x:Name="TxtResponse" TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True"
-                                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                                 FontFamily="Consolas" Visibility="Collapsed" />
+                        <TextBox x:Name="TxtResponse" 
+                                 TextWrapping="Wrap" 
+                                 AcceptsReturn="True" 
+                                 IsReadOnly="False"
+                                 VerticalScrollBarVisibility="Auto" 
+                                 HorizontalScrollBarVisibility="Auto"
+                                 FontFamily="Consolas" 
+                                 Visibility="Collapsed"
+                                 PreviewMouseWheel="TxtResponse_PreviewMouseWheel" />
 
                         <!-- Markdown Viewer -->
                         <ScrollViewer x:Name="MarkdownScrollViewer" Visibility="Visible"
