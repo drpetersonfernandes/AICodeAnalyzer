@@ -42,6 +42,8 @@ public partial class MainWindow
     private const double MaxZoom = 500.0; // Maximum zoom level (500%)
     private double _markdownZoomLevel = 100.0; // Current zoom level (default 100%)
     private readonly double _textBoxDefaultFontSize;
+    
+    private string _currentFilePath = string.Empty;
 
     public MainWindow()
     {
@@ -103,6 +105,10 @@ public partial class MainWindow
             TxtResponseCounter.Text = $"Viewing: {Path.GetFileName(filePath)}";
             BtnToggleMarkdown.IsEnabled = true;
             BtnSaveResponse.IsEnabled = true;
+            BtnSaveEdits.IsEnabled = true; // Enable edit saving
+
+            // Store the current file path
+            _currentFilePath = filePath;
 
             // Update UI to reflect we're viewing a standalone file
             TxtStatus.Text = $"Viewing file: {Path.GetFileName(filePath)}";
@@ -846,41 +852,8 @@ public partial class MainWindow
 
     private string GenerateFileFilterFromExtensions()
     {
-        var filterBuilder = new StringBuilder();
-
-        // Add an "All Supported Files" filter first
-        filterBuilder.Append("All Supported Files|");
-
-        // Add all supported extensions
-        foreach (var ext in _settingsManager.Settings.SourceFileExtensions)
-        {
-            filterBuilder.Append($"*{ext};");
-        }
-
-        // Remove the last semicolon
-        filterBuilder.Length--;
-
-        // Add specific filters for each type
-        var groupedExtensions = _settingsManager.Settings.SourceFileExtensions
-            .GroupBy(GetLanguageGroupForExtension)
-            .OrderBy(g => g.Key);
-
-        foreach (var group in groupedExtensions)
-        {
-            filterBuilder.Append($"|{group.Key} Files|");
-            foreach (var ext in group)
-            {
-                filterBuilder.Append($"*{ext};");
-            }
-
-            // Remove the last semicolon
-            filterBuilder.Length--;
-        }
-
-        // Add "All Files" filter at the end
-        filterBuilder.Append("|All Files|*.*");
-
-        return filterBuilder.ToString();
+        // Return only the "All Files" filter as requested
+        return "All Files (*.*)|*.*";
     }
 
     private async void BtnSelectFiles_Click(object sender, RoutedEventArgs e)
@@ -943,58 +916,50 @@ public partial class MainWindow
                 var fileInfo = new FileInfo(filePath);
                 var ext = fileInfo.Extension.ToLowerInvariant();
 
-                // Check if this extension is supported
-                if (_settingsManager.Settings.SourceFileExtensions.Contains(ext))
+                // Check file size limit only, don't filter by extension
+                var fileSizeKb = (int)(fileInfo.Length / 1024);
+                if (fileSizeKb <= _settingsManager.Settings.MaxFileSizeKb)
                 {
-                    // Check file size limit
-                    var fileSizeKb = (int)(fileInfo.Length / 1024);
-                    if (fileSizeKb <= _settingsManager.Settings.MaxFileSizeKb)
+                    // Get relative path (if file is not in the selected folder, it will use its full path)
+                    string relativePath;
+                    if (filePath.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase))
                     {
-                        // Get relative path (if file is not in the selected folder, it will use its full path)
-                        string relativePath;
-                        if (filePath.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase))
-                        {
-                            relativePath = filePath.Substring(_selectedFolder.Length).TrimStart('\\', '/');
-                        }
-                        else
-                        {
-                            // If file is outside the base folder, use the full path
-                            relativePath = filePath;
-                        }
-
-                        // Initialize the extension group if needed
-                        if (!_filesByExtension.ContainsKey(ext))
-                        {
-                            _filesByExtension[ext] = new List<SourceFile>();
-                        }
-
-                        // Check if this file is already added
-                        if (!_filesByExtension[ext].Any(f => f.Path.Equals(filePath, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            // Add the file
-                            _filesByExtension[ext].Add(new SourceFile
-                            {
-                                Path = filePath,
-                                RelativePath = relativePath,
-                                Extension = ext,
-                                Content = File.ReadAllText(filePath)
-                            });
-
-                            LogOperation($"Added file: {relativePath}");
-                        }
-                        else
-                        {
-                            LogOperation($"Skipped duplicate file: {relativePath}");
-                        }
+                        relativePath = filePath.Substring(_selectedFolder.Length).TrimStart('\\', '/');
                     }
                     else
                     {
-                        LogOperation($"Skipped file due to size limit: {filePath} ({fileSizeKb} KB > {_settingsManager.Settings.MaxFileSizeKb} KB)");
+                        // If file is outside the base folder, use the full path
+                        relativePath = filePath;
+                    }
+
+                    // Initialize the extension group if needed
+                    if (!_filesByExtension.ContainsKey(ext))
+                    {
+                        _filesByExtension[ext] = new List<SourceFile>();
+                    }
+
+                    // Check if this file is already added
+                    if (!_filesByExtension[ext].Any(f => f.Path.Equals(filePath, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        // Add the file
+                        _filesByExtension[ext].Add(new SourceFile
+                        {
+                            Path = filePath,
+                            RelativePath = relativePath,
+                            Extension = ext,
+                            Content = File.ReadAllText(filePath)
+                        });
+
+                        LogOperation($"Added file: {relativePath}");
+                    }
+                    else
+                    {
+                        LogOperation($"Skipped duplicate file: {relativePath}");
                     }
                 }
                 else
                 {
-                    LogOperation($"Skipped unsupported file type: {filePath}");
+                    LogOperation($"Skipped file due to size limit: {filePath} ({fileSizeKb} KB > {_settingsManager.Settings.MaxFileSizeKb} KB)");
                 }
             }
             catch (Exception ex)
@@ -1249,7 +1214,20 @@ public partial class MainWindow
             ".json" => "json",
             ".yaml" or ".yml" => "yaml",
             ".md" => "markdown",
-            _ => ""
+            ".txt" => "text",
+            ".sql" => "sql",
+            ".sh" or ".bash" => "bash",
+            ".ps1" => "powershell",
+            ".r" => "r",
+            ".vb" => "vb",
+            ".fs" => "fsharp",
+            ".lua" => "lua",
+            ".pl" => "perl",
+            ".groovy" => "groovy",
+            ".dockerfile" => "dockerfile",
+            ".ini" => "ini",
+            ".toml" => "toml",
+            _ => "text" // Default to "text" for unknown extensions
         };
     }
 
@@ -1472,10 +1450,45 @@ public partial class MainWindow
     {
         try
         {
+            // First, check if we have unsaved edits in the raw text view
+            if (!_isMarkdownViewActive && TxtResponse.Text != _currentResponseText)
+            {
+                // Update the current response text with the edited content before saving
+                _currentResponseText = TxtResponse.Text;
+                LogOperation("Updated content from text editor before saving");
+            }
+
             if (string.IsNullOrWhiteSpace(_currentResponseText))
             {
                 MessageBox.Show("There is no response to save.", "No Response", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
+            }
+
+            // If we have a current file path and we want to overwrite it
+            if (!string.IsNullOrEmpty(_currentFilePath) && File.Exists(_currentFilePath))
+            {
+                // Ask the user if they want to overwrite or save as new file
+                var result = MessageBox.Show(
+                    $"Do you want to overwrite the current file?\n{_currentFilePath}\n\nClick 'Yes' to overwrite, 'No' to save as a new file.",
+                    "Save Options",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    // Overwrite the current file
+                    File.WriteAllText(_currentFilePath, _currentResponseText);
+                    LogOperation($"Overwrote file: {_currentFilePath}");
+                    TxtStatus.Text = $"File saved: {Path.GetFileName(_currentFilePath)}";
+                    MessageBox.Show($"File saved: {Path.GetFileName(_currentFilePath)}", "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                else if (result == MessageBoxResult.Cancel)
+                {
+                    // User canceled the operation
+                    return;
+                }
+                // If No, continue to the save dialog
             }
 
             // Create a save file dialog
@@ -1504,18 +1517,30 @@ public partial class MainWindow
             }
 
             // Show the dialog and get result
-            var result = saveFileDialog.ShowDialog();
+            var dialogResult = saveFileDialog.ShowDialog();
 
             // If the user clicked OK, save the file
-            if (result == true)
+            if (dialogResult == true)
             {
                 // Save the response text to the selected file
                 File.WriteAllText(saveFileDialog.FileName, _currentResponseText);
+            
+                // Update the current file path
+                _currentFilePath = saveFileDialog.FileName;
+            
+                // Add to recent files
+                AddToRecentFiles(saveFileDialog.FileName);
+            
+                TxtResponseCounter.Text = $"Viewing: {Path.GetFileName(saveFileDialog.FileName)}";
+                TxtStatus.Text = $"File saved: {Path.GetFileName(saveFileDialog.FileName)}";
+            
+                LogOperation($"Saved response to: {saveFileDialog.FileName}");
                 MessageBox.Show($"Response saved to {saveFileDialog.FileName}", "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
         catch (Exception ex)
         {
+            LogOperation($"Error saving response: {ex.Message}");
             ErrorLogger.LogError(ex, "Saving response to file");
             MessageBox.Show("An error occurred while saving the response.", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
@@ -2016,6 +2041,9 @@ public partial class MainWindow
         {
             // For a new response, set the index to the last response
             _currentResponseIndex = _conversationHistory.Count(m => m.Role == "assistant") - 1;
+        
+            // Clear the current file path when generating a new response
+            _currentFilePath = string.Empty;
         }
 
         // Reset zoom when displaying a new response initially
@@ -2029,6 +2057,7 @@ public partial class MainWindow
 
         BtnToggleMarkdown.IsEnabled = true;
         BtnSaveResponse.IsEnabled = true;
+        BtnSaveEdits.IsEnabled = true;
 
         if (isNewResponse)
         {
@@ -2408,6 +2437,11 @@ public partial class MainWindow
                 TxtStatus.Text = "Ready";
 
                 LogOperation("Application reset complete");
+                
+                // Clear current file path when restarting
+                _currentFilePath = string.Empty;
+                
+                BtnSaveEdits.IsEnabled = false;
             }
         }
         catch (Exception ex)
@@ -2446,6 +2480,9 @@ public partial class MainWindow
                 LogOperation($"Opening past response file: {Path.GetFileName(dialog.FileName)}");
                 StartOperationTimer("LoadResponseFile");
 
+                // Store the current file path
+                _currentFilePath = dialog.FileName;
+
                 // Read the file content
                 var responseText = File.ReadAllText(dialog.FileName);
 
@@ -2463,6 +2500,7 @@ public partial class MainWindow
                 // Enable relevant buttons
                 BtnSaveResponse.IsEnabled = true;
                 BtnToggleMarkdown.IsEnabled = true;
+                BtnSaveEdits.IsEnabled = true; // Enable edit saving
 
                 // Ensure we're in markdown view mode
                 if (!_isMarkdownViewActive)
@@ -2479,6 +2517,9 @@ public partial class MainWindow
                 _markdownZoomLevel = 100.0; // Reset zoom for new content
                 UpdateZoomDisplay();
                 UpdateMarkdownPageWidth();
+
+                // Add the file to Recent Files list
+                AddToRecentFiles(dialog.FileName);
 
                 EndOperationTimer("LoadResponseFile");
                 TxtStatus.Text = "Past response loaded successfully";
@@ -2504,24 +2545,28 @@ public partial class MainWindow
             // Update the current response text with the edited content
             _currentResponseText = TxtResponse.Text;
         
-            // Preview the changes in markdown view
-            _isMarkdownViewActive = true;
-            TxtResponse.Visibility = Visibility.Collapsed;
-            MarkdownScrollViewer.Visibility = Visibility.Visible;
-            BtnToggleMarkdown.Content = "Show Raw Text";
-            BtnSaveEdits.Visibility = Visibility.Collapsed;
-
             // Set the markdown content with preprocessing
             var processedMarkdown = PreprocessMarkdown(_currentResponseText);
             MarkdownViewer.Markdown = processedMarkdown;
 
-            // Update the page width
-            UpdateMarkdownPageWidth();
-
-            LogOperation("Applied edits to markdown content");
-        
-            // Alert the user that the edits were applied
-            TxtStatus.Text = "Edits applied successfully";
+            // If we have a file path, automatically save changes to that file
+            if (!string.IsNullOrEmpty(_currentFilePath) && File.Exists(_currentFilePath))
+            {
+                // Save the changes to the file
+                File.WriteAllText(_currentFilePath, _currentResponseText);
+                LogOperation($"Automatically saved edits to file: {_currentFilePath}");
+                TxtStatus.Text = $"Edits applied and saved to {Path.GetFileName(_currentFilePath)}";
+                MessageBox.Show($"Edits applied and saved to {Path.GetFileName(_currentFilePath)}", 
+                    "Edits Saved", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                // No file path, so update the in-memory content
+                LogOperation("Applied edits to the content (not saved to file)");
+                TxtStatus.Text = "Edits applied (not saved to file)";
+                MessageBox.Show("Edits applied to the content. Use 'Save Response' to save to a file.", 
+                    "Edits Applied", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
         catch (Exception ex)
         {
