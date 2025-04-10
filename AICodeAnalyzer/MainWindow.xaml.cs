@@ -42,7 +42,7 @@ public partial class MainWindow
     private const double MaxZoom = 500.0; // Maximum zoom level (500%)
     private double _markdownZoomLevel = 100.0; // Current zoom level (default 100%)
     private readonly double _textBoxDefaultFontSize;
-    
+
     private string _currentFilePath = string.Empty;
 
     public MainWindow()
@@ -55,10 +55,9 @@ public partial class MainWindow
         _keyManager = new ApiKeyManager();
         _apiProviderFactory = new ApiProviderFactory();
         _settingsManager = new SettingsManager();
-        
+
         TxtFollowupQuestion.IsEnabled = true;
-        BtnSendFollowup.IsEnabled = false;
-        ChkIncludeSelectedFiles.IsEnabled = false;
+        ChkIncludeSelectedFiles.IsEnabled = true;
 
         // Populate API dropdown using provider names from the factory, sorted alphabetically
         var providers = _apiProviderFactory.AllProviders
@@ -249,24 +248,10 @@ public partial class MainWindow
                 // Show visual processing state
                 Mouse.OverrideCursor = Cursors.Wait;
 
-                // Get reference to buttons with proper null handling
-                var analyzeButton = FindNameInWindow("BtnAnalyze") as Button ??
-                                    FindButtonByContent("Send Initial Prompt") as Button;
-
-                var followupButton = FindNameInWindow("BtnSendFollowup") as Button ??
-                                     FindButtonByContent("Send") as Button;
-
-                var selectFolderButton = FindNameInWindow("BtnSelectFolder") as Button ??
-                                         FindButtonByContent("Select Folder") as Button;
-
-                var selectFilesButton = FindNameInWindow("BtnSelectFiles") as Button ??
-                                        FindButtonByContent("Add Files") as Button;
-
                 // Disable certain controls to prevent multiple submissions
-                if (analyzeButton != null) analyzeButton.IsEnabled = false;
-                if (followupButton != null) followupButton.IsEnabled = false;
-                if (selectFolderButton != null) selectFolderButton.IsEnabled = false;
-                if (selectFilesButton != null) selectFilesButton.IsEnabled = false;
+                BtnSendQuery.IsEnabled = false;
+                BtnSelectFolder.IsEnabled = false;
+                BtnSelectFiles.IsEnabled = false;
 
                 // Show "Processing..." text in the markdown viewer if it's empty
                 if (string.IsNullOrWhiteSpace(MarkdownViewer.Markdown))
@@ -305,18 +290,9 @@ public partial class MainWindow
                 Mouse.OverrideCursor = null;
 
                 // Re-enable controls
-                var analyzeButton = FindNameInWindow("BtnAnalyze");
-
-                var followupButton = FindNameInWindow("BtnSendFollowup");
-
-                var selectFolderButton = FindNameInWindow("BtnSelectFolder");
-
-                var selectFilesButton = FindNameInWindow("BtnSelectFiles");
-
-                if (analyzeButton != null) analyzeButton.IsEnabled = true;
-                if (followupButton != null) followupButton.IsEnabled = ChkIncludeSelectedFiles.IsEnabled;
-                if (selectFolderButton != null) selectFolderButton.IsEnabled = true;
-                if (selectFilesButton != null) selectFilesButton.IsEnabled = true;
+                BtnSendQuery.IsEnabled = true;
+                BtnSelectFolder.IsEnabled = true;
+                BtnSelectFiles.IsEnabled = true;
 
                 // Remove the overlay
                 try
@@ -366,7 +342,7 @@ public partial class MainWindow
         // When zooming, we might want to update the page width as well
         UpdateMarkdownPageWidth();
     }
-    
+
     private void TxtResponse_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         // Check if Ctrl key is pressed for zooming
@@ -384,31 +360,31 @@ public partial class MainWindow
             e.Handled = true; // Prevent default scroll behavior when zooming
         }
     }
-    
+
     private void PreserveTextBoxScrollPosition(TextBox textBox, Action action)
     {
         if (textBox == null) return;
-    
+
         // Store current caret position and scroll position
         var caretIndex = textBox.CaretIndex;
         double verticalOffset = 0;
-    
+
         // Get the scroll viewer within the TextBox
         var scrollViewer = FindVisualChild<ScrollViewer>(textBox);
         if (scrollViewer != null)
         {
             verticalOffset = scrollViewer.VerticalOffset;
         }
-    
+
         // Perform the action (e.g., changing zoom)
         action();
-    
+
         // Restore caret position
         if (caretIndex >= 0 && caretIndex <= textBox.Text.Length)
         {
             textBox.CaretIndex = caretIndex;
         }
-    
+
         // Schedule scroll position restore (needs to be delayed a bit)
         Dispatcher.BeginInvoke(new Action(() =>
         {
@@ -1066,66 +1042,100 @@ public partial class MainWindow
             return;
         }
 
-        // Check if there's text in the follow-up question box
-        var hasFollowUpText = !string.IsNullOrWhiteSpace(TxtFollowupQuestion.Text);
-        var followUpText = hasFollowUpText ? TxtFollowupQuestion.Text.Trim() : string.Empty;
+        // Get query text
+        var queryText = TxtFollowupQuestion.Text.Trim();
 
-        if (hasFollowUpText)
+        if (string.IsNullOrWhiteSpace(queryText))
         {
-            LogOperation($"Found text in follow-up box: '{followUpText}'");
+            MessageBox.Show("Please enter a query or question.", "Empty Query", MessageBoxButton.OK, MessageBoxImage.Warning);
+            LogOperation("Query canceled: Empty text");
+            return;
         }
 
         var apiSelection = CboAiApi.SelectedItem?.ToString() ?? "Claude API";
 
         // Update status and show processing indicators
-        var statusMessage = $"Analyzing with {apiSelection}";
+        var statusMessage = $"Processing with {apiSelection}";
         TxtStatus.Text = $"{statusMessage}...";
         SetProcessingState(true, statusMessage);
 
-        LogOperation($"Starting code analysis with {apiSelection}");
-        StartOperationTimer("CodeAnalysis");
-
-        // Prepare consolidated code files
-        LogOperation("Preparing consolidated code files");
-        StartOperationTimer("PrepareFiles");
-        var consolidatedFiles = PrepareConsolidatedFiles();
-        EndOperationTimer("PrepareFiles");
-
-        // Begin a new conversation
-        _conversationHistory.Clear();
-        LogOperation("Conversation history cleared");
-
-        // Reset navigation controls
-        _currentResponseIndex = -1;
-        BtnPreviousResponse.IsEnabled = false;
-        BtnNextResponse.IsEnabled = false;
-        TxtResponseCounter.Text = "No responses";
+        LogOperation($"Starting query with {apiSelection}");
+        StartOperationTimer("QueryProcessing");
 
         try
         {
-            // Prepare the initial prompt to ask for code analysis
-            LogOperation("Generating initial prompt");
-            StartOperationTimer("GeneratePrompt");
-            var initialPrompt = GenerateInitialPrompt(consolidatedFiles);
+            string prompt;
 
-            // If there's follow-up text, add it to the prompt
-            if (hasFollowUpText)
+            // Determine if this is a follow-up or initial query based on conversation history
+            var isFollowUp = _conversationHistory.Count >= 2;
+
+            if (isFollowUp)
             {
-                initialPrompt += "\n\nAdditional instructions or questions:\n" + followUpText;
-                LogOperation("Added follow-up text to the initial prompt");
+                // This is a follow-up question
+                LogOperation("Handling as follow-up question");
 
-                // Clear the follow-up text box after using its content
-                TxtFollowupQuestion.Text = string.Empty;
+                // Create enhanced follow-up prompt with context
+                prompt = GenerateContextualFollowupPrompt(queryText);
+
+                if (ChkIncludeSelectedFiles.IsChecked == true && LvFiles.SelectedItems.Count > 0)
+                {
+                    prompt = AppendSelectedFilesToPrompt(prompt);
+                    LogOperation("Added selected files to follow-up prompt");
+                }
+
+                // Add the original query to conversation history
+                _conversationHistory.Add(new ChatMessage { Role = "user", Content = queryText });
+            }
+            else
+            {
+                // This is an initial query - use the existing code path
+                LogOperation("Handling as initial query");
+
+                // Prepare consolidated code files
+                StartOperationTimer("PrepareFiles");
+                var consolidatedFiles = PrepareConsolidatedFiles();
+                EndOperationTimer("PrepareFiles");
+
+                // Begin a new conversation
+                _conversationHistory.Clear();
+                LogOperation("Conversation history cleared");
+
+                // Check if we should include the initial prompt
+                if (ChkIncludeInitialPrompt.IsChecked == true)
+                {
+                    LogOperation("Generating initial prompt");
+                    StartOperationTimer("GeneratePrompt");
+                    prompt = GenerateInitialPrompt(consolidatedFiles);
+                    EndOperationTimer("GeneratePrompt");
+                }
+                else
+                {
+                    LogOperation("Skipping initial prompt template as requested");
+                    StartOperationTimer("GeneratePrompt");
+                    prompt = GenerateMinimalPrompt(consolidatedFiles);
+                    EndOperationTimer("GeneratePrompt");
+                }
+
+                // Add query text to the prompt
+                if (!string.IsNullOrEmpty(queryText))
+                {
+                    prompt += "\n\nAdditional instructions or questions:\n" + queryText;
+                    LogOperation("Added query text to the initial prompt");
+                }
+
+                // Check if we should include selected files
+                if (ChkIncludeSelectedFiles.IsChecked == true && LvFiles.SelectedItems.Count > 0)
+                {
+                    prompt = AppendSelectedFilesToPrompt(prompt);
+                    LogOperation("Added selected files to the prompt");
+                }
+
+                // Add user message to conversation history first
+                _conversationHistory.Add(new ChatMessage { Role = "user", Content = prompt });
             }
 
-            EndOperationTimer("GeneratePrompt");
-            LogOperation($"Initial prompt generated ({initialPrompt.Length} characters)");
-
-            // Add user message to conversation history first
-            _conversationHistory.Add(new ChatMessage { Role = "user", Content = initialPrompt });
-
-            // Send it to selected API
-            var response = await SendToAiApi(apiSelection, initialPrompt);
+            // Send prompt to selected API
+            var response = await SendToAiApi(apiSelection, prompt);
 
             // Add assistant response to conversation history
             _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = response });
@@ -1135,35 +1145,57 @@ public partial class MainWindow
             LogOperation("Updating UI with response");
             UpdateResponseDisplay(response, true);
 
-            // Enable follow-up questions
-            TxtFollowupQuestion.IsEnabled = true;
-            BtnSendFollowup.IsEnabled = true;
-            ChkIncludeSelectedFiles.IsEnabled = true;
+            // Clear the query text box after successful submission
+            TxtFollowupQuestion.Text = string.Empty;
+
+            // Enable buttons for the response
             BtnSaveResponse.IsEnabled = true;
 
-            TxtStatus.Text = "Analysis complete!";
-            EndOperationTimer("CodeAnalysis");
-            LogOperation("Analysis workflow completed successfully");
+            TxtStatus.Text = "Query processed successfully!";
+            EndOperationTimer("QueryProcessing");
+            LogOperation("Query workflow completed successfully");
         }
         catch (Exception ex)
         {
-            LogOperation($"Error during analysis: {ex.Message}");
+            LogOperation($"Error processing query: {ex.Message}");
 
-            // Only show the error dialog if it's not a token limit error
-            // that we've already handled
             if (!ex.Message.StartsWith("Token limit exceeded:"))
             {
-                ErrorLogger.LogError(ex, "Analyzing code");
+                ErrorLogger.LogError(ex, "Processing query");
             }
 
-            TxtStatus.Text = "Error during analysis.";
-            EndOperationTimer("CodeAnalysis");
+            TxtStatus.Text = "Error processing query.";
+            EndOperationTimer("QueryProcessing");
         }
         finally
         {
             // Always reset the processing state
             SetProcessingState(false);
         }
+    }
+
+    private string GenerateMinimalPrompt(Dictionary<string, List<string>> consolidatedFiles)
+    {
+        var prompt = new StringBuilder();
+
+        // Skip the template, add a minimal instruction
+        prompt.AppendLine("Please analyze the following code files and provide feedback:");
+        prompt.AppendLine();
+
+        // Include files, grouped by extension
+        foreach (var ext in consolidatedFiles.Keys)
+        {
+            prompt.AppendLine($"--- {ext.ToUpperInvariant()} FILES ---");
+            prompt.AppendLine();
+
+            foreach (var fileContent in consolidatedFiles[ext])
+            {
+                prompt.AppendLine(fileContent);
+                prompt.AppendLine();
+            }
+        }
+
+        return prompt.ToString();
     }
 
     private Dictionary<string, List<string>> PrepareConsolidatedFiles()
@@ -1524,16 +1556,16 @@ public partial class MainWindow
             {
                 // Save the response text to the selected file
                 File.WriteAllText(saveFileDialog.FileName, _currentResponseText);
-            
+
                 // Update the current file path
                 _currentFilePath = saveFileDialog.FileName;
-            
+
                 // Add to recent files
                 AddToRecentFiles(saveFileDialog.FileName);
-            
+
                 TxtResponseCounter.Text = $"Viewing: {Path.GetFileName(saveFileDialog.FileName)}";
                 TxtStatus.Text = $"File saved: {Path.GetFileName(saveFileDialog.FileName)}";
-            
+
                 LogOperation($"Saved response to: {saveFileDialog.FileName}");
                 MessageBox.Show($"Response saved to {saveFileDialog.FileName}", "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -1556,7 +1588,7 @@ public partial class MainWindow
             {
                 // Check if content was edited before switching
                 var contentWasEdited = _currentResponseText != TxtResponse.Text;
-            
+
                 // If content was edited, ask user if they want to save
                 if (contentWasEdited)
                 {
@@ -1565,10 +1597,10 @@ public partial class MainWindow
                         "Save Changes",
                         MessageBoxButton.YesNoCancel,
                         MessageBoxImage.Question);
-                
+
                     if (result == MessageBoxResult.Cancel)
                     {
-                        // User cancelled, stay in raw text view
+                        // User canceled, stay in raw text view
                         return;
                     }
                     else if (result == MessageBoxResult.Yes)
@@ -2041,7 +2073,7 @@ public partial class MainWindow
         {
             // For a new response, set the index to the last response
             _currentResponseIndex = _conversationHistory.Count(m => m.Role == "assistant") - 1;
-        
+
             // Clear the current file path when generating a new response
             _currentFilePath = string.Empty;
         }
@@ -2312,15 +2344,15 @@ public partial class MainWindow
 
         return markdownContent;
     }
-    
+
     private T? FindVisualChild<T>(DependencyObject depObj) where T : DependencyObject
     {
         if (depObj == null) return null;
-    
+
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
         {
             var child = VisualTreeHelper.GetChild(depObj, i);
-        
+
             var result = (child as T) ?? FindVisualChild<T>(child);
             if (result != null) return result;
         }
@@ -2406,19 +2438,14 @@ public partial class MainWindow
                 TxtTokenCount.Text = string.Empty;
 
                 // Reset UI elements state
-                var analyzeButton = FindNameInWindow("BtnAnalyze") as Button ??
-                                    FindButtonByContent("Send Initial Prompt") as Button;
-                if (analyzeButton != null)
-                    analyzeButton.IsEnabled = true;
-
-                BtnSendFollowup.IsEnabled = false;
-                ChkIncludeSelectedFiles.IsEnabled = false;
+                BtnSendQuery.IsEnabled = true;
+                TxtFollowupQuestion.IsEnabled = true;
                 BtnSaveResponse.IsEnabled = false;
                 BtnToggleMarkdown.IsEnabled = false;
 
-                // Reset follow-up question
-                TxtFollowupQuestion.Text = string.Empty;
-                TxtFollowupQuestion.IsEnabled = true;
+                // Reset checkboxes to default state
+                ChkIncludeInitialPrompt.IsChecked = true;
+                ChkIncludeSelectedFiles.IsChecked = true;
 
                 // Reset AI provider
                 CboAiApi.SelectedIndex = -1; // Default to none
@@ -2437,10 +2464,10 @@ public partial class MainWindow
                 TxtStatus.Text = "Ready";
 
                 LogOperation("Application reset complete");
-                
+
                 // Clear current file path when restarting
                 _currentFilePath = string.Empty;
-                
+
                 BtnSaveEdits.IsEnabled = false;
             }
         }
@@ -2537,14 +2564,14 @@ public partial class MainWindow
     {
         Application.Current.Shutdown();
     }
-    
+
     private void BtnSaveEdits_Click(object sender, RoutedEventArgs e)
     {
         try
         {
             // Update the current response text with the edited content
             _currentResponseText = TxtResponse.Text;
-        
+
             // Set the markdown content with preprocessing
             var processedMarkdown = PreprocessMarkdown(_currentResponseText);
             MarkdownViewer.Markdown = processedMarkdown;
@@ -2556,7 +2583,7 @@ public partial class MainWindow
                 File.WriteAllText(_currentFilePath, _currentResponseText);
                 LogOperation($"Automatically saved edits to file: {_currentFilePath}");
                 TxtStatus.Text = $"Edits applied and saved to {Path.GetFileName(_currentFilePath)}";
-                MessageBox.Show($"Edits applied and saved to {Path.GetFileName(_currentFilePath)}", 
+                MessageBox.Show($"Edits applied and saved to {Path.GetFileName(_currentFilePath)}",
                     "Edits Saved", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             else
@@ -2564,7 +2591,7 @@ public partial class MainWindow
                 // No file path, so update the in-memory content
                 LogOperation("Applied edits to the content (not saved to file)");
                 TxtStatus.Text = "Edits applied (not saved to file)";
-                MessageBox.Show("Edits applied to the content. Use 'Save Response' to save to a file.", 
+                MessageBox.Show("Edits applied to the content. Use 'Save Response' to save to a file.",
                     "Edits Applied", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
