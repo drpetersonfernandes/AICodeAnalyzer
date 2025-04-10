@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace AICodeAnalyzer;
@@ -11,7 +12,7 @@ public partial class App
 {
     private FileAssociationManager? _fileAssociationManager;
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
@@ -22,7 +23,8 @@ public partial class App
         var settingsManager = new SettingsManager();
         if (settingsManager.Settings.RegisterAsDefaultMdHandler)
         {
-            _fileAssociationManager.RegisterApplication();
+            // Consider running this in the background since it involves registry operations
+            await Task.Run(() => _fileAssociationManager.RegisterApplication());
         }
 
         // Check for command-line arguments (file path)
@@ -32,11 +34,7 @@ public partial class App
             // Store the file path for later use in MainWindow
             Properties["StartupFilePath"] = filePath;
 
-            // If the MainWindow is already created, load the file immediately
-            if (MainWindow is MainWindow mainWindow)
-            {
-                mainWindow.LoadMarkdownFile(filePath);
-            }
+            // The MainWindow will handle loading the file asynchronously when it initializes
         }
     }
 
