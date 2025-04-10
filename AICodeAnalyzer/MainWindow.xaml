@@ -308,12 +308,15 @@
                       ToolTip="When checked, the initial prompt template will be included in your request" />
                      
             <CheckBox x:Name="ChkIncludeSelectedFiles" Content="Include selected files"
-                      IsChecked="True" Margin="0,0,0,0"
+                      IsChecked="True" Margin="0,0,0,5"
                       ToolTip="Include the files selected in the file list with your request" />
+            
+            <CheckBox x:Name="SendfollowUpReminder" Content="Send follow-up reminder with summary"
+                      IsChecked="False" Margin="0,0,0,0"
+                      ToolTip="Send follow-up reminder with summary" />
         </StackPanel>
         
         <!-- Text Input Area -->
-        <TextBlock Text="Enter your query or instructions:" Margin="0,0,0,5"/>
         <TextBox x:Name="TxtFollowupQuestion" Height="100" TextWrapping="Wrap"
                  AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
                  Margin="0,0,0,10"/>
@@ -399,12 +402,16 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Button x:Name="BtnSaveResponse" Content="Save Response" Grid.Column="0" Height="30"
+                        <Button x:Name="BtnShowInputQuery" Content="Show Input Query" Grid.Column="0" Height="30"
+                                Margin="0,0,2,0" Click="BtnShowInputQuery_Click" IsEnabled="False"
+                                ToolTip="Show the exact query and file summary sent to the AI"/>
+                        <Button x:Name="BtnSaveResponse" Content="Save Response" Grid.Column="1" Height="30"
                                 Margin="0,0,2,0" Click="BtnSaveResponse_Click" IsEnabled="False" />
-                        <Button x:Name="BtnSaveEdits" Content="Apply Edits" Grid.Column="1" Height="30"
+                        <Button x:Name="BtnSaveEdits" Content="Apply Edits" Grid.Column="2" Height="30"
                                 Margin="0,0,2,0" Click="BtnSaveEdits_Click" IsEnabled="False" />
-                        <Button x:Name="BtnToggleMarkdown" Content="Show Raw Text" Grid.Column="2" Height="30"
+                        <Button x:Name="BtnToggleMarkdown" Content="Show Raw Text" Grid.Column="3" Height="30"
                                 Margin="2,0,0,0" Click="BtnToggleMarkdown_Click" IsEnabled="False" />
                     </Grid>
 

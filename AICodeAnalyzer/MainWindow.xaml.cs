@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -12,6 +13,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using AICodeAnalyzer.AIProvider;
 using AICodeAnalyzer.Models;
+using Microsoft.Win32;
 using Microsoft.WindowsAPICodePack.Dialogs;
 
 namespace AICodeAnalyzer;
@@ -41,12 +43,15 @@ public partial class MainWindow
     private double _markdownZoomLevel = 100.0; // Current zoom level (default 100%)
     private readonly double _textBoxDefaultFontSize;
     private string _currentFilePath = string.Empty;
+    private bool _isShowingInputQuery; // Flag to track if input query is shown
+    private string _previousMarkdownContent = string.Empty; // Store Markdown content before showing input
+    private string _lastInputPrompt = string.Empty; // Store the last prompt sent
+    private readonly List<SourceFile> _lastIncludedFiles = new(); // Store files included in the last prompt
 
     public MainWindow()
     {
         InitializeComponent();
 
-        _textBoxDefaultFontSize = 12.0;
         _textBoxDefaultFontSize = TxtResponse.FontSize;
         TxtFollowupQuestion.IsEnabled = true;
         ChkIncludeSelectedFiles.IsEnabled = true;
@@ -108,6 +113,11 @@ public partial class MainWindow
                 BtnToggleMarkdown.IsEnabled = true;
                 BtnSaveResponse.IsEnabled = true;
                 BtnSaveEdits.IsEnabled = true; // Enable edit saving
+
+                // Disable input query button when loading a file
+                BtnShowInputQuery.IsEnabled = false;
+                _isShowingInputQuery = false;
+                BtnShowInputQuery.Content = "Show Input Query";
 
                 // Store the current file path
                 _currentFilePath = filePath;
@@ -186,6 +196,11 @@ public partial class MainWindow
         if (sender is MenuItem menuItem && menuItem.Tag is string filePath)
         {
             await LoadMarkdownFileAsync(filePath);
+
+            // Ensure input query button is disabled after loading
+            BtnShowInputQuery.IsEnabled = false;
+            _isShowingInputQuery = false;
+            BtnShowInputQuery.Content = "Show Input Query";
         }
     }
 
@@ -207,7 +222,7 @@ public partial class MainWindow
     {
         try
         {
-            var dialog = new Microsoft.Win32.OpenFileDialog
+            var dialog = new OpenFileDialog
             {
                 Title = "Open Markdown File",
                 Filter = "Markdown files (*.md)|*.md|Text files (*.txt)|*.txt|All files (*.*)|*.*",
@@ -665,7 +680,7 @@ public partial class MainWindow
             TxtStatus.Text = "Scanning folder for source files...";
             LogOperation($"Starting folder scan: {_selectedFolder}");
             StartOperationTimer("FolderScan");
-            SetProcessingState(true, "Scanning folder");
+            // SetProcessingState(true, "Scanning folder");
 
             _filesByExtension.Clear();
             LvFiles.Items.Clear();
@@ -853,7 +868,7 @@ public partial class MainWindow
         try
         {
             // Create file selection dialog
-            var dialog = new Microsoft.Win32.OpenFileDialog
+            var dialog = new OpenFileDialog
             {
                 Multiselect = true,
                 Title = "Select Source Files",
@@ -1151,7 +1166,7 @@ public partial class MainWindow
         // Get query text
         var queryText = TxtFollowupQuestion.Text.Trim();
 
-        var apiSelection = CboAiApi.SelectedItem?.ToString() ?? "Claude API";
+        var apiSelection = CboAiApi.SelectedItem?.ToString() ?? "Claude API"; // Default to Claude if none selected
 
         // Update status and show processing indicators
         var statusMessage = $"Processing with {apiSelection}";
@@ -1164,9 +1179,10 @@ public partial class MainWindow
         try
         {
             string prompt;
+            _lastIncludedFiles.Clear(); // Clear previous list
 
             // Determine if this is a follow-up or initial query based on conversation history
-            var isFollowUp = _conversationHistory.Count >= 2;
+            var isFollowUp = _conversationHistory.Count >= 2 && SendfollowUpReminder.IsChecked == true;
 
             if (isFollowUp)
             {
@@ -1176,79 +1192,98 @@ public partial class MainWindow
                 // Create enhanced follow-up prompt with context
                 prompt = GenerateContextualFollowupPrompt(queryText);
 
+                // Check if selected files should be appended
                 if (ChkIncludeSelectedFiles.IsChecked == true && LvFiles.SelectedItems.Count > 0)
                 {
-                    prompt = AppendSelectedFilesToPrompt(prompt);
-                    LogOperation("Added selected files to follow-up prompt");
+                    prompt = AppendSelectedFilesToPrompt(prompt, _lastIncludedFiles); // Pass list to populate
+                    LogOperation($"Added {_lastIncludedFiles.Count} selected files to follow-up prompt");
+                }
+                else
+                {
+                    LogOperation("No specific files selected for follow-up prompt");
                 }
 
-                // Add the original query to conversation history
+                // Add the user's follow-up text to conversation history
                 _conversationHistory.Add(new ChatMessage { Role = "user", Content = queryText });
             }
             else
             {
-                // This is an initial query - use the existing code path
-                LogOperation("Handling as initial query");
+                // This is an initial query or follow-up without reminder/context
+                LogOperation("Handling as initial query or simple follow-up");
 
-                // Prepare consolidated code files
-                StartOperationTimer("PrepareFiles");
-                var consolidatedFiles = PrepareConsolidatedFiles();
-                EndOperationTimer("PrepareFiles");
+                Dictionary<string, List<string>> consolidatedFiles = new Dictionary<string, List<string>>();
 
-                // Begin a new conversation
-                _conversationHistory.Clear();
-                LogOperation("Conversation history cleared");
+                // Prepare consolidated code files only if the checkbox is checked
+                if (ChkIncludeSelectedFiles.IsChecked == true)
+                {
+                    LogOperation("Preparing consolidated files for initial prompt");
+                    StartOperationTimer("PrepareFiles");
+                    consolidatedFiles = PrepareConsolidatedFiles(_lastIncludedFiles); // Pass list to populate
+                    EndOperationTimer("PrepareFiles");
+                    LogOperation($"Included {_lastIncludedFiles.Count} files based on selection/scan");
+                }
+                else
+                {
+                    LogOperation("Skipping file inclusion as requested");
+                }
 
-                // Check if we should include the initial prompt
+
+                // Begin a new conversation if it's truly initial
+                if (_conversationHistory.Count < 2 || SendfollowUpReminder.IsChecked == false)
+                {
+                    _conversationHistory.Clear();
+                    LogOperation("Conversation history cleared for new initial query");
+                }
+
+
+                // Check if we should include the initial prompt template
                 if (ChkIncludeInitialPrompt.IsChecked == true)
                 {
-                    LogOperation("Generating initial prompt");
+                    LogOperation("Generating prompt using template");
                     StartOperationTimer("GeneratePrompt");
-                    prompt = GenerateInitialPrompt(consolidatedFiles);
+                    prompt = GenerateInitialPrompt(consolidatedFiles); // Use the template
                     EndOperationTimer("GeneratePrompt");
                 }
                 else
                 {
-                    LogOperation("Skipping initial prompt template as requested");
+                    LogOperation("Generating minimal prompt (no template)");
                     StartOperationTimer("GeneratePrompt");
-                    prompt = GenerateMinimalPrompt(consolidatedFiles);
+                    prompt = GenerateMinimalPrompt(consolidatedFiles); // Just include files if any
                     EndOperationTimer("GeneratePrompt");
                 }
 
-                // Add query text to the prompt
+                // Add the additional query text if provided
                 if (!string.IsNullOrEmpty(queryText))
                 {
-                    prompt += "\n\nAdditional instructions or questions:\n" + queryText;
-                    LogOperation("Added query text to the initial prompt");
+                    prompt += "\n\n--- Additional Instructions/Question ---\n" + queryText;
+                    LogOperation("Added query text to the prompt");
                 }
 
-                // Check if we should include selected files
-                if (ChkIncludeSelectedFiles.IsChecked == true && LvFiles.SelectedItems.Count > 0)
-                {
-                    prompt = AppendSelectedFilesToPrompt(prompt);
-                    LogOperation("Added selected files to the prompt");
-                }
-
-                // Add user message to conversation history first
+                // Add the final constructed prompt as the user message to conversation history
                 _conversationHistory.Add(new ChatMessage { Role = "user", Content = prompt });
             }
+
+            // --- Store the final prompt before sending ---
+            _lastInputPrompt = prompt;
+            // _lastIncludedFiles is populated within PrepareConsolidatedFiles or AppendSelectedFilesToPrompt
 
             // Send prompt to selected API
             var response = await SendToAiApi(apiSelection, prompt);
 
             // Add assistant response to conversation history
             _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = response });
-            LogOperation("Conversation history updated");
+            LogOperation("Conversation history updated with assistant response");
 
             // Display the response
             LogOperation("Updating UI with response");
-            UpdateResponseDisplay(response, true);
+            UpdateResponseDisplay(response, true); // isNewResponse = true
 
             // Clear the query text box after successful submission
             TxtFollowupQuestion.Text = string.Empty;
 
             // Enable buttons for the response
             BtnSaveResponse.IsEnabled = true;
+            BtnShowInputQuery.IsEnabled = true; // Enable the new button
 
             TxtStatus.Text = "Query processed successfully!";
             EndOperationTimer("QueryProcessing");
@@ -1258,7 +1293,8 @@ public partial class MainWindow
         {
             LogOperation($"Error processing query: {ex.Message}");
 
-            if (!ex.Message.StartsWith("Token limit exceeded:"))
+            // Avoid showing ErrorLogger dialog for token limits or self-thrown exceptions
+            if (!ex.Message.StartsWith("Token limit exceeded:") && !(ex is ApplicationException))
             {
                 ErrorLogger.LogError(ex, "Processing query");
             }
@@ -1270,6 +1306,11 @@ public partial class MainWindow
         {
             // Always reset the processing state
             SetProcessingState(false);
+
+            // Reset checkboxes for next query (optional, based on desired UX)
+            // ChkIncludeInitialPrompt.IsChecked = true;
+            // ChkIncludeSelectedFiles.IsChecked = true;
+            // SendfollowUpReminder.IsChecked = false; // Default to not sending reminder
         }
     }
 
@@ -1277,30 +1318,39 @@ public partial class MainWindow
     {
         var prompt = new StringBuilder();
 
-        // Skip the template, add a minimal instruction
-        prompt.AppendLine("Please analyze the following code files and provide feedback:");
-        prompt.AppendLine();
-
-        // Include files, grouped by extension
-        foreach (var ext in consolidatedFiles.Keys)
+        // Skip the template, add a minimal instruction if files are included
+        if (consolidatedFiles.Any())
         {
-            prompt.AppendLine($"--- {ext.ToUpperInvariant()} FILES ---");
+            prompt.AppendLine("Please analyze the following code files:");
             prompt.AppendLine();
 
-            foreach (var fileContent in consolidatedFiles[ext])
+            // Include files, grouped by extension
+            foreach (var ext in consolidatedFiles.Keys)
             {
-                prompt.AppendLine(fileContent);
+                prompt.AppendLine($"--- {ext.ToUpperInvariant()} FILES ---");
                 prompt.AppendLine();
+
+                foreach (var fileContent in consolidatedFiles[ext])
+                {
+                    prompt.AppendLine(fileContent);
+                    prompt.AppendLine();
+                }
             }
         }
+        else
+        {
+            prompt.AppendLine("Please respond to the following:"); // Base instruction if no files
+            prompt.AppendLine();
+        }
+
 
         return prompt.ToString();
     }
 
-    private Dictionary<string, List<string>> PrepareConsolidatedFiles()
+    private Dictionary<string, List<string>> PrepareConsolidatedFiles(List<SourceFile> includedFiles)
     {
-        // This dictionary will hold file content grouped by extension
         var consolidatedFiles = new Dictionary<string, List<string>>();
+        includedFiles.Clear(); // Start fresh
 
         foreach (var ext in _filesByExtension.Keys)
         {
@@ -1315,6 +1365,7 @@ public partial class MainWindow
             {
                 // Format each file with a header showing a relative path
                 consolidatedFiles[ext].Add($"File: {file.RelativePath}\n```{GetLanguageForExtension(ext)}\n{file.Content}\n```\n");
+                includedFiles.Add(file); // Add to the list of included files
             }
         }
 
@@ -1366,25 +1417,35 @@ public partial class MainWindow
     {
         var prompt = new StringBuilder();
 
-        // Get the selected prompt content
-        var promptTemplate = _settingsManager.Settings.InitialPrompt;
+        // Get the selected prompt content from the dropdown or settings
+        var selectedPromptTemplate = CboPromptTemplate.SelectedItem as CodePrompt;
+        var promptTemplate = selectedPromptTemplate?.Content ?? _settingsManager.Settings.InitialPrompt; // Fallback
 
         // Use the template as the basis for the prompt
         prompt.AppendLine(promptTemplate);
         prompt.AppendLine();
 
-        // Include files, grouped by extension
-        foreach (var ext in consolidatedFiles.Keys)
+        // Include files, grouped by extension, if any
+        if (consolidatedFiles.Any())
         {
-            prompt.AppendLine($"--- {ext.ToUpperInvariant()} FILES ---");
-            prompt.AppendLine();
-
-            foreach (var fileContent in consolidatedFiles[ext])
+            foreach (var ext in consolidatedFiles.Keys)
             {
-                prompt.AppendLine(fileContent);
+                prompt.AppendLine($"--- {ext.ToUpperInvariant()} FILES ---");
                 prompt.AppendLine();
+
+                foreach (var fileContent in consolidatedFiles[ext])
+                {
+                    prompt.AppendLine(fileContent);
+                    prompt.AppendLine();
+                }
             }
         }
+        else
+        {
+            prompt.AppendLine("--- NO FILES INCLUDED ---");
+            prompt.AppendLine();
+        }
+
 
         return prompt.ToString();
     }
@@ -1419,7 +1480,7 @@ public partial class MainWindow
             if (ChkIncludeSelectedFiles.IsChecked == true && LvFiles.SelectedItems.Count > 0)
             {
                 // Add information about selected files to the prompt
-                enhancedPrompt = AppendSelectedFilesToPrompt(enhancedPrompt);
+                enhancedPrompt = AppendSelectedFilesToPrompt(enhancedPrompt, _lastIncludedFiles);
             }
 
             // Add the user question to the conversation history first
@@ -1465,36 +1526,52 @@ public partial class MainWindow
         }
     }
 
-    private string AppendSelectedFilesToPrompt(string originalPrompt)
+    private string AppendSelectedFilesToPrompt(string originalPrompt, List<SourceFile> includedFiles)
     {
         var promptBuilder = new StringBuilder(originalPrompt);
+        includedFiles.Clear(); // Start fresh for selected files
 
         promptBuilder.AppendLine();
-        promptBuilder.AppendLine("--- SELECTED FILES FOR REFERENCE ---");
+        promptBuilder.AppendLine("--- SELECTED FILES FOR FOCUSED REFERENCE ---");
         promptBuilder.AppendLine();
 
         var selectedFileNames = new List<string>();
         var selectedFilesContent = new StringBuilder();
         var fileCount = 0;
 
+        // Ensure LvFiles.SelectedItems is accessed on the UI thread if necessary,
+        // but since this method is likely called from BtnAnalyze_Click (UI thread), it should be fine.
         foreach (var item in LvFiles.SelectedItems)
         {
-            if (item is string fileName && !fileName.StartsWith("=====") && !fileName.TrimStart().StartsWith("("))
+            // Check if the item is a string representing a file path/name
+            if (item is string displayString)
             {
-                // Handle file entries (not folder or summary headers)
-                // Trim any leading spaces or + signs used for displaying in the list
-                var cleanFileName = fileName.TrimStart(' ', '+');
-
-                // Find the matching file in our file collection
-                foreach (var extensionFiles in _filesByExtension.Values)
+                // Basic check to filter out headers or summary lines
+                if (!displayString.StartsWith("=====") && !displayString.Contains(" files") && !displayString.Contains(" - "))
                 {
-                    var matchingFile = extensionFiles.FirstOrDefault(f =>
-                        Path.GetFileName(f.RelativePath).Equals(cleanFileName, StringComparison.OrdinalIgnoreCase));
+                    // Clean the display string (remove potential prefixes like '+ ' or '    ')
+                    var cleanFileName = displayString.TrimStart(' ', '+');
 
+                    // Find the matching SourceFile object across all extensions
+                    SourceFile? matchingFile = null;
+                    foreach (var extensionFiles in _filesByExtension.Values)
+                    {
+                        // Match against the file name part of the RelativePath
+                        matchingFile = extensionFiles.FirstOrDefault(f =>
+                            Path.GetFileName(f.RelativePath).Equals(cleanFileName, StringComparison.OrdinalIgnoreCase));
+
+                        if (matchingFile != null)
+                        {
+                            break; // Found the file, exit inner loop
+                        }
+                    }
+
+                    // If a matching file was found
                     if (matchingFile != null)
                     {
                         fileCount++;
-                        selectedFileNames.Add(matchingFile.RelativePath);
+                        selectedFileNames.Add(matchingFile.RelativePath); // Add relative path to the summary list
+                        includedFiles.Add(matchingFile); // Add the SourceFile object to the list
 
                         // Append file content in a code block with language identification
                         selectedFilesContent.AppendLine($"File: {matchingFile.RelativePath}");
@@ -1502,79 +1579,102 @@ public partial class MainWindow
                         selectedFilesContent.AppendLine(matchingFile.Content);
                         selectedFilesContent.AppendLine("```");
                         selectedFilesContent.AppendLine();
-
-                        // Break out of the inner loop once file is found
-                        break;
+                    }
+                    else
+                    {
+                        LogOperation($"Warning: Could not find source file data for selected item: '{cleanFileName}'");
                     }
                 }
             }
-        }
+        } // End foreach selected item
 
-        // Add summary of selected files
-        promptBuilder.AppendLine($"I've included {fileCount} selected files for your reference:");
-        foreach (var fileName in selectedFileNames)
+        // Add summary of selected files to the prompt
+        if (fileCount > 0)
         {
-            promptBuilder.AppendLine($"- {fileName}");
+            promptBuilder.AppendLine($"Specifically, I've selected the following {fileCount} file(s) for you to focus on or reference:");
+            foreach (var fileName in selectedFileNames)
+            {
+                promptBuilder.AppendLine($"- {fileName}");
+            }
+
+            promptBuilder.AppendLine();
+
+            // Add the file contents
+            promptBuilder.Append(selectedFilesContent);
+        }
+        else
+        {
+            promptBuilder.AppendLine("(No specific files were selected in the list for focused reference)");
+            promptBuilder.AppendLine();
         }
 
-        promptBuilder.AppendLine();
-
-        // Add the file contents
-        promptBuilder.Append(selectedFilesContent);
 
         // Log the operation
-        LogOperation($"Included {fileCount} selected files in follow-up question");
+        LogOperation($"Included {fileCount} specifically selected files in the prompt");
 
         return promptBuilder.ToString();
     }
 
     private string GenerateContextualFollowupPrompt(string followupQuestion)
     {
-        // Check if there are previous messages
-        if (_conversationHistory.Count < 2)
+        // Check if the reminder/context should be added
+        if (SendfollowUpReminder.IsChecked == true)
         {
-            // If no previous conversation, just return the follow-up question as is
-            return followupQuestion;
-        }
-
-        var promptBuilder = new StringBuilder();
-
-        // Add context about this being a follow-up question about previously analyzed code
-        promptBuilder.AppendLine("This is a follow-up question regarding the source code I previously shared with you. Please reference the code files from our earlier discussion when responding.");
-        promptBuilder.AppendLine();
-
-        // List a few files analyzed to provide better context
-        promptBuilder.AppendLine("The previous analysis covered files including:");
-
-        // Get up to 5 representative files from the analyzed code
-        var filesList = new List<string>();
-        foreach (var ext in _filesByExtension.Keys)
-        {
-            foreach (var file in _filesByExtension[ext].Take(2)) // Take up to 2 files per extension
+            // Check if there are previous messages to provide context from
+            if (_conversationHistory.Count < 2)
             {
-                filesList.Add(file.RelativePath);
-                if (filesList.Count >= 5) break; // Limit to 5 total files
+                // If no previous conversation, just return the follow-up question as is
+                LogOperation("Sending follow-up question without context (no prior conversation)");
+                return followupQuestion;
             }
 
-            if (filesList.Count >= 5) break;
-        }
+            var promptBuilder = new StringBuilder();
 
-        // Add file names to the prompt
-        foreach (var file in filesList)
+            // Add context about this being a follow-up question about previously analyzed code
+            promptBuilder.AppendLine("This is a follow-up question regarding the source code I previously shared with you. Please reference the code files and our earlier discussion when responding.");
+            promptBuilder.AppendLine();
+
+            // List a few files analyzed to provide better context (using the *actual* files from the last analysis)
+            promptBuilder.AppendLine("The previous analysis likely covered files including:");
+
+            // Get up to 5 representative files from the *last included* files
+            var filesList = _lastIncludedFiles.Take(5).Select(f => f.RelativePath).ToList();
+
+            // Add file names to the prompt
+            if (filesList.Any())
+            {
+                foreach (var file in filesList)
+                {
+                    promptBuilder.AppendLine($"- {file}");
+                }
+
+                 // Add the total file count for context
+                var totalFiles = _lastIncludedFiles.Count;
+                if (totalFiles > filesList.Count)
+                {
+                    promptBuilder.AppendLine($"And {totalFiles - filesList.Count} more files.");
+                }
+            }
+            else
+            {
+                promptBuilder.AppendLine("(No specific files were recorded from the previous interaction)");
+            }
+
+            promptBuilder.AppendLine();
+
+            // Finally, add the actual follow-up question
+            promptBuilder.AppendLine("My follow-up question is:");
+            promptBuilder.AppendLine(followupQuestion);
+
+            LogOperation("Generated contextual follow-up prompt");
+            return promptBuilder.ToString();
+        }
+        else
         {
-            promptBuilder.AppendLine($"- {file}");
+            // If the reminder checkbox is unchecked, send the question directly
+            LogOperation("Sending follow-up question without context (reminder unchecked)");
+            return followupQuestion;
         }
-
-        // Add the total file count for context
-        var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
-        promptBuilder.AppendLine($"And {totalFiles - filesList.Count} more files.");
-        promptBuilder.AppendLine();
-
-        // Finally, add the actual follow-up question
-        promptBuilder.AppendLine("My follow-up question is:");
-        promptBuilder.AppendLine(followupQuestion);
-
-        return promptBuilder.ToString();
     }
 
     private async void BtnSaveResponse_Click(object sender, RoutedEventArgs e)
@@ -1628,7 +1728,7 @@ public partial class MainWindow
             }
 
             // Create a save file dialog
-            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+            var saveFileDialog = new SaveFileDialog
             {
                 Filter = "Markdown files (*.md)|*.md|Text files (*.txt)|*.txt|All files (*.*)|*.*",
                 DefaultExt = "md", // Default to markdown since the responses are markdown formatted
@@ -2154,14 +2254,14 @@ public partial class MainWindow
                     var message = ex.Message;
 
                     // Extract model limit
-                    var limitMatch = System.Text.RegularExpressions.Regex.Match(message, @"maximum context length is (\d+)");
+                    var limitMatch = Regex.Match(message, @"maximum context length is (\d+)");
                     if (limitMatch.Success && limitMatch.Groups.Count > 1)
                     {
                         modelLimit = int.Parse(limitMatch.Groups[1].Value);
                     }
 
                     // Extract actual tokens
-                    var tokensMatch = System.Text.RegularExpressions.Regex.Match(message, @"you requested (\d+) tokens");
+                    var tokensMatch = Regex.Match(message, @"you requested (\d+) tokens");
                     if (tokensMatch.Success && tokensMatch.Groups.Count > 1)
                     {
                         actualTokens = int.Parse(tokensMatch.Groups[1].Value);
@@ -2285,12 +2385,28 @@ public partial class MainWindow
 
     private void UpdateResponseDisplay(string responseText, bool isNewResponse = false)
     {
-        _currentResponseText = responseText;
-        TxtResponse.Text = responseText;
+        // If we are currently showing the input query, switch back first
+        if (_isShowingInputQuery)
+        {
+            _isShowingInputQuery = false; // Reset the flag
+             // Restore the previous content (which should be the latest AI response)
+            MarkdownViewer.Markdown = _previousMarkdownContent;
+            BtnShowInputQuery.Content = "Show Input Query";
+            // Re-enable buttons that were disabled
+            UpdateNavigationControls(); // Handles Prev/Next based on _currentResponseIndex
+            BtnSaveResponse.IsEnabled = !string.IsNullOrEmpty(_currentResponseText);
+            BtnSaveEdits.IsEnabled = !string.IsNullOrEmpty(_currentResponseText);
+            BtnToggleMarkdown.IsEnabled = !string.IsNullOrEmpty(_currentResponseText);
+            LogOperation("Switched back from Input Query view to show new AI response.");
+        }
+
+        _currentResponseText = responseText; // Store the actual AI response
+        TxtResponse.Text = responseText; // Update raw text view
 
         // Apply preprocessing to fix markdown rendering issues
         var processedMarkdown = PreprocessMarkdown(responseText);
-        MarkdownViewer.Markdown = processedMarkdown;
+        MarkdownViewer.Markdown = processedMarkdown; // Update rendered view
+        _previousMarkdownContent = processedMarkdown; // Update the stored content for toggle
 
         if (isNewResponse)
         {
@@ -2313,6 +2429,7 @@ public partial class MainWindow
         BtnToggleMarkdown.IsEnabled = true;
         BtnSaveResponse.IsEnabled = true;
         BtnSaveEdits.IsEnabled = true;
+        // BtnShowInputQuery is enabled in BtnAnalyze_Click after success
 
         if (isNewResponse)
         {
@@ -2640,6 +2757,7 @@ public partial class MainWindow
                 MarkdownViewer.Markdown = string.Empty;
                 TxtResponse.Text = string.Empty;
                 _currentResponseText = string.Empty;
+                _previousMarkdownContent = string.Empty; // Clear stored markdown
 
                 // Reset response counter and navigation
                 _conversationHistory.Clear();
@@ -2660,15 +2778,26 @@ public partial class MainWindow
                 _estimatedTokenCount = 0;
                 TxtTokenCount.Text = string.Empty;
 
+                // Clear last prompt/files state
+                _lastInputPrompt = string.Empty;
+                _lastIncludedFiles.Clear();
+                _isShowingInputQuery = false;
+
                 // Reset UI elements state
                 BtnSendQuery.IsEnabled = true;
                 TxtFollowupQuestion.IsEnabled = true;
                 BtnSaveResponse.IsEnabled = false;
                 BtnToggleMarkdown.IsEnabled = false;
+                BtnShowInputQuery.IsEnabled = false; // Disable show input button
+                BtnShowInputQuery.Content = "Show Input Query";
+                BtnSaveEdits.IsEnabled = false;
+
 
                 // Reset checkboxes to default state
                 ChkIncludeInitialPrompt.IsChecked = true;
                 ChkIncludeSelectedFiles.IsChecked = true;
+                SendfollowUpReminder.IsChecked = false; // Reset reminder checkbox
+
 
                 // Reset AI provider
                 CboAiApi.SelectedIndex = -1; // Default to none
@@ -2690,8 +2819,6 @@ public partial class MainWindow
 
                 // Clear current file path when restarting
                 _currentFilePath = string.Empty;
-
-                BtnSaveEdits.IsEnabled = false;
             }
         }
         catch (Exception ex)
@@ -2701,7 +2828,7 @@ public partial class MainWindow
         }
     }
 
-    private void MenuOpenPastResponses_Click(object sender, RoutedEventArgs e)
+    private async void MenuOpenPastResponses_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -2718,7 +2845,7 @@ public partial class MainWindow
             }
 
             // Create file selection dialog
-            var dialog = new Microsoft.Win32.OpenFileDialog
+            var dialog = new OpenFileDialog
             {
                 Title = "Open Past Response",
                 Filter = "Markdown files (*.md)|*.md|Text files (*.txt)|*.txt|All files (*.*)|*.*",
@@ -2734,7 +2861,7 @@ public partial class MainWindow
                 _currentFilePath = dialog.FileName;
 
                 // Read the file content
-                var responseText = File.ReadAllText(dialog.FileName);
+                var responseText = await Task.Run(() => File.ReadAllText(dialog.FileName)); // Read async
 
                 // Display in the MarkdownViewer
                 _currentResponseText = responseText;
@@ -2742,6 +2869,7 @@ public partial class MainWindow
 
                 // Apply preprocessing to fix markdown rendering issues
                 var processedMarkdown = PreprocessMarkdown(responseText);
+                _previousMarkdownContent = processedMarkdown; // Store for toggling
                 MarkdownViewer.Markdown = processedMarkdown;
 
                 // Use the original file name in the response counter
@@ -2752,10 +2880,16 @@ public partial class MainWindow
                 BtnToggleMarkdown.IsEnabled = true;
                 BtnSaveEdits.IsEnabled = true; // Enable edit saving
 
+                // Disable input query button when loading a file
+                BtnShowInputQuery.IsEnabled = false;
+                _isShowingInputQuery = false;
+                BtnShowInputQuery.Content = "Show Input Query";
+
+
                 // Ensure we're in markdown view mode
                 if (!_isMarkdownViewActive)
                 {
-                    // Instead of calling the click handler with null, directly update the view state
+                    // Directly update the view state
                     _isMarkdownViewActive = true;
                     TxtResponse.Visibility = Visibility.Collapsed;
                     MarkdownScrollViewer.Visibility = Visibility.Visible;
@@ -2788,22 +2922,47 @@ public partial class MainWindow
         Application.Current.Shutdown();
     }
 
-    private void BtnSaveEdits_Click(object sender, RoutedEventArgs e)
+    private async void BtnSaveEdits_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            // Update the current response text with the edited content
-            _currentResponseText = TxtResponse.Text;
+            // Ensure we are not showing the input query
+            if (_isShowingInputQuery)
+            {
+                MessageBox.Show("Cannot save edits while viewing the input query. Please switch back to the AI response first.",
+                    "Save Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
-            // Set the markdown content with preprocessing
+            // Update the current response text with the edited content from the raw text view
+            if (!_isMarkdownViewActive) // Only update if in raw text view
+            {
+                _currentResponseText = TxtResponse.Text;
+            }
+            else // If in markdown view, the content is conceptually read-only here, but we sync anyway
+            {
+                 // Potentially get content from MarkdownViewer if it were editable,
+                 // but Markdig.Wpf viewer isn't directly editable like TextBox.
+                 // We assume edits happen in TxtResponse. So, if _isMarkdownViewActive is true,
+                 // we might need to decide if saving edits is allowed or if the user should switch first.
+                 // For simplicity, let's assume edits are primarily done in TxtResponse.
+                 // If the user somehow edited the underlying document (unlikely with current setup),
+                 // those changes wouldn't be captured here.
+                 // Let's update _previousMarkdownContent just in case.
+                 _previousMarkdownContent = PreprocessMarkdown(_currentResponseText);
+            }
+
+
+            // Set the markdown content with preprocessing (updates the viewer if visible)
             var processedMarkdown = PreprocessMarkdown(_currentResponseText);
             MarkdownViewer.Markdown = processedMarkdown;
+            _previousMarkdownContent = processedMarkdown; // Keep stored content in sync
 
             // If we have a file path, automatically save changes to that file
             if (!string.IsNullOrEmpty(_currentFilePath) && File.Exists(_currentFilePath))
             {
-                // Save the changes to the file
-                File.WriteAllText(_currentFilePath, _currentResponseText);
+                // Save the changes to the file asynchronously
+                await Task.Run(() => File.WriteAllText(_currentFilePath, _currentResponseText));
                 LogOperation($"Automatically saved edits to file: {_currentFilePath}");
                 TxtStatus.Text = $"Edits applied and saved to {Path.GetFileName(_currentFilePath)}";
                 MessageBox.Show($"Edits applied and saved to {Path.GetFileName(_currentFilePath)}",
@@ -2823,6 +2982,116 @@ public partial class MainWindow
             LogOperation($"Error saving edits: {ex.Message}");
             ErrorLogger.LogError(ex, "Saving edited markdown");
             MessageBox.Show("An error occurred while saving your edits.", "Edit Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void BtnShowInputQuery_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _isShowingInputQuery = !_isShowingInputQuery; // Toggle the state
+
+            if (_isShowingInputQuery)
+            {
+                // --- Show Input Query ---
+                LogOperation("Showing input query view");
+
+                // 1. Save current Markdown view content
+                // We assume _previousMarkdownContent holds the latest AI response markdown
+                // If the user was in raw text view, _currentResponseText holds the latest,
+                // but we need the *rendered* version to restore later.
+                // Let's ensure _previousMarkdownContent is up-to-date with the AI response.
+                // Note: If the user edited the raw text but didn't click "Apply Edits",
+                // _previousMarkdownContent might not reflect those edits.
+                // This is acceptable; we show the *last known AI response* when toggling back.
+
+                // 2. Generate File Summary
+                var fileSummary = new StringBuilder();
+                fileSummary.AppendLine("## Files Included in Query");
+                fileSummary.AppendLine($"Total files: {_lastIncludedFiles.Count}");
+                if (_lastIncludedFiles.Any())
+                {
+                    fileSummary.AppendLine("```"); // Use a simple code block for the list
+                    foreach (var file in _lastIncludedFiles.OrderBy(f => f.RelativePath))
+                    {
+                        fileSummary.AppendLine($"- {file.RelativePath} ({file.Extension})");
+                    }
+
+                    fileSummary.AppendLine("```");
+                }
+                else
+                {
+                    fileSummary.AppendLine("\n_(No files were included in this query)_");
+                }
+
+                fileSummary.AppendLine("\n---\n");
+
+
+                // 3. Combine Summary and Prompt
+                var fullInputView = new StringBuilder();
+                fullInputView.Append(fileSummary);
+                fullInputView.AppendLine("## Full Input Prompt Sent to AI");
+                fullInputView.AppendLine("```text"); // Display prompt as plain text
+                fullInputView.AppendLine(_lastInputPrompt);
+                fullInputView.AppendLine("```");
+
+                // 4. Update MarkdownViewer
+                // Ensure we are in Markdown view visually
+                if (!_isMarkdownViewActive)
+                {
+                     // Force switch to Markdown view UI elements
+                     TxtResponse.Visibility = Visibility.Collapsed;
+                     MarkdownScrollViewer.Visibility = Visibility.Visible;
+                     BtnToggleMarkdown.Content = "Show Raw Text";
+                     _isMarkdownViewActive = true; // Update state flag
+                     LogOperation("Switched UI to markdown view to show input query");
+                }
+
+                MarkdownViewer.Markdown = fullInputView.ToString();
+                UpdateMarkdownPageWidth(); // Adjust width for the new content
+
+                // 5. Update Button Text
+                BtnShowInputQuery.Content = "Show AI Response";
+
+                // 6. Disable irrelevant buttons
+                BtnPreviousResponse.IsEnabled = false;
+                BtnNextResponse.IsEnabled = false;
+                BtnSaveResponse.IsEnabled = false;
+                BtnSaveEdits.IsEnabled = false;
+                BtnToggleMarkdown.IsEnabled = false; // Disable toggling while showing input
+            }
+            else
+            {
+                // --- Show AI Response ---
+                LogOperation("Showing AI response view");
+
+                // 1. Restore previous Markdown content
+                MarkdownViewer.Markdown = _previousMarkdownContent; // Restore the saved AI response
+                UpdateMarkdownPageWidth();
+
+                // 2. Update Button Text
+                BtnShowInputQuery.Content = "Show Input Query";
+
+                // 3. Re-enable buttons based on actual state
+                UpdateNavigationControls(); // Handles Prev/Next based on _currentResponseIndex
+                BtnSaveResponse.IsEnabled = !string.IsNullOrEmpty(_currentResponseText);
+                BtnSaveEdits.IsEnabled = !string.IsNullOrEmpty(_currentResponseText);
+                BtnToggleMarkdown.IsEnabled = !string.IsNullOrEmpty(_currentResponseText);
+            }
+        }
+        catch (Exception ex)
+        {
+            LogOperation($"Error toggling input query view: {ex.Message}");
+            ErrorLogger.LogError(ex, "Toggling input query view");
+
+            // Attempt to restore a sane state
+            _isShowingInputQuery = false;
+            MarkdownViewer.Markdown = _previousMarkdownContent;
+            BtnShowInputQuery.Content = "Show Input Query";
+            UpdateNavigationControls();
+            BtnSaveResponse.IsEnabled = !string.IsNullOrEmpty(_currentResponseText);
+            BtnSaveEdits.IsEnabled = !string.IsNullOrEmpty(_currentResponseText);
+            BtnToggleMarkdown.IsEnabled = !string.IsNullOrEmpty(_currentResponseText);
         }
     }
 }
