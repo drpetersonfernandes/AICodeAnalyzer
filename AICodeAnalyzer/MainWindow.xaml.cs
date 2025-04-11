@@ -1285,38 +1285,78 @@ public partial class MainWindow
 
         try
         {
-            // Determine context mode and generate appropriate prompt
+            // Initialize prompt variable
             string prompt;
-            var isFollowUp = _conversationHistory.Count >= 2 && SendfollowUpReminder.IsChecked == true;
 
             // Create a temporary list to track files for this specific query
             var currentQueryFiles = new List<SourceFile>();
 
+            // Determine if we're in follow-up mode
+            var isFollowUp = _conversationHistory.Count >= 2 && SendfollowUpReminder.IsChecked == true;
+
             if (isFollowUp)
             {
-                // Process as follow-up query - use existing file history
+                // Process as follow-up query
                 LogOperation($"Handling as follow-up question with {_lastIncludedFiles.Count} previous files");
                 prompt = GenerateContextualFollowupPrompt(queryText);
 
-                // Add selected files if option is checked
-                if (ChkIncludeSelectedFiles.IsChecked == true && LvFiles.SelectedItems.Count > 0)
+                // Add initial prompt if checked
+                if (ChkIncludeInitialPrompt.IsChecked == true)
                 {
-                    // Pass current list without clearing _lastIncludedFiles
-                    prompt = AppendSelectedFilesToPrompt(prompt, currentQueryFiles);
-                    LogOperation($"Added {currentQueryFiles.Count} selected files to follow-up prompt");
+                    var templatePrompt = GetPromptTemplateText();
+                    prompt = templatePrompt + "\n\n--- Follow-up Context ---\n\n" + prompt;
+                }
+
+                // Add selected files if option is checked
+                if (ChkIncludeSelectedFiles.IsChecked == true)
+                {
+                    // ALWAYS include files if the checkbox is checked
+                    if (LvFiles.SelectedItems.Count > 0)
+                    {
+                        // Use only specifically selected files
+                        prompt = AppendSelectedFilesToPrompt(prompt, currentQueryFiles);
+                        LogOperation($"Added {currentQueryFiles.Count} specifically selected files to follow-up prompt");
+                    }
+                    else if (_filesByExtension.Count > 0)
+                    {
+                        // Use all files if nothing specific is selected but we have files
+                        var allFilesSummary = new StringBuilder();
+                        allFilesSummary.AppendLine("\n\n--- ALL FILES INCLUDED FOR ANALYSIS ---\n");
+
+                        // Add the files
+                        foreach (var extensionGroup in _filesByExtension)
+                        {
+                            allFilesSummary.AppendLine($"### {extensionGroup.Key.ToUpperInvariant()} FILES ({extensionGroup.Value.Count})");
+                            foreach (var file in extensionGroup.Value)
+                            {
+                                allFilesSummary.AppendLine($"- {file.RelativePath}");
+                                currentQueryFiles.Add(file);
+                            }
+
+                            allFilesSummary.AppendLine();
+                        }
+
+                        prompt += allFilesSummary.ToString();
+                        LogOperation($"Added all {currentQueryFiles.Count} files to follow-up prompt");
+                    }
+                    else
+                    {
+                        LogOperation("No files to include in follow-up prompt");
+                    }
 
                     // Update master list with any newly selected files
                     if (currentQueryFiles.Count > 0)
                     {
-                        // Add any new files that aren't already in the master list
-                        foreach (var file in currentQueryFiles)
-                        {
-                            if (_lastIncludedFiles.All(f => f.Path != file.Path))
-                            {
-                                _lastIncludedFiles.Add(file);
-                            }
-                        }
+                        _lastIncludedFiles.Clear(); // Start fresh for clarity
+                        _lastIncludedFiles.AddRange(currentQueryFiles);
+                        LogOperation($"Updated master file list with {_lastIncludedFiles.Count} files");
                     }
+                }
+                else
+                {
+                    // If not including files in this query, clear the master list
+                    _lastIncludedFiles.Clear();
+                    LogOperation("Cleared master file list as Include Files was unchecked");
                 }
 
                 // Add to conversation history
@@ -1324,57 +1364,95 @@ public partial class MainWindow
             }
             else
             {
-                // Process as initial query or simple follow-up
+                // Process as initial query or non-follow-up
                 LogOperation("Handling as initial query or simple follow-up");
 
-                // Prepare files if option is checked
-                var consolidatedFiles = new Dictionary<string, List<string>>();
+                // First determine if we need to include files
                 if (ChkIncludeSelectedFiles.IsChecked == true)
                 {
-                    LogOperation("Preparing consolidated files for prompt");
+                    LogOperation("Include Files checkbox is checked - preparing files");
                     StartOperationTimer("PrepareFiles");
-                    consolidatedFiles = PrepareConsolidatedFiles(currentQueryFiles);
-                    EndOperationTimer("PrepareFiles");
-                    LogOperation($"Included {currentQueryFiles.Count} files");
 
-                    // For new queries, replace the master list completely
+                    // Generate base prompt based on whether to include template
+                    if (ChkIncludeInitialPrompt.IsChecked == true)
+                    {
+                        LogOperation("Including prompt template");
+                        prompt = GetPromptTemplateText() + "\n\n";
+                    }
+                    else
+                    {
+                        LogOperation("Not using prompt template");
+                        prompt = "Please analyze the following code files:\n\n";
+                    }
+
+                    // Now determine which files to include
+                    if (LvFiles.SelectedItems.Count > 0)
+                    {
+                        // User has specifically selected files in the list
+                        prompt = AppendSelectedFilesToPrompt(prompt, currentQueryFiles);
+                        LogOperation($"Added {currentQueryFiles.Count} specifically selected files to the prompt");
+                    }
+                    else if (_filesByExtension.Count > 0)
+                    {
+                        // No specific selection, include all files
+                        var consolidatedFiles = PrepareConsolidatedFiles(currentQueryFiles);
+
+                        // Add files to the prompt
+                        foreach (var ext in consolidatedFiles.Keys)
+                        {
+                            prompt += $"--- {ext.ToUpperInvariant()} FILES ---\n\n";
+
+                            foreach (var fileContent in consolidatedFiles[ext])
+                            {
+                                prompt += fileContent + "\n\n";
+                            }
+                        }
+
+                        LogOperation($"Added all {currentQueryFiles.Count} files to the prompt");
+                    }
+                    else
+                    {
+                        prompt += "--- NO FILES AVAILABLE TO INCLUDE ---\n\n";
+                        LogOperation("No files available to include");
+                    }
+
+                    EndOperationTimer("PrepareFiles");
+
+                    // Update the master list of included files
                     _lastIncludedFiles.Clear();
                     _lastIncludedFiles.AddRange(currentQueryFiles);
-                    LogOperation($"Updated master file list with {_lastIncludedFiles.Count} files");
+                    LogOperation($"Set master file list to {_lastIncludedFiles.Count} files");
                 }
                 else
                 {
-                    // If not including files in this query, clear the master list
+                    // Files not included - generate a basic prompt
+                    if (ChkIncludeInitialPrompt.IsChecked == true)
+                    {
+                        LogOperation("Using prompt template only (no files)");
+                        prompt = GetPromptTemplateText() + "\n\n";
+                    }
+                    else
+                    {
+                        LogOperation("Using minimal prompt (no template, no files)");
+                        prompt = "Please respond to the following:\n\n";
+                    }
+
+                    // Clear the master list of included files
                     _lastIncludedFiles.Clear();
-                    LogOperation("Cleared master file list as no files were included");
+                    LogOperation("Cleared master file list as Include Files was unchecked");
                 }
 
                 // Clear history if not using follow-up reminder
-                if (_conversationHistory.Count < 2 || SendfollowUpReminder.IsChecked == false)
+                if (_conversationHistory.Count >= 2 && SendfollowUpReminder.IsChecked == false)
                 {
                     _conversationHistory.Clear();
                     LogOperation("Conversation history cleared for new query");
                 }
 
-                // Generate prompt based on template option
-                StartOperationTimer("GeneratePrompt");
-                if (ChkIncludeInitialPrompt.IsChecked == true)
-                {
-                    LogOperation("Using prompt template");
-                    prompt = GenerateInitialPrompt(consolidatedFiles);
-                }
-                else
-                {
-                    LogOperation("Using minimal prompt (no template)");
-                    prompt = GenerateMinimalPrompt(consolidatedFiles);
-                }
-
-                EndOperationTimer("GeneratePrompt");
-
                 // Add user query if provided
                 if (!string.IsNullOrEmpty(queryText))
                 {
-                    prompt += "\n\n--- Additional Instructions/Question ---\n" + queryText;
+                    prompt += "--- Additional Instructions/Question ---\n" + queryText;
                     LogOperation("Added query text to the prompt");
                 }
 
@@ -1407,6 +1485,13 @@ public partial class MainWindow
         {
             SetProcessingState(false);
         }
+    }
+
+    private string GetPromptTemplateText()
+    {
+        // Get the selected prompt content from the dropdown or settings
+        var selectedPromptTemplate = CboPromptTemplate.SelectedItem as CodePrompt;
+        return selectedPromptTemplate?.Content ?? _settingsManager.Settings.InitialPrompt; // Fallback
     }
 
     private void HandleQueryError(Exception ex)
@@ -1518,6 +1603,9 @@ public partial class MainWindow
             ".dockerfile" => "dockerfile",
             ".ini" => "ini",
             ".toml" => "toml",
+            ".asp" or ".aspx" => "asp", // Added ASP and ASPX
+            ".cshtml" => "cshtml", // Added Razor syntax
+            ".axaml" => "axml", // Avalonia
             _ => "text" // Default to "text" for unknown extensions
         };
     }
@@ -1726,64 +1814,46 @@ public partial class MainWindow
 
     private string GenerateContextualFollowupPrompt(string followupQuestion)
     {
-        // Check if the reminder/context should be added
-        if (SendfollowUpReminder.IsChecked == true)
+        var promptBuilder = new StringBuilder();
+
+        // Add context about this being a follow-up question about previously analyzed code
+        promptBuilder.AppendLine("This is a follow-up question regarding the source code I previously shared with you. Please reference the code files and our earlier discussion when responding.");
+        promptBuilder.AppendLine();
+
+        // List a few files analyzed to provide better context (using the *actual* files from the last analysis)
+        promptBuilder.AppendLine("The previous analysis likely covered files including:");
+
+        // Get up to 5 representative files from the *last included* files
+        var filesList = _lastIncludedFiles.Take(5).Select(f => f.RelativePath).ToList();
+
+        // Add file names to the prompt
+        if (filesList.Count != 0)
         {
-            // Check if there are previous messages to provide context from
-            if (_conversationHistory.Count < 2)
+            foreach (var file in filesList)
             {
-                // If no previous conversation, just return the follow-up question as is
-                LogOperation("Sending follow-up question without context (no prior conversation)");
-                return followupQuestion;
+                promptBuilder.AppendLine(CultureInfo.InvariantCulture, $"- {file}");
             }
 
-            var promptBuilder = new StringBuilder();
-
-            // Add context about this being a follow-up question about previously analyzed code
-            promptBuilder.AppendLine("This is a follow-up question regarding the source code I previously shared with you. Please reference the code files and our earlier discussion when responding.");
-            promptBuilder.AppendLine();
-
-            // List a few files analyzed to provide better context (using the *actual* files from the last analysis)
-            promptBuilder.AppendLine("The previous analysis likely covered files including:");
-
-            // Get up to 5 representative files from the *last included* files
-            var filesList = _lastIncludedFiles.Take(5).Select(f => f.RelativePath).ToList();
-
-            // Add file names to the prompt
-            if (filesList.Count != 0)
+            // Add the total file count for context
+            var totalFiles = _lastIncludedFiles.Count;
+            if (totalFiles > filesList.Count)
             {
-                foreach (var file in filesList)
-                {
-                    promptBuilder.AppendLine(CultureInfo.InvariantCulture, $"- {file}");
-                }
-
-                // Add the total file count for context
-                var totalFiles = _lastIncludedFiles.Count;
-                if (totalFiles > filesList.Count)
-                {
-                    promptBuilder.AppendLine(CultureInfo.InvariantCulture, $"And {totalFiles - filesList.Count} more files.");
-                }
+                promptBuilder.AppendLine(CultureInfo.InvariantCulture, $"And {totalFiles - filesList.Count} more files.");
             }
-            else
-            {
-                promptBuilder.AppendLine("(No specific files were recorded from the previous interaction)");
-            }
-
-            promptBuilder.AppendLine();
-
-            // Finally, add the actual follow-up question
-            promptBuilder.AppendLine("My follow-up question is:");
-            promptBuilder.AppendLine(followupQuestion);
-
-            LogOperation("Generated contextual follow-up prompt");
-            return promptBuilder.ToString();
         }
         else
         {
-            // If the reminder checkbox is unchecked, send the question directly
-            LogOperation("Sending follow-up question without context (reminder unchecked)");
-            return followupQuestion;
+            promptBuilder.AppendLine("(No specific files were recorded from the previous interaction)");
         }
+
+        promptBuilder.AppendLine();
+
+        // Finally, add the actual follow-up question
+        promptBuilder.AppendLine("My follow-up question is:");
+        promptBuilder.AppendLine(followupQuestion);
+
+        LogOperation("Generated contextual follow-up prompt");
+        return promptBuilder.ToString();
     }
 
     private async void BtnSaveResponse_Click(object sender, RoutedEventArgs e)
@@ -2219,7 +2289,7 @@ public partial class MainWindow
                 lock (_filesByExtension)
                 {
                     // Initialize the extension group if needed
-                    if (!_filesByExtension.TryGetValue(ext, out List<SourceFile>? value))
+                    if (!_filesByExtension.TryGetValue(ext, out var value))
                     {
                         value = new List<SourceFile>();
                         _filesByExtension[ext] = value;
