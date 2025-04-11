@@ -13,7 +13,7 @@ public class ApplicationSettings
     // File size limitations
     public int MaxFileSizeKb { get; set; } = 1024; // Default 1MB
 
-    public bool RegisterAsDefaultMdHandler { get; set; } = false;
+    public bool RegisterAsDefaultMdHandler { get; set; }
 
     // Initial prompt for code analysis - kept for backward compatibility
     public string InitialPrompt

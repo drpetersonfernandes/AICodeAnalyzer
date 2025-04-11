@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -17,13 +18,13 @@ public static class ErrorLogger
         {
             // Create a detailed error log
             var sb = new StringBuilder();
-            sb.AppendLine($"===== Error Log: {DateTime.Now} =====");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"===== Error Log: {DateTime.Now} =====");
 
             if (!string.IsNullOrEmpty(context))
-                sb.AppendLine($"Context: {context}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"Context: {context}");
 
-            sb.AppendLine($"Error Type: {ex.GetType().Name}");
-            sb.AppendLine($"Message: {ex.Message}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Error Type: {ex.GetType().Name}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Message: {ex.Message}");
             sb.AppendLine($"Stack Trace:");
             sb.AppendLine(ex.StackTrace);
 
@@ -32,8 +33,8 @@ public static class ErrorLogger
             {
                 sb.AppendLine();
                 sb.AppendLine("Inner Exception:");
-                sb.AppendLine($"Type: {ex.InnerException.GetType().Name}");
-                sb.AppendLine($"Message: {ex.InnerException.Message}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"Type: {ex.InnerException.GetType().Name}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"Message: {ex.InnerException.Message}");
                 sb.AppendLine("Stack Trace:");
                 sb.AppendLine(ex.InnerException.StackTrace);
             }
@@ -82,13 +83,13 @@ public static class ErrorLogger
         {
             // Create a detailed error log
             var sb = new StringBuilder();
-            sb.AppendLine($"===== Error Log: {DateTime.Now} =====");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"===== Error Log: {DateTime.Now} =====");
 
             if (!string.IsNullOrEmpty(context))
-                sb.AppendLine($"Context: {context}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"Context: {context}");
 
-            sb.AppendLine($"Error Type: {ex.GetType().Name}");
-            sb.AppendLine($"Message: {ex.Message}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Error Type: {ex.GetType().Name}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Message: {ex.Message}");
             sb.AppendLine($"Stack Trace:");
             sb.AppendLine(ex.StackTrace);
 
@@ -97,8 +98,8 @@ public static class ErrorLogger
             {
                 sb.AppendLine();
                 sb.AppendLine("Inner Exception:");
-                sb.AppendLine($"Type: {ex.InnerException.GetType().Name}");
-                sb.AppendLine($"Message: {ex.InnerException.Message}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"Type: {ex.InnerException.GetType().Name}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"Message: {ex.InnerException.Message}");
                 sb.AppendLine("Stack Trace:");
                 sb.AppendLine(ex.InnerException.StackTrace);
             }

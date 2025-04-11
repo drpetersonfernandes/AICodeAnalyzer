@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -43,7 +44,7 @@ public partial class MainWindow
     private double _markdownZoomLevel = 100.0; // Current zoom level (default 100%)
     private readonly double _textBoxDefaultFontSize;
     private string _currentFilePath = string.Empty;
-    private bool _isShowingInputQuery; // Flag to track if input query is shown
+    private bool _isShowingInputQuery; // Flag to track if the input query is shown
     private string _previousMarkdownContent = string.Empty; // Store Markdown content before showing input
     private string _lastInputPrompt = string.Empty; // Store the last prompt sent
     private readonly List<SourceFile> _lastIncludedFiles = new(); // Store files included in the last prompt
@@ -55,7 +56,7 @@ public partial class MainWindow
         _textBoxDefaultFontSize = TxtResponse.FontSize;
         TxtFollowupQuestion.IsEnabled = true;
         ChkIncludeSelectedFiles.IsEnabled = true;
-
+        
         // Populate API dropdown using provider names from the factory, sorted alphabetically
         var providers = _apiProviderFactory.AllProviders
             .OrderBy(p => p.Name)
@@ -142,6 +143,7 @@ public partial class MainWindow
             SetProcessingState(false);
         }
     }
+    
 
     private void AddToRecentFiles(string filePath)
     {
@@ -185,7 +187,7 @@ public partial class MainWindow
             MenuRecentFiles.Items.Add(new Separator());
 
             var clearMenuItem = new MenuItem { Header = "Clear Recent Files" };
-            clearMenuItem.Icon = new TextBlock { Text = "🗑️", FontSize = 14 }; // Trash icon for clear option
+            clearMenuItem.Icon = new TextBlock { Text = "🗑️", FontSize = 14 }; // Trash icon for a clear option
             clearMenuItem.Click += ClearRecentFiles_Click;
             MenuRecentFiles.Items.Add(clearMenuItem);
         }
@@ -197,7 +199,7 @@ public partial class MainWindow
         {
             await LoadMarkdownFileAsync(filePath);
 
-            // Ensure input query button is disabled after loading
+            // Ensure the input query button is disabled after loading
             BtnShowInputQuery.IsEnabled = false;
             _isShowingInputQuery = false;
             BtnShowInputQuery.Content = "Show Input Query";
@@ -276,7 +278,7 @@ public partial class MainWindow
                 BtnSelectFolder.IsEnabled = false;
                 BtnSelectFiles.IsEnabled = false;
 
-                // Show "Processing..." text in the markdown viewer if it's empty
+                // Show "Processing..." text in the Markdown viewer if it's empty
                 if (string.IsNullOrWhiteSpace(MarkdownViewer.Markdown))
                 {
                     TxtResponse.Text = "Connecting to AI...";
@@ -519,7 +521,7 @@ public partial class MainWindow
 
     private void LogOperation(string message)
     {
-        var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+        var timestamp = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
         var logEntry = $"[{timestamp}] {message}\r\n";
 
         // Add to log TextBox
@@ -605,7 +607,7 @@ public partial class MainWindow
         if (string.IsNullOrEmpty(key) || key.Length < 8)
             return "*****";
 
-        return key.Substring(0, 3) + "*****" + key.Substring(key.Length - 3);
+        return string.Concat(key.AsSpan(0, 3), "*****", key.AsSpan(key.Length - 3));
     }
 
     private void CboPreviousKeys_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -927,7 +929,7 @@ public partial class MainWindow
                 var fileSizeKb = (int)(fileInfo.Length / 1024);
                 if (fileSizeKb <= _settingsManager.Settings.MaxFileSizeKb)
                 {
-                    // Get relative path (if file is not in the selected folder, it will use its full path)
+                    // Get a relative path (if the file is not in the selected folder, it will use its full path)
                     string relativePath;
                     if (filePath.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase))
                     {
@@ -935,21 +937,21 @@ public partial class MainWindow
                     }
                     else
                     {
-                        // If file is outside the base folder, use the full path
+                        // If the file is outside the base folder, use the full path
                         relativePath = filePath;
                     }
 
                     // Initialize the extension group if needed
-                    if (!_filesByExtension.ContainsKey(ext))
+                    if (!_filesByExtension.TryGetValue(ext, out List<SourceFile>? value))
                     {
-                        _filesByExtension[ext] = new List<SourceFile>();
+                        value = new List<SourceFile>();
+                        _filesByExtension[ext] = value;
                     }
 
                     // Check if this file is already added
-                    if (!_filesByExtension[ext].Any(f => f.Path.Equals(filePath, StringComparison.OrdinalIgnoreCase)))
+                    if (!value.Any(f => f.Path.Equals(filePath, StringComparison.OrdinalIgnoreCase)))
                     {
-                        // Add the file
-                        _filesByExtension[ext].Add(new SourceFile
+                        value.Add(new SourceFile
                         {
                             Path = filePath,
                             RelativePath = relativePath,
@@ -1069,7 +1071,7 @@ public partial class MainWindow
             // Skip hidden directories, bin, obj, node_modules, etc.
             if (dir.Attributes.HasFlag(FileAttributes.Hidden) ||
                 dir.Attributes.HasFlag(FileAttributes.System) ||
-                dir.Name.StartsWith(".") ||
+                dir.Name.StartsWith('.') ||
                 dir.Name.Equals("bin", StringComparison.OrdinalIgnoreCase) ||
                 dir.Name.Equals("obj", StringComparison.OrdinalIgnoreCase) ||
                 dir.Name.Equals("node_modules", StringComparison.OrdinalIgnoreCase) ||
@@ -1122,16 +1124,16 @@ public partial class MainWindow
                 lock (_filesByExtension)
                 {
                     // Initialize the extension group if needed
-                    if (!_filesByExtension.ContainsKey(ext))
+                    if (!_filesByExtension.TryGetValue(ext, out List<SourceFile>? value))
                     {
-                        _filesByExtension[ext] = new List<SourceFile>();
+                        value = new List<SourceFile>();
+                        _filesByExtension[ext] = value;
                     }
 
                     // Check if this file is already added
-                    if (!_filesByExtension[ext].Any(f => f.Path.Equals(file.FullName, StringComparison.OrdinalIgnoreCase)))
+                    if (!value.Any(f => f.Path.Equals(file.FullName, StringComparison.OrdinalIgnoreCase)))
                     {
-                        // Add the file
-                        _filesByExtension[ext].Add(new SourceFile
+                        value.Add(new SourceFile
                         {
                             Path = file.FullName,
                             RelativePath = file.FullName.Replace(_selectedFolder, "").TrimStart('\\', '/'),
@@ -1179,7 +1181,7 @@ public partial class MainWindow
         try
         {
             string prompt;
-            _lastIncludedFiles.Clear(); // Clear previous list
+            _lastIncludedFiles.Clear(); // Clear the previous list
 
             // Determine if this is a follow-up or initial query based on conversation history
             var isFollowUp = _conversationHistory.Count >= 2 && SendfollowUpReminder.IsChecked == true;
@@ -1294,7 +1296,7 @@ public partial class MainWindow
             LogOperation($"Error processing query: {ex.Message}");
 
             // Avoid showing ErrorLogger dialog for token limits or self-thrown exceptions
-            if (!ex.Message.StartsWith("Token limit exceeded:") && !(ex is ApplicationException))
+            if (!ex.Message.StartsWith("Token limit exceeded:", StringComparison.Ordinal) && ex is not ApplicationException)
             {
                 ErrorLogger.LogError(ex, "Processing query");
             }
@@ -1310,7 +1312,7 @@ public partial class MainWindow
             // Reset checkboxes for next query (optional, based on desired UX)
             // ChkIncludeInitialPrompt.IsChecked = true;
             // ChkIncludeSelectedFiles.IsChecked = true;
-            // SendfollowUpReminder.IsChecked = false; // Default to not sending reminder
+            // SendfollowUpReminder.IsChecked = false; // Default to not sending the reminder
         }
     }
 
@@ -1319,7 +1321,7 @@ public partial class MainWindow
         var prompt = new StringBuilder();
 
         // Skip the template, add a minimal instruction if files are included
-        if (consolidatedFiles.Any())
+        if (consolidatedFiles.Count != 0)
         {
             prompt.AppendLine("Please analyze the following code files:");
             prompt.AppendLine();
@@ -1327,7 +1329,7 @@ public partial class MainWindow
             // Include files, grouped by extension
             foreach (var ext in consolidatedFiles.Keys)
             {
-                prompt.AppendLine($"--- {ext.ToUpperInvariant()} FILES ---");
+                prompt.AppendLine(CultureInfo.InvariantCulture, $"--- {ext.ToUpperInvariant()} FILES ---");
                 prompt.AppendLine();
 
                 foreach (var fileContent in consolidatedFiles[ext])
@@ -1356,15 +1358,15 @@ public partial class MainWindow
         {
             var files = _filesByExtension[ext];
 
-            if (!consolidatedFiles.ContainsKey(ext))
+            if (!consolidatedFiles.TryGetValue(ext, out List<string>? value))
             {
-                consolidatedFiles[ext] = new List<string>();
+                value = new List<string>();
+                consolidatedFiles[ext] = value;
             }
 
             foreach (var file in files)
             {
-                // Format each file with a header showing a relative path
-                consolidatedFiles[ext].Add($"File: {file.RelativePath}\n```{GetLanguageForExtension(ext)}\n{file.Content}\n```\n");
+                value.Add($"File: {file.RelativePath}\n```{GetLanguageForExtension(ext)}\n{file.Content}\n```\n");
                 includedFiles.Add(file); // Add to the list of included files
             }
         }
@@ -1426,11 +1428,11 @@ public partial class MainWindow
         prompt.AppendLine();
 
         // Include files, grouped by extension, if any
-        if (consolidatedFiles.Any())
+        if (consolidatedFiles.Count != 0)
         {
             foreach (var ext in consolidatedFiles.Keys)
             {
-                prompt.AppendLine($"--- {ext.ToUpperInvariant()} FILES ---");
+                prompt.AppendLine(CultureInfo.InvariantCulture, $"--- {ext.ToUpperInvariant()} FILES ---");
                 prompt.AppendLine();
 
                 foreach (var fileContent in consolidatedFiles[ext])
@@ -1511,7 +1513,7 @@ public partial class MainWindow
 
             // Only show the error dialog if it's not a token limit error
             // that we've already handled
-            if (!ex.Message.StartsWith("Token limit exceeded:"))
+            if (!ex.Message.StartsWith("Token limit exceeded:", StringComparison.Ordinal))
             {
                 ErrorLogger.LogError(ex, "Sending follow-up question");
             }
@@ -1547,9 +1549,9 @@ public partial class MainWindow
             if (item is string displayString)
             {
                 // Basic check to filter out headers or summary lines
-                if (!displayString.StartsWith("=====") && !displayString.Contains(" files") && !displayString.Contains(" - "))
+                if (!displayString.StartsWith("=====", StringComparison.Ordinal) && !displayString.Contains(" files") && !displayString.Contains(" - "))
                 {
-                    // Clean the display string (remove potential prefixes like '+ ' or '    ')
+                    // Clean the display string (remove potential prefixes like '+' or '')
                     var cleanFileName = displayString.TrimStart(' ', '+');
 
                     // Find the matching SourceFile object across all extensions
@@ -1570,12 +1572,12 @@ public partial class MainWindow
                     if (matchingFile != null)
                     {
                         fileCount++;
-                        selectedFileNames.Add(matchingFile.RelativePath); // Add relative path to the summary list
+                        selectedFileNames.Add(matchingFile.RelativePath); // Add a relative path to the summary list
                         includedFiles.Add(matchingFile); // Add the SourceFile object to the list
 
                         // Append file content in a code block with language identification
-                        selectedFilesContent.AppendLine($"File: {matchingFile.RelativePath}");
-                        selectedFilesContent.AppendLine($"```{GetLanguageForExtension(matchingFile.Extension)}");
+                        selectedFilesContent.AppendLine(CultureInfo.InvariantCulture, $"File: {matchingFile.RelativePath}");
+                        selectedFilesContent.AppendLine(CultureInfo.InvariantCulture, $"```{GetLanguageForExtension(matchingFile.Extension)}");
                         selectedFilesContent.AppendLine(matchingFile.Content);
                         selectedFilesContent.AppendLine("```");
                         selectedFilesContent.AppendLine();
@@ -1591,10 +1593,10 @@ public partial class MainWindow
         // Add summary of selected files to the prompt
         if (fileCount > 0)
         {
-            promptBuilder.AppendLine($"Specifically, I've selected the following {fileCount} file(s) for you to focus on or reference:");
+            promptBuilder.AppendLine(CultureInfo.InvariantCulture, $"Specifically, I've selected the following {fileCount} file(s) for you to focus on or reference:");
             foreach (var fileName in selectedFileNames)
             {
-                promptBuilder.AppendLine($"- {fileName}");
+                promptBuilder.AppendLine(CultureInfo.InvariantCulture, $"- {fileName}");
             }
 
             promptBuilder.AppendLine();
@@ -1641,18 +1643,18 @@ public partial class MainWindow
             var filesList = _lastIncludedFiles.Take(5).Select(f => f.RelativePath).ToList();
 
             // Add file names to the prompt
-            if (filesList.Any())
+            if (filesList.Count != 0)
             {
                 foreach (var file in filesList)
                 {
-                    promptBuilder.AppendLine($"- {file}");
+                    promptBuilder.AppendLine(CultureInfo.InvariantCulture, $"- {file}");
                 }
 
-                 // Add the total file count for context
+                // Add the total file count for context
                 var totalFiles = _lastIncludedFiles.Count;
                 if (totalFiles > filesList.Count)
                 {
-                    promptBuilder.AppendLine($"And {totalFiles - filesList.Count} more files.");
+                    promptBuilder.AppendLine(CultureInfo.InvariantCulture, $"And {totalFiles - filesList.Count} more files.");
                 }
             }
             else
@@ -1695,10 +1697,10 @@ public partial class MainWindow
                 return;
             }
 
-            // If we have a current file path and we want to overwrite it
+            // If we have a current file path, and we want to overwrite it
             if (!string.IsNullOrEmpty(_currentFilePath) && File.Exists(_currentFilePath))
             {
-                // Ask the user if they want to overwrite or save as new file
+                // Ask the user if they want to overwrite or save as a new file
                 var result = MessageBox.Show(
                     $"Do you want to overwrite the current file?\n{_currentFilePath}\n\nClick 'Yes' to overwrite, 'No' to save as a new file.",
                     "Save Options",
@@ -1731,7 +1733,7 @@ public partial class MainWindow
             var saveFileDialog = new SaveFileDialog
             {
                 Filter = "Markdown files (*.md)|*.md|Text files (*.txt)|*.txt|All files (*.*)|*.*",
-                DefaultExt = "md", // Default to markdown since the responses are markdown formatted
+                DefaultExt = "md", // Default to Markdown since the responses are markdown formatted
                 Title = "Save AI Analysis Response"
             };
 
@@ -1742,17 +1744,17 @@ public partial class MainWindow
 
                 // Suggest a filename based on the project folder name and timestamp
                 var folderName = new DirectoryInfo(_selectedFolder).Name;
-                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
                 saveFileDialog.FileName = $"{folderName}_analysis_{timestamp}.md";
             }
             else
             {
                 // Default filename with timestamp if no folder is selected
-                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
                 saveFileDialog.FileName = $"ai_analysis_{timestamp}.md";
             }
 
-            // Show the dialog and get result
+            // Show the dialog and get the result
             var dialogResult = saveFileDialog.ShowDialog();
 
             // If the user clicked OK, save the file
@@ -1834,7 +1836,7 @@ public partial class MainWindow
                 BtnToggleMarkdown.Content = "Show Raw Text";
                 BtnSaveEdits.Visibility = Visibility.Visible;
 
-                // Set the markdown content with preprocessing
+                // Set the Markdown content with preprocessing and syntax highlighting
                 var processedMarkdown = PreprocessMarkdown(_currentResponseText);
                 MarkdownViewer.Markdown = processedMarkdown;
 
@@ -1863,7 +1865,7 @@ public partial class MainWindow
             ErrorLogger.LogError(ex, "Toggling markdown view");
             MessageBox.Show("An error occurred while toggling the markdown view.", "View Error", MessageBoxButton.OK, MessageBoxImage.Error);
 
-            // Revert to raw text as a fallback
+            // Revert to a raw text as a fallback
             TxtResponse.Visibility = Visibility.Visible;
             MarkdownScrollViewer.Visibility = Visibility.Collapsed;
             _isMarkdownViewActive = false;
@@ -2060,7 +2062,7 @@ public partial class MainWindow
                     var fileSizeKb = (int)(fileInfo.Length / 1024);
                     if (fileSizeKb <= _settingsManager.Settings.MaxFileSizeKb)
                     {
-                        // Get relative path (if file is not in the selected folder, it will use its full path)
+                        // Get a relative path (if the file is not in the selected folder, it will use its full path)
                         string relativePath;
                         if (filePath.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase))
                         {
@@ -2068,7 +2070,7 @@ public partial class MainWindow
                         }
                         else
                         {
-                            // If file is outside the base folder, use the full path
+                            // If the file is outside the base folder, use the full path
                             relativePath = filePath;
                         }
 
@@ -2087,20 +2089,20 @@ public partial class MainWindow
                             return;
                         }
 
-                        // Add to collection with lock
+                        // Add to a collection with lock
                         lock (_filesByExtension)
                         {
                             // Initialize the extension group if needed
-                            if (!_filesByExtension.ContainsKey(ext))
+                            if (!_filesByExtension.TryGetValue(ext, out List<SourceFile>? value))
                             {
-                                _filesByExtension[ext] = new List<SourceFile>();
+                                value = new List<SourceFile>();
+                                _filesByExtension[ext] = value;
                             }
 
                             // Check if this file is already added
-                            if (!_filesByExtension[ext].Any(f => f.Path.Equals(filePath, StringComparison.OrdinalIgnoreCase)))
+                            if (!value.Any(f => f.Path.Equals(filePath, StringComparison.OrdinalIgnoreCase)))
                             {
-                                // Add the file
-                                _filesByExtension[ext].Add(new SourceFile
+                                value.Add(new SourceFile
                                 {
                                     Path = filePath,
                                     RelativePath = relativePath,
@@ -2254,17 +2256,17 @@ public partial class MainWindow
                     var message = ex.Message;
 
                     // Extract model limit
-                    var limitMatch = Regex.Match(message, @"maximum context length is (\d+)");
+                    var limitMatch = MyRegex().Match(message);
                     if (limitMatch.Success && limitMatch.Groups.Count > 1)
                     {
-                        modelLimit = int.Parse(limitMatch.Groups[1].Value);
+                        modelLimit = int.Parse(limitMatch.Groups[1].Value, CultureInfo.InvariantCulture);
                     }
 
                     // Extract actual tokens
-                    var tokensMatch = Regex.Match(message, @"you requested (\d+) tokens");
+                    var tokensMatch = MyRegex1().Match(message);
                     if (tokensMatch.Success && tokensMatch.Groups.Count > 1)
                     {
-                        actualTokens = int.Parse(tokensMatch.Groups[1].Value);
+                        actualTokens = int.Parse(tokensMatch.Groups[1].Value, CultureInfo.InvariantCulture);
                     }
 
                     // Handle the token limit error with our specialized method
@@ -2300,7 +2302,7 @@ public partial class MainWindow
             .Where(m => m.Role == "assistant")
             .ToList();
 
-        // Ensure index is within bounds
+        // Ensure the index is within bounds
         if (assistantResponses.Count == 0 || index < 0 || index >= assistantResponses.Count)
         {
             return;
@@ -2389,7 +2391,7 @@ public partial class MainWindow
         if (_isShowingInputQuery)
         {
             _isShowingInputQuery = false; // Reset the flag
-             // Restore the previous content (which should be the latest AI response)
+            // Restore the previous content (which should be the latest AI response)
             MarkdownViewer.Markdown = _previousMarkdownContent;
             BtnShowInputQuery.Content = "Show Input Query";
             // Re-enable buttons that were disabled
@@ -2525,7 +2527,7 @@ public partial class MainWindow
                 projectName = new DirectoryInfo(_selectedFolder).Name;
             }
 
-            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
             var filename = $"{projectName}_response_{responseIndex + 1}_{timestamp}.md";
             var filePath = Path.Combine(outputDirectory, filename);
 
@@ -2660,11 +2662,11 @@ public partial class MainWindow
         if (string.IsNullOrEmpty(markdownContent))
             return markdownContent;
 
-        // Fix for responses that start with ```markdown by removing that line
+        // Fix for responses that start with ```Markdown by removing that line
         // This prevents the entire content from being treated as a code block
-        if (markdownContent.StartsWith("```markdown") || markdownContent.StartsWith("```Markdown"))
+        if (markdownContent.StartsWith("```markdown", StringComparison.Ordinal) || markdownContent.StartsWith("```Markdown", StringComparison.Ordinal))
         {
-            // Find the first line break after the ```markdown
+            // Find the first line break after the ```Markdown
             var lineBreakIndex = markdownContent.IndexOf('\n');
             if (lineBreakIndex > 0)
             {
@@ -2700,7 +2702,7 @@ public partial class MainWindow
         return null;
     }
 
-    private FrameworkElement? FindButtonByContent(string content)
+    private Button? FindButtonByContent(string content)
     {
         // Find all buttons in the window
         var buttons = FindVisualChildren<Button>(this);
@@ -2817,7 +2819,7 @@ public partial class MainWindow
 
                 LogOperation("Application reset complete");
 
-                // Clear current file path when restarting
+                // Clear the current file path when restarting
                 _currentFilePath = string.Empty;
             }
         }
@@ -2902,7 +2904,7 @@ public partial class MainWindow
                 UpdateZoomDisplay();
                 UpdateMarkdownPageWidth();
 
-                // Add the file to Recent Files list
+                // Add the file to the Recent Files list
                 AddToRecentFiles(dialog.FileName);
 
                 EndOperationTimer("LoadResponseFile");
@@ -2939,21 +2941,21 @@ public partial class MainWindow
             {
                 _currentResponseText = TxtResponse.Text;
             }
-            else // If in markdown view, the content is conceptually read-only here, but we sync anyway
+            else // If in Markdown view, the content is conceptually read-only here, but we sync anyway
             {
-                 // Potentially get content from MarkdownViewer if it were editable,
-                 // but Markdig.Wpf viewer isn't directly editable like TextBox.
-                 // We assume edits happen in TxtResponse. So, if _isMarkdownViewActive is true,
-                 // we might need to decide if saving edits is allowed or if the user should switch first.
-                 // For simplicity, let's assume edits are primarily done in TxtResponse.
-                 // If the user somehow edited the underlying document (unlikely with current setup),
-                 // those changes wouldn't be captured here.
-                 // Let's update _previousMarkdownContent just in case.
-                 _previousMarkdownContent = PreprocessMarkdown(_currentResponseText);
+                // Potentially get content from MarkdownViewer if it were editable,
+                // but Markdig.Wpf viewer isn't directly editable like TextBox.
+                // We assume edits happen in TxtResponse. So, if _isMarkdownViewActive is true,
+                // we might need to decide if saving edits is allowed or if the user should switch first.
+                // For simplicity, let's assume edits are primarily done in TxtResponse.
+                // If the user somehow edited the underlying document (unlikely with current setup),
+                // those changes wouldn't be captured here.
+                // Let's update _previousMarkdownContent just in case.
+                _previousMarkdownContent = PreprocessMarkdown(_currentResponseText);
             }
 
 
-            // Set the markdown content with preprocessing (updates the viewer if visible)
+            // Set the Markdown content with preprocessing (updates the viewer if visible)
             var processedMarkdown = PreprocessMarkdown(_currentResponseText);
             MarkdownViewer.Markdown = processedMarkdown;
             _previousMarkdownContent = processedMarkdown; // Keep stored content in sync
@@ -2984,6 +2986,7 @@ public partial class MainWindow
             MessageBox.Show("An error occurred while saving your edits.", "Edit Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
+    
 
     private void BtnShowInputQuery_Click(object sender, RoutedEventArgs e)
     {
@@ -2997,24 +3000,18 @@ public partial class MainWindow
                 LogOperation("Showing input query view");
 
                 // 1. Save current Markdown view content
-                // We assume _previousMarkdownContent holds the latest AI response markdown
-                // If the user was in raw text view, _currentResponseText holds the latest,
-                // but we need the *rendered* version to restore later.
-                // Let's ensure _previousMarkdownContent is up-to-date with the AI response.
-                // Note: If the user edited the raw text but didn't click "Apply Edits",
-                // _previousMarkdownContent might not reflect those edits.
-                // This is acceptable; we show the *last known AI response* when toggling back.
+                // We assume _previousMarkdownContent holds the latest AI response Markdown
 
                 // 2. Generate File Summary
                 var fileSummary = new StringBuilder();
                 fileSummary.AppendLine("## Files Included in Query");
-                fileSummary.AppendLine($"Total files: {_lastIncludedFiles.Count}");
-                if (_lastIncludedFiles.Any())
+                fileSummary.AppendLine(CultureInfo.InvariantCulture, $"Total files: {_lastIncludedFiles.Count}");
+                if (_lastIncludedFiles.Count != 0)
                 {
                     fileSummary.AppendLine("```"); // Use a simple code block for the list
                     foreach (var file in _lastIncludedFiles.OrderBy(f => f.RelativePath))
                     {
-                        fileSummary.AppendLine($"- {file.RelativePath} ({file.Extension})");
+                        fileSummary.AppendLine(CultureInfo.InvariantCulture, $"- {file.RelativePath} ({file.Extension})");
                     }
 
                     fileSummary.AppendLine("```");
@@ -3026,7 +3023,6 @@ public partial class MainWindow
 
                 fileSummary.AppendLine("\n---\n");
 
-
                 // 3. Combine Summary and Prompt
                 var fullInputView = new StringBuilder();
                 fullInputView.Append(fileSummary);
@@ -3036,15 +3032,15 @@ public partial class MainWindow
                 fullInputView.AppendLine("```");
 
                 // 4. Update MarkdownViewer
-                // Ensure we are in Markdown view visually
+                // Ensures we are in Markdown view visually
                 if (!_isMarkdownViewActive)
                 {
-                     // Force switch to Markdown view UI elements
-                     TxtResponse.Visibility = Visibility.Collapsed;
-                     MarkdownScrollViewer.Visibility = Visibility.Visible;
-                     BtnToggleMarkdown.Content = "Show Raw Text";
-                     _isMarkdownViewActive = true; // Update state flag
-                     LogOperation("Switched UI to markdown view to show input query");
+                    // Force switch to Mark down view UI elements
+                    TxtResponse.Visibility = Visibility.Collapsed;
+                    MarkdownScrollViewer.Visibility = Visibility.Visible;
+                    BtnToggleMarkdown.Content = "Show Raw Text";
+                    _isMarkdownViewActive = true; // Update state flag
+                    LogOperation("Switched UI to markdown view to show input query");
                 }
 
                 MarkdownViewer.Markdown = fullInputView.ToString();
@@ -3094,4 +3090,10 @@ public partial class MainWindow
             BtnToggleMarkdown.IsEnabled = !string.IsNullOrEmpty(_currentResponseText);
         }
     }
+
+    [GeneratedRegex(@"maximum context length is (\d+)")]
+    private static partial Regex MyRegex();
+
+    [GeneratedRegex(@"you requested (\d+) tokens")]
+    private static partial Regex MyRegex1();
 }

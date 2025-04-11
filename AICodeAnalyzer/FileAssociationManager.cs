@@ -9,7 +9,7 @@ namespace AICodeAnalyzer;
 /// <summary>
 /// Handles file associations using Windows API Code Pack
 /// </summary>
-public class FileAssociationManager
+public partial class FileAssociationManager
 {
     private const string FileExtension = ".md";
     private const string ProgId = "AICodeAnalyzer";
@@ -231,6 +231,6 @@ public class FileAssociationManager
     }
 
     // Windows API for notifying the system of file association changes
-    [System.Runtime.InteropServices.DllImport("shell32.dll")]
-    private static extern void SHChangeNotify(int eventId, int flags, IntPtr item1, IntPtr item2);
+    [System.Runtime.InteropServices.LibraryImport("shell32.dll")]
+    private static partial void SHChangeNotify(int eventId, int flags, IntPtr item1, IntPtr item2);
 }

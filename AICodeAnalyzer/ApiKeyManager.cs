@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Xml;
 using System.Xml.Serialization;
 
 namespace AICodeAnalyzer;
@@ -52,9 +53,20 @@ public class ApiKeyManager
         try
         {
             using var reader = new StreamReader(_keysFilePath);
+
+            // Create XmlReader settings with safe defaults
+            var settings = new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit,
+                XmlResolver = null
+            };
+
+            // Create XmlReader with the safe settings
+            using var xmlReader = XmlReader.Create(reader, settings);
+
             var serializer = new XmlSerializer(typeof(ApiKeyStorage));
-            var result = serializer.Deserialize(reader) as ApiKeyStorage;
-            return result ?? new ApiKeyStorage(); // Explicitly handle a null result
+            var result = serializer.Deserialize(xmlReader) as ApiKeyStorage;
+            return result ?? new ApiKeyStorage();
         }
         catch (Exception)
         {
@@ -68,8 +80,16 @@ public class ApiKeyManager
         try
         {
             using var writer = new StreamWriter(_keysFilePath);
+
+            var settings = new XmlWriterSettings
+            {
+                Indent = true
+            };
+
+            using var xmlWriter = XmlWriter.Create(writer, settings);
+
             var serializer = new XmlSerializer(typeof(ApiKeyStorage));
-            serializer.Serialize(writer, KeyStorage);
+            serializer.Serialize(xmlWriter, KeyStorage);
         }
         catch (Exception)
         {

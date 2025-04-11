@@ -10,7 +10,7 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class Claude : IAiApiProvider
+public class Claude : IAiApiProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
@@ -117,6 +117,15 @@ public class Claude : IAiApiProvider
         return doc.RootElement.GetProperty("content").EnumerateArray()
             .First(x => x.GetProperty("type").GetString() == "text")
             .GetProperty("text").GetString() ?? "No response";
+    }
+
+    public void Dispose()
+    {
+        // Dispose the HttpClient to release resources
+        _httpClient.Dispose();
+
+        // Suppress finalization since we've explicitly disposed resources
+        GC.SuppressFinalize(this);
     }
 }
 

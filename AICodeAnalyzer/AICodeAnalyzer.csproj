@@ -11,6 +11,7 @@
     <FileVersion>1.0.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,6 +35,11 @@
     <Resource Include="images\settings.png" />
     <None Remove="images\logo.png" />
     <Resource Include="images\logo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Markdown\Markdown.cs" />
+    <Compile Remove="Markdown\SyntaxHighlightingExtensions.cs" />
   </ItemGroup>
 
 </Project>

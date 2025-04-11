@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Xml;
 using System.Xml.Serialization;
 using AICodeAnalyzer.Models;
 using System.Linq;
@@ -34,17 +35,23 @@ public class SettingsManager
 
         try
         {
-            using var reader = new StreamReader(_settingsFilePath);
+            var settings = new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit, // Disable DTD processing
+                XmlResolver = null // Prevent external resource resolution
+            };
+
+            using var reader = XmlReader.Create(_settingsFilePath, settings);
             var serializer = new XmlSerializer(typeof(ApplicationSettings));
             var result = serializer.Deserialize(reader) as ApplicationSettings;
 
             // Handle null result or migration from older versions
-            var settings = result ?? new ApplicationSettings();
+            var appSettings = result ?? new ApplicationSettings();
 
             // Perform backwards compatibility checks
-            MigrateSettingsIfNeeded(settings);
+            MigrateSettingsIfNeeded(appSettings);
 
-            return settings;
+            return appSettings;
         }
         catch (Exception ex)
         {

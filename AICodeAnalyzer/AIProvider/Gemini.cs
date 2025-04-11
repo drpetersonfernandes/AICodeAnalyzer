@@ -9,7 +9,7 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class Gemini : IAiApiProvider
+public class Gemini : IAiApiProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
@@ -211,6 +211,15 @@ public class Gemini : IAiApiProvider
             Models.Gemini15Pro => 8192,
             _ => 4096 // Default for gemini-pro and others
         };
+    }
+
+    public void Dispose()
+    {
+        // Dispose the HttpClient
+        _httpClient.Dispose();
+
+        // Suppress finalization since we've explicitly cleaned up resources
+        GC.SuppressFinalize(this);
     }
 }
 

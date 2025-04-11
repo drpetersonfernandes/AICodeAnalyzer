@@ -13,110 +13,110 @@
             <Setter Property="FontSize" Value="12" />
         </Style>
         <!-- Enhanced Send Button Style -->
-    <Style x:Key="EnhancedButtonStyle" TargetType="Button">
-        <Setter Property="Background">
-            <Setter.Value>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                    <GradientStop Color="#4172C3" Offset="0" />
-                    <GradientStop Color="#305EA8" Offset="1" />
-                </LinearGradientBrush>
-            </Setter.Value>
-        </Setter>
-        <Setter Property="Foreground" Value="White" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="BorderBrush" Value="#203F70" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="15,8" />
-        <Setter Property="Height" Value="38" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="4">
-                        <Border.Effect>
-                            <DropShadowEffect ShadowDepth="1" BlurRadius="3" Opacity="0.3" />
-                        </Border.Effect>
-                        <Grid>
-                            <ContentPresenter HorizontalAlignment="Center" 
-                                              VerticalAlignment="Center" 
-                                              Margin="{TemplateBinding Padding}" />
-                        </Grid>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background">
-                                <Setter.Value>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                        <GradientStop Color="#4F86E3" Offset="0" />
-                                        <GradientStop Color="#3A70C8" Offset="1" />
-                                    </LinearGradientBrush>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter Property="Background">
-                                <Setter.Value>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                        <GradientStop Color="#305EA8" Offset="0" />
-                                        <GradientStop Color="#254980" Offset="1" />
-                                    </LinearGradientBrush>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.6" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
+        <Style x:Key="EnhancedButtonStyle" TargetType="Button">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#4172C3" Offset="0" />
+                        <GradientStop Color="#305EA8" Offset="1" />
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="BorderBrush" Value="#203F70" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="15,8" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <Border.Effect>
+                                <DropShadowEffect ShadowDepth="1" BlurRadius="3" Opacity="0.3" />
+                            </Border.Effect>
+                            <Grid>
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#4F86E3" Offset="0" />
+                                            <GradientStop Color="#3A70C8" Offset="1" />
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#305EA8" Offset="0" />
+                                            <GradientStop Color="#254980" Offset="1" />
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.6" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="EnhancedGridSplitterStyle" TargetType="GridSplitter">
-        <Setter Property="Background">
-            <Setter.Value>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                    <GradientStop Color="#4F86E3" Offset="0.0" />
-                    <GradientStop Color="#3A70C8" Offset="0.5" />
-                    <GradientStop Color="#4F86E3" Offset="1.0" />
-                </LinearGradientBrush>
-            </Setter.Value>
-        </Setter>
-        <Setter Property="Width" Value="8" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="GridSplitter">
-                    <Border Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="2">
-                        <Grid>
-                            <!-- Visual indicators - dots in the center -->
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <Ellipse Width="3" Height="3" Fill="#ffffff" Margin="0,2,0,2" />
-                                <Ellipse Width="3" Height="3" Fill="#ffffff" Margin="0,2,0,2" />
-                                <Ellipse Width="3" Height="3" Fill="#ffffff" Margin="0,2,0,2" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background">
-                                <Setter.Value>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                        <GradientStop Color="#DDDDDD" Offset="0.0" />
-                                        <GradientStop Color="#AAAAAA" Offset="0.5" />
-                                        <GradientStop Color="#DDDDDD" Offset="1.0" />
-                                    </LinearGradientBrush>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#4F86E3" Offset="0.0" />
+                        <GradientStop Color="#3A70C8" Offset="0.5" />
+                        <GradientStop Color="#4F86E3" Offset="1.0" />
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2">
+                            <Grid>
+                                <!-- Visual indicators - dots in the center -->
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <Ellipse Width="3" Height="3" Fill="#ffffff" Margin="0,2,0,2" />
+                                    <Ellipse Width="3" Height="3" Fill="#ffffff" Margin="0,2,0,2" />
+                                    <Ellipse Width="3" Height="3" Fill="#ffffff" Margin="0,2,0,2" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="#DDDDDD" Offset="0.0" />
+                                            <GradientStop Color="#AAAAAA" Offset="0.5" />
+                                            <GradientStop Color="#DDDDDD" Offset="1.0" />
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <DockPanel>
@@ -284,61 +284,61 @@
             </GroupBox>
 
             <!-- Merged AI Query GroupBox (combines Initial Prompt and Follow-up) -->
-<GroupBox Grid.Row="3" Grid.Column="0" Grid.RowSpan="2" Header="AI Query" Margin="0,0,5,5" Padding="0">
-    <StackPanel Margin="5">
-        <!-- Prompt Template Selection -->
-        <Grid Margin="0,0,0,5">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <ComboBox x:Name="CboPromptTemplate" Grid.Column="0"
-                      SelectionChanged="CboPromptTemplate_SelectionChanged"
-                      DisplayMemberPath="Name"
-                      Margin="0,0,5,0" />
-            <Button x:Name="BtnConfigurePrompts" Content="Edit"
-                    Grid.Column="1" Padding="8,3" Height="25"
-                    Click="BtnConfigurePrompts_Click" />
-        </Grid>
-        
-        <!-- Option Checkboxes -->
-        <StackPanel Margin="0,0,0,10">
-            <CheckBox x:Name="ChkIncludeInitialPrompt" Content="Include initial prompt template"
-                      IsChecked="True" Margin="0,0,0,5"
-                      ToolTip="When checked, the initial prompt template will be included in your request" />
-                     
-            <CheckBox x:Name="ChkIncludeSelectedFiles" Content="Include selected files"
-                      IsChecked="True" Margin="0,0,0,5"
-                      ToolTip="Include the files selected in the file list with your request" />
-            
-            <CheckBox x:Name="SendfollowUpReminder" Content="Send follow-up reminder with summary"
-                      IsChecked="False" Margin="0,0,0,0"
-                      ToolTip="Send follow-up reminder with summary" />
-        </StackPanel>
-        
-        <!-- Text Input Area -->
-        <TextBox x:Name="TxtFollowupQuestion" Height="100" TextWrapping="Wrap"
-                 AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
-                 Margin="0,0,0,10"/>
-        
-        <!-- Send Button -->
-        <Button x:Name="BtnSendQuery" 
-                Content="Send Query" 
-                Style="{StaticResource EnhancedButtonStyle}"
-                Margin="0,5,0,0"
-                Click="BtnAnalyze_Click">
-            <Button.ContentTemplate>
-                <DataTemplate>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Send Query" 
-                                   VerticalAlignment="Center" 
-                                   FontSize="14" />
+            <GroupBox Grid.Row="3" Grid.Column="0" Grid.RowSpan="2" Header="AI Query" Margin="0,0,5,5" Padding="0">
+                <StackPanel Margin="5">
+                    <!-- Prompt Template Selection -->
+                    <Grid Margin="0,0,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ComboBox x:Name="CboPromptTemplate" Grid.Column="0"
+                                  SelectionChanged="CboPromptTemplate_SelectionChanged"
+                                  DisplayMemberPath="Name"
+                                  Margin="0,0,5,0" />
+                        <Button x:Name="BtnConfigurePrompts" Content="Edit"
+                                Grid.Column="1" Padding="8,3" Height="25"
+                                Click="BtnConfigurePrompts_Click" />
+                    </Grid>
+
+                    <!-- Option Checkboxes -->
+                    <StackPanel Margin="0,0,0,10">
+                        <CheckBox x:Name="ChkIncludeInitialPrompt" Content="Include initial prompt template"
+                                  IsChecked="True" Margin="0,0,0,5"
+                                  ToolTip="When checked, the initial prompt template will be included in your request" />
+
+                        <CheckBox x:Name="ChkIncludeSelectedFiles" Content="Include selected files"
+                                  IsChecked="True" Margin="0,0,0,5"
+                                  ToolTip="Include the files selected in the file list with your request" />
+
+                        <CheckBox x:Name="SendfollowUpReminder" Content="Send follow-up reminder with summary"
+                                  IsChecked="False" Margin="0,0,0,0"
+                                  ToolTip="Send follow-up reminder with summary" />
                     </StackPanel>
-                </DataTemplate>
-            </Button.ContentTemplate>
-        </Button>
-    </StackPanel>
-</GroupBox>
+
+                    <!-- Text Input Area -->
+                    <TextBox x:Name="TxtFollowupQuestion" Height="100" TextWrapping="Wrap"
+                             AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                             Margin="0,0,0,10" />
+
+                    <!-- Send Button -->
+                    <Button x:Name="BtnSendQuery"
+                            Content="Send Query"
+                            Style="{StaticResource EnhancedButtonStyle}"
+                            Margin="0,5,0,0"
+                            Click="BtnAnalyze_Click">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Send Query"
+                                               VerticalAlignment="Center"
+                                               FontSize="14" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                </StackPanel>
+            </GroupBox>
 
             <!-- GridSplitter -->
             <GridSplitter
@@ -406,7 +406,7 @@
                         </Grid.ColumnDefinitions>
                         <Button x:Name="BtnShowInputQuery" Content="Show Input Query" Grid.Column="0" Height="30"
                                 Margin="0,0,2,0" Click="BtnShowInputQuery_Click" IsEnabled="False"
-                                ToolTip="Show the exact query and file summary sent to the AI"/>
+                                ToolTip="Show the exact query and file summary sent to the AI" />
                         <Button x:Name="BtnSaveResponse" Content="Save Response" Grid.Column="1" Height="30"
                                 Margin="0,0,2,0" Click="BtnSaveResponse_Click" IsEnabled="False" />
                         <Button x:Name="BtnSaveEdits" Content="Apply Edits" Grid.Column="2" Height="30"
@@ -418,13 +418,13 @@
                     <!-- Markdown Display -->
                     <Grid>
                         <!-- Regular TextBox (for raw view) -->
-                        <TextBox x:Name="TxtResponse" 
-                                 TextWrapping="Wrap" 
-                                 AcceptsReturn="True" 
+                        <TextBox x:Name="TxtResponse"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
                                  IsReadOnly="False"
-                                 VerticalScrollBarVisibility="Auto" 
+                                 VerticalScrollBarVisibility="Auto"
                                  HorizontalScrollBarVisibility="Auto"
-                                 FontFamily="Consolas" 
+                                 FontFamily="Consolas"
                                  Visibility="Collapsed"
                                  PreviewMouseWheel="TxtResponse_PreviewMouseWheel" />
 

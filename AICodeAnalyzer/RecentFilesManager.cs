@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Xml;
 using System.Xml.Serialization;
 
 namespace AICodeAnalyzer;
@@ -68,7 +69,13 @@ public class RecentFilesManager
 
         try
         {
-            using var reader = new StreamReader(_recentFilesPath);
+            var settings = new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit,
+                XmlResolver = null
+            };
+
+            using var reader = XmlReader.Create(_recentFilesPath, settings);
             var serializer = new XmlSerializer(typeof(RecentFilesData));
             var result = serializer.Deserialize(reader) as RecentFilesData;
             return result ?? new RecentFilesData();

@@ -225,7 +225,7 @@ public partial class ConfigurationWindow
         if (!string.IsNullOrWhiteSpace(extension))
         {
             // Ensure it starts with a dot
-            if (!extension.StartsWith("."))
+            if (!extension.StartsWith('.'))
             {
                 extension = "." + extension;
             }

@@ -10,7 +10,7 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class DeepSeek : IAiApiProvider
+public class DeepSeek : IAiApiProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
@@ -210,6 +210,15 @@ public class DeepSeek : IAiApiProvider
             Models.DeepSeekReasoner => 8192, // 8K for DeepSeek-R1
             _ => 4096 // 4K for DeepSeek-Coder and others
         };
+    }
+
+    public void Dispose()
+    {
+        // Dispose of the HttpClient 
+        _httpClient.Dispose();
+
+        // Suppress finalization since we've explicitly cleaned up resources
+        GC.SuppressFinalize(this);
     }
 }
 

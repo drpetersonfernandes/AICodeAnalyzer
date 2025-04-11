@@ -10,7 +10,7 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class Grok : IAiApiProvider
+public class Grok : IAiApiProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
@@ -90,6 +90,15 @@ public class Grok : IAiApiProvider
         return doc.RootElement.GetProperty("choices")[0]
             .GetProperty("message")
             .GetProperty("content").GetString() ?? "No response";
+    }
+
+    public void Dispose()
+    {
+        // Dispose the HttpClient
+        _httpClient.Dispose();
+
+        // Suppress finalization since we've already cleaned up resources
+        GC.SuppressFinalize(this);
     }
 }
 

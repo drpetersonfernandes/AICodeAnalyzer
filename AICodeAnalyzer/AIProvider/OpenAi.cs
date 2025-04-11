@@ -10,7 +10,7 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class OpenAi : IAiApiProvider
+public class OpenAi : IAiApiProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
@@ -191,6 +191,15 @@ public class OpenAi : IAiApiProvider
         // Most OpenAI models support up to 4096 output tokens
         // This could be adjusted for specific models if needed
         return 4096;
+    }
+
+    public void Dispose()
+    {
+        // Dispose of the HttpClient
+        _httpClient.Dispose();
+
+        // Suppress finalization since we've released unmanaged resources
+        GC.SuppressFinalize(this);
     }
 }
 
