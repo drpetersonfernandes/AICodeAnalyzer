@@ -42,6 +42,41 @@ public class ApiKeyManager
         return providerEntry?.Keys ?? new List<string>();
     }
 
+    /// <summary>
+    /// Removes an API key for a specific provider
+    /// </summary>
+    /// <param name="provider">The provider name</param>
+    /// <param name="key">The key to remove</param>
+    /// <returns>True if the key was removed, false if it wasn't found</returns>
+    public bool RemoveKey(string provider, string key)
+    {
+        var providerEntry = KeyStorage.Providers.Find(p => p.Name == provider);
+        if (providerEntry == null)
+            return false;
+
+        var removed = providerEntry.Keys.Remove(key);
+        if (removed)
+            SaveKeys();
+
+        return removed;
+    }
+
+    /// <summary>
+    /// Clears all keys for a specific provider
+    /// </summary>
+    /// <param name="provider">The provider name</param>
+    /// <returns>True if the provider was found and keys were cleared</returns>
+    public bool ClearKeysForProvider(string provider)
+    {
+        var providerEntry = KeyStorage.Providers.Find(p => p.Name == provider);
+        if (providerEntry == null)
+            return false;
+
+        providerEntry.Keys.Clear();
+        SaveKeys();
+        return true;
+    }
+
     private ApiKeyStorage LoadKeys()
     {
         if (!File.Exists(_keysFilePath))

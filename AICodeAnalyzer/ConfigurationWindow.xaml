@@ -1,111 +1,115 @@
 ﻿<Window x:Class="AICodeAnalyzer.ConfigurationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Configuration" Height="500" Width="600" 
+        Title="Configuration" Height="500" Width="600"
         WindowStartupLocation="CenterOwner" ResizeMode="CanResize">
     <Grid Margin="20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        
-        <TextBlock Grid.Row="0" Text="Application Settings" 
-                   FontSize="24" FontWeight="Bold" 
-                   HorizontalAlignment="Center" Margin="0,0,0,20"/>
-        
+
+        <TextBlock Grid.Row="0" Text="Application Settings"
+                   FontSize="24" FontWeight="Bold"
+                   HorizontalAlignment="Center" Margin="0,0,0,20" />
+
         <TabControl Grid.Row="1" Grid.RowSpan="2" Margin="0,0,0,20">
             <!-- Updated Prompt Settings Tab -->
             <TabItem Header="Prompt Settings">
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    
+
                     <!-- Prompt Selection and Management Controls -->
                     <Grid Grid.Row="0" Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        
-                        <TextBlock Grid.Column="0" Text="Prompt Template:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <ComboBox x:Name="CboPromptTemplates" Grid.Column="1" 
+
+                        <TextBlock Grid.Column="0" Text="Prompt Template:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <ComboBox x:Name="CboPromptTemplates" Grid.Column="1"
                                   SelectionChanged="CboPromptTemplates_SelectionChanged"
                                   DisplayMemberPath="Name"
-                                  Margin="0,0,10,0"/>
-                        
-                        <Button x:Name="BtnNewPrompt" Grid.Column="2" Content="New" 
-                                Padding="10,5" Margin="0,0,5,0" Click="BtnNewPrompt_Click"/>
-                        <Button x:Name="BtnRenamePrompt" Grid.Column="3" Content="Rename" 
-                                Padding="10,5" Margin="0,0,5,0" Click="BtnRenamePrompt_Click"/>
-                        <Button x:Name="BtnDeletePrompt" Grid.Column="4" Content="Delete" 
-                                Padding="10,5" Click="BtnDeletePrompt_Click"/>
+                                  Margin="0,0,10,0" />
+
+                        <Button x:Name="BtnNewPrompt" Grid.Column="2" Content="New"
+                                Padding="10,5" Margin="0,0,5,0" Click="BtnNewPrompt_Click" />
+                        <Button x:Name="BtnRenamePrompt" Grid.Column="3" Content="Rename"
+                                Padding="10,5" Margin="0,0,5,0" Click="BtnRenamePrompt_Click" />
+                        <Button x:Name="BtnDeletePrompt" Grid.Column="4" Content="Delete"
+                                Padding="10,5" Click="BtnDeletePrompt_Click" />
                     </Grid>
-                    
-                    <TextBlock Grid.Row="1" Text="Customize the selected prompt template for code analysis:" 
-                               Margin="0,0,0,10" TextWrapping="Wrap"/>
-                    
+
+                    <TextBlock Grid.Row="1" Text="Customize the selected prompt template for code analysis:"
+                               Margin="0,0,0,10" TextWrapping="Wrap" />
+
                     <TextBox x:Name="TxtInitialPrompt" Grid.Row="2"
                              AcceptsReturn="True" TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                              FontFamily="Consolas" FontSize="12"
                              TextChanged="TxtInitialPrompt_TextChanged"
-                             Margin="0,0,0,10"/>
-                    
+                             Margin="0,0,0,10" />
+
                     <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button x:Name="BtnRestoreDefaultPrompt" Content="Restore Default Prompt" 
-                                Padding="10,5" 
-                                Click="BtnRestoreDefaultPrompt_Click"/>
+                        <Button x:Name="BtnRestoreDefaultPrompt" Content="Restore Default Prompt"
+                                Padding="10,5"
+                                Click="BtnRestoreDefaultPrompt_Click" />
                     </StackPanel>
                 </Grid>
             </TabItem>
             <TabItem Header="File Settings">
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    
+
                     <!-- File Size Limit -->
                     <GroupBox Grid.Row="0" Header="File Size Limit" Margin="0,0,0,10" Padding="10">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            
-                            <TextBlock Grid.Column="0" Text="Maximum File Size:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                            <Slider x:Name="SliderMaxFileSize" Grid.Column="1" 
-                                     Minimum="1" Maximum="5120" 
-                                     TickFrequency="128" IsSnapToTickEnabled="True"
-                                     VerticalAlignment="Center"
-                                     ValueChanged="SliderMaxFileSize_ValueChanged"/>
-                            <TextBlock x:Name="TxtMaxFileSize" Grid.Column="2" Text="1024 KB" Width="80" VerticalAlignment="Center" Margin="10,0,0,0"/>
+
+                            <TextBlock Grid.Column="0" Text="Maximum File Size:" VerticalAlignment="Center"
+                                       Margin="0,0,10,0" />
+                            <Slider x:Name="SliderMaxFileSize" Grid.Column="1"
+                                    Minimum="1" Maximum="5120"
+                                    TickFrequency="128" IsSnapToTickEnabled="True"
+                                    VerticalAlignment="Center"
+                                    ValueChanged="SliderMaxFileSize_ValueChanged" />
+                            <TextBlock x:Name="TxtMaxFileSize" Grid.Column="2" Text="1024 KB" Width="80"
+                                       VerticalAlignment="Center" Margin="10,0,0,0" />
                         </Grid>
                     </GroupBox>
-                    
+
                     <!-- File Extensions -->
-                    <GroupBox Grid.Row="1" Grid.RowSpan="3" Header="Source File Extensions" Margin="0,10,0,0" Padding="10">
+                    <GroupBox Grid.Row="1" Grid.RowSpan="3" Header="Source File Extensions" Margin="0,10,0,0"
+                              Padding="10">
                         <Grid>
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            
-                            <TextBlock Grid.Row="0" Text="Specify which file extensions to include for analysis:" Margin="0,0,0,10"/>
-                            
+
+                            <TextBlock Grid.Row="0" Text="Specify which file extensions to include for analysis:"
+                                       Margin="0,0,0,10" />
+
                             <ListBox x:Name="LbExtensions" Grid.Row="1" Margin="0,0,0,10"
                                      SelectionMode="Single"
                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
@@ -113,26 +117,28 @@
                                     <DataTemplate>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"/>
-                                            <Button Grid.Column="1" Content="X" Width="20" Height="20" 
+                                            <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center" />
+                                            <Button Grid.Column="1" Content="X" Width="20" Height="20"
                                                     Margin="5,0,0,0" Padding="0"
-                                                    Click="BtnRemoveExtension_Click"/>
+                                                    Click="BtnRemoveExtension_Click" />
                                         </Grid>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
-                            
+
                             <Grid Grid.Row="2">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                
-                                <TextBox x:Name="TxtNewExtension" Grid.Column="0" Margin="0,0,10,0" KeyDown="TxtNewExtension_KeyDown"/>
-                                <Button x:Name="BtnAddExtension" Grid.Column="1" Content="Add Extension" Padding="10,5" Click="BtnAddExtension_Click"/>
+
+                                <TextBox x:Name="TxtNewExtension" Grid.Column="0" Margin="0,0,10,0"
+                                         KeyDown="TxtNewExtension_KeyDown" />
+                                <Button x:Name="BtnAddExtension" Grid.Column="1" Content="Add Extension" Padding="10,5"
+                                        Click="BtnAddExtension_Click" />
                             </Grid>
                         </Grid>
                     </GroupBox>
@@ -141,47 +147,116 @@
             <TabItem Header="File Association">
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-        
-                    <TextBlock Grid.Row="0" Text="Configure how this application handles Markdown (.md) files" 
-                               Margin="0,0,0,10" TextWrapping="Wrap"/>
-        
+
+                    <TextBlock Grid.Row="0" Text="Configure how this application handles Markdown (.md) files"
+                               Margin="0,0,0,10" TextWrapping="Wrap" />
+
                     <GroupBox Grid.Row="1" Header="File Association Settings" Padding="10">
                         <StackPanel>
-                            <CheckBox x:Name="ChkRegisterFileAssociation" 
-                                      Content="Register as default application for .md files" 
+                            <CheckBox x:Name="ChkRegisterFileAssociation"
+                                      Content="Register as default application for .md files"
                                       Margin="0,5,0,10"
                                       Checked="ChkRegisterFileAssociation_CheckedChanged"
-                                      Unchecked="ChkRegisterFileAssociation_CheckedChanged"/>
-                
+                                      Unchecked="ChkRegisterFileAssociation_CheckedChanged" />
+
                             <TextBlock TextWrapping="Wrap" Margin="20,0,0,0">
                                 When enabled, AI Code Analyzer will be registered as the default application
-                                for opening Markdown (.md) files. This allows you to easily open analysis 
+                                for opening Markdown (.md) files. This allows you to easily open analysis
                                 results by double-clicking them in File Explorer.
                             </TextBlock>
-                
-                            <TextBlock x:Name="TxtAssociationStatus" 
-                                       Margin="0,15,0,0" 
+
+                            <TextBlock x:Name="TxtAssociationStatus"
+                                       Margin="0,15,0,0"
                                        TextWrapping="Wrap"
-                                       FontStyle="Italic"/>
+                                       FontStyle="Italic" />
                         </StackPanel>
                     </GroupBox>
-        
+
                     <TextBlock Grid.Row="2" Margin="0,20,0,0" TextWrapping="Wrap" Foreground="#707070">
                         Note: Changing this setting may require administrator privileges on some systems.
                         If you encounter issues, try running the application as administrator.
                     </TextBlock>
                 </Grid>
             </TabItem>
+
+            <TabItem Header="API Keys">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Manage your API keys for different AI providers"
+                               Margin="0,0,0,10" TextWrapping="Wrap" />
+
+                    <GroupBox Grid.Row="1" Header="API Provider Selection" Padding="10" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Text="Select Provider:" VerticalAlignment="Center"
+                                       Margin="0,0,10,0" />
+                            <ComboBox x:Name="CboApiProviders" Grid.Column="1"
+                                      SelectionChanged="CboApiProviders_SelectionChanged"
+                                      Margin="0,5,0,5" />
+                        </Grid>
+                    </GroupBox>
+
+                    <GroupBox Grid.Row="2" Header="API Keys" Padding="10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Keys ListView with Remove button -->
+                            <ListView x:Name="LvApiKeys" Grid.Row="0" Margin="0,0,0,10">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding Key}" VerticalAlignment="Center" />
+                                            <Button Grid.Column="1" Content="Remove"
+                                                    Margin="10,0,0,0" Padding="5,2"
+                                                    Click="BtnRemoveKey_Click" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+
+                            <!-- Add new key controls -->
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <PasswordBox x:Name="TxtNewApiKey" Grid.Column="0" Margin="0,0,10,0"
+                                             VerticalAlignment="Center" />
+                                <Button x:Name="BtnAddKey" Grid.Column="1" Content="Add Key"
+                                        Padding="10,5" Click="BtnAddKey_Click" />
+                            </Grid>
+                        </Grid>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
         </TabControl>
-        
+
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button x:Name="BtnReset" Content="Reset to Defaults" Padding="15,5" Margin="0,0,10,0" Click="BtnReset_Click"/>
-            <Button x:Name="BtnSave" Content="Save" Padding="20,5" Margin="0,0,10,0" Click="BtnSave_Click"/>
-            <Button x:Name="BtnCancel" Content="Cancel" Padding="20,5" Click="BtnCancel_Click"/>
+            <Button x:Name="BtnReset" Content="Reset to Defaults" Padding="15,5" Margin="0,0,10,0"
+                    Click="BtnReset_Click" />
+            <Button x:Name="BtnSave" Content="Save" Padding="20,5" Margin="0,0,10,0" Click="BtnSave_Click" />
+            <Button x:Name="BtnCancel" Content="Cancel" Padding="20,5" Click="BtnCancel_Click" />
         </StackPanel>
     </Grid>
 </Window>

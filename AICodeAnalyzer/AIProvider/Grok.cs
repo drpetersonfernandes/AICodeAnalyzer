@@ -15,7 +15,7 @@ public class Grok : IAiApiProvider, IDisposable
     private readonly HttpClient _httpClient = new();
 
     public string Name => "Grok API";
-    public string DefaultModel => "grok-2-1212";
+    public string DefaultModel => "grok-3-beta";
 
     public List<GrokModelInfo> GetAvailableModels()
     {
@@ -23,9 +23,21 @@ public class Grok : IAiApiProvider, IDisposable
         {
             new()
             {
+                Name = "Grok 3",
+                Id = "grok-3-beta",
+                Description = "Context window 131,072 tokens. Input price $3.00. Output price $15.00."
+            },
+            new()
+            {
+                Name = "Grok 3 Mini",
+                Id = "grok-3-mini-beta",
+                Description = "Context window 131,072 tokens. Input price $0.30. Output price $0.50."
+            },
+            new()
+            {
                 Name = "Grok 2",
                 Id = "grok-2-1212",
-                Description = "Context window 131,072 tokens. Input price $2,00. Output price $10,00."
+                Description = "Context window 131,072 tokens. Input price $2.00. Output price $10.00."
             }
         };
     }

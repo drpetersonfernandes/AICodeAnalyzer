@@ -284,7 +284,7 @@
             </GroupBox>
 
             <!-- Merged AI Query GroupBox (combines Initial Prompt and Follow-up) -->
-            <GroupBox Grid.Row="3" Grid.Column="0" Grid.RowSpan="2" Header="AI Query" Margin="0,0,5,5" Padding="0">
+            <GroupBox Grid.Row="3" Grid.Column="0" Grid.RowSpan="2" Header="AI Query" Margin="0,0,5,0" Padding="0">
                 <StackPanel Margin="5">
                     <!-- Prompt Template Selection -->
                     <Grid Margin="0,0,0,5">
@@ -317,9 +317,13 @@
                     </StackPanel>
 
                     <!-- Text Input Area -->
-                    <TextBox x:Name="TxtFollowupQuestion" Height="100" TextWrapping="Wrap"
-                             AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
-                             Margin="0,0,0,10" />
+                    <TextBox x:Name="TxtFollowupQuestion"
+                             VerticalAlignment="Stretch"
+                             MinHeight="100"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             VerticalScrollBarVisibility="Auto"
+                             Margin="0,0,0,5" />
 
                     <!-- Send Button -->
                     <Button x:Name="BtnSendQuery"

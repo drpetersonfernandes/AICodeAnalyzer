@@ -15,6 +15,11 @@ public partial class ConfigurationWindow
     private CodePrompt? _currentPrompt;
     private bool _isCurrentlyRegistered;
 
+    private readonly ApiKeyManager _apiKeyManager = new();
+    private readonly ApiProviderFactory _apiProviderFactory = new();
+    private readonly Dictionary<string, List<ApiKeyItem>> _providerKeysMap = new();
+    private string _currentProvider = string.Empty;
+
     public ConfigurationWindow(SettingsManager settingsManager)
     {
         InitializeComponent();
@@ -60,6 +65,9 @@ public partial class ConfigurationWindow
         }
 
         LoadSettingsToUi();
+
+        // Initialize the API Keys tab
+        InitializeApiKeysTab();
     }
 
     private void InitializeFileAssociationTab()
@@ -576,5 +584,157 @@ public partial class ConfigurationWindow
     {
         DialogResult = false;
         Close();
+    }
+
+    private void InitializeApiKeysTab()
+    {
+        // Populate provider dropdown
+        CboApiProviders.Items.Clear();
+        foreach (var provider in _apiProviderFactory.AllProviders)
+        {
+            CboApiProviders.Items.Add(provider.Name);
+        }
+
+        // Load all keys for all providers
+        LoadAllProviderKeys();
+
+        // Default select first provider if available
+        if (CboApiProviders.Items.Count > 0)
+        {
+            CboApiProviders.SelectedIndex = 0;
+        }
+    }
+
+// Load all keys for all providers
+    private void LoadAllProviderKeys()
+    {
+        _providerKeysMap.Clear();
+
+        foreach (var provider in _apiProviderFactory.AllProviders)
+        {
+            // Get keys for this provider
+            var keys = _apiKeyManager.GetKeysForProvider(provider.Name);
+
+            // Create ApiKeyItem objects for display
+            var keyItems = new List<ApiKeyItem>();
+            foreach (var k in keys)
+            {
+                if (!string.IsNullOrEmpty(k))
+                {
+                    keyItems.Add(new ApiKeyItem
+                    {
+                        Key = MaskKey(k),
+                        ActualKey = k
+                    });
+                }
+            }
+
+            // Add to map
+            _providerKeysMap[provider.Name] = keyItems;
+        }
+    }
+
+// Mask API keys for display (show only first 4 and last 4 characters)
+    private static string MaskKey(string key)
+    {
+        if (string.IsNullOrEmpty(key))
+            return string.Empty;
+
+        if (key.Length <= 8)
+            return "****";
+
+        return $"{key[..4]}...{key[^4..]}";
+    }
+
+
+// Update the ListView when provider selection changes
+    private void CboApiProviders_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CboApiProviders.SelectedItem is string selectedProvider)
+        {
+            _currentProvider = selectedProvider;
+
+            // Update ListView with keys for this provider
+            if (_providerKeysMap.TryGetValue(_currentProvider, out var keys))
+            {
+                LvApiKeys.ItemsSource = keys;
+            }
+            else
+            {
+                LvApiKeys.ItemsSource = new List<ApiKeyItem>(); // Empty list instead of null
+            }
+        }
+        else
+        {
+            // Default to empty list if no provider is selected
+            LvApiKeys.ItemsSource = new List<ApiKeyItem>();
+        }
+    }
+
+// Handle adding a new key
+    private void BtnAddKey_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_currentProvider))
+        {
+            MessageBox.Show("Please select a provider first.", "No Provider Selected", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var newKey = TxtNewApiKey.Password.Trim();
+
+        if (string.IsNullOrWhiteSpace(newKey))
+        {
+            MessageBox.Show("Please enter an API key.", "Empty Key", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        // Check if key already exists
+        if (_providerKeysMap.TryGetValue(_currentProvider, out var existingKeys))
+        {
+            if (existingKeys != null && existingKeys.Any(k => k.ActualKey == newKey))
+            {
+                MessageBox.Show("This API key already exists for this provider.", "Duplicate Key", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+        }
+
+        // Add the key to the manager
+        _apiKeyManager.SaveKey(_currentProvider, newKey);
+
+        // Refresh UI
+        LoadAllProviderKeys();
+        CboApiProviders_SelectionChanged(null, null);
+
+        // Clear the input field
+        TxtNewApiKey.Password = string.Empty;
+    }
+
+// Handle removing a key
+    private void BtnRemoveKey_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.DataContext is ApiKeyItem keyItem && !string.IsNullOrEmpty(keyItem.ActualKey))
+        {
+            // Ask for confirmation
+            var result = MessageBox.Show(
+                "Are you sure you want to remove this API key?",
+                "Confirm Removal",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                // Remove the key using our new method
+                if (_apiKeyManager.RemoveKey(_currentProvider, keyItem.ActualKey))
+                {
+                    // Refresh UI
+                    LoadAllProviderKeys();
+                    CboApiProviders_SelectionChanged(null, null);
+                }
+                else
+                {
+                    MessageBox.Show("Failed to remove the API key.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
     }
 }
