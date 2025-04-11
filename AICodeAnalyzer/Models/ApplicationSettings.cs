@@ -74,10 +74,30 @@ public class ApplicationSettings
         // Set default extensions
         SourceFileExtensions = new List<string>
         {
+            // Original extensions
             ".cs", ".xaml", ".java", ".js", ".ts", ".py", ".html", ".css",
             ".cpp", ".h", ".c", ".go", ".rb", ".php", ".swift", ".kt",
             ".rs", ".dart", ".scala", ".groovy", ".pl", ".sh", ".bat",
-            ".ps1", ".xml", ".json", ".yaml", ".yml", ".md", ".txt"
+            ".ps1", ".xml", ".json", ".yaml", ".yml", ".md", ".txt",
+
+            // Additional extensions from GetLanguageForExtension
+            ".sql", ".bash", ".r", ".vb", ".fs", ".lua", ".dockerfile",
+            ".ini", ".toml", ".asp", ".aspx", ".cshtml", ".axaml",
+
+            // Web development
+            ".jsx", ".tsx", ".vue", ".svelte", ".scss", ".sass", ".less",
+            ".mjs", ".cjs", ".graphql", ".gql",
+
+            // Templates
+            ".pug", ".jade", ".ejs", ".haml", ".erb",
+
+            // Other languages
+            ".ex", ".exs", ".jl", ".nim", ".hs", ".clj", ".elm", ".erl",
+            ".m", ".mm", ".asm", ".s",
+
+            // Config and infrastructure
+            ".tf", ".tfvars", ".proto", ".plist", ".config",
+            ".csproj", ".vbproj", ".fsproj", ".nuspec", ".wasm"
         };
 
         // Set up default prompt
