@@ -214,7 +214,7 @@ public class DeepSeek : IAiApiProvider, IDisposable
 
     public void Dispose()
     {
-        // Dispose of the HttpClient 
+        // Dispose of the HttpClient
         _httpClient.Dispose();
 
         // Suppress finalization since we've explicitly cleaned up resources

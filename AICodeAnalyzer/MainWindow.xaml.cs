@@ -55,7 +55,7 @@ public partial class MainWindow
         _textBoxDefaultFontSize = TxtResponse.FontSize;
         TxtFollowupQuestion.IsEnabled = true;
         ChkIncludeSelectedFiles.IsEnabled = true;
-        
+
         // Populate API dropdown using provider names from the factory, sorted alphabetically
         var providers = _apiProviderFactory.AllProviders
             .OrderBy(p => p.Name)
@@ -142,7 +142,7 @@ public partial class MainWindow
             SetProcessingState(false);
         }
     }
-    
+
 
     private void AddToRecentFiles(string filePath)
     {
@@ -616,53 +616,53 @@ public partial class MainWindow
                 _selectedFolder = dialog.FileName;
                 TxtSelectedFolder.Text = _selectedFolder;
                 TxtStatus.Text = "Scanning folder for source files...";
-            
+
                 // Disable relevant buttons before starting the operation
                 BtnSelectFolder.IsEnabled = false;
                 BtnSelectFiles.IsEnabled = false;
                 BtnClearFiles.IsEnabled = false;
                 BtnSendQuery.IsEnabled = false;
-            
+
                 // Show processing state without blocking UI
                 // SetProcessingState(true, "Scanning folder");
-            
+
                 // Use Task.Run to move heavy processing to background thread
-                await Task.Run(async () => 
+                await Task.Run(async () =>
                 {
-                    try 
+                    try
                     {
                         // Clear collections on background thread
                         _filesByExtension.Clear();
-                    
+
                         // Clear UI on UI thread
-                        await Dispatcher.InvokeAsync(() => 
+                        await Dispatcher.InvokeAsync(() =>
                         {
                             LvFiles.Items.Clear();
                             LogOperation($"Starting folder scan: {_selectedFolder}");
                             StartOperationTimer("FolderScan");
                         });
-                    
+
                         // Scan files on background thread
                         await FindSourceFilesAsync(_selectedFolder);
-                    
+
                         // Update UI with results on UI thread
-                        await Dispatcher.InvokeAsync(() => 
+                        await Dispatcher.InvokeAsync(() =>
                         {
                             var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
                             TxtStatus.Text = $"Found {totalFiles} source files.";
-                        
+
                             // Display files organized by folder
                             DisplayFilesByFolder();
-                        
+
                             EndOperationTimer("FolderScan");
                             CalculateTotalTokens();
-                            
+
                             SetProcessingState(false);
                         });
                     }
                     catch (Exception ex)
                     {
-                        await Dispatcher.InvokeAsync(() => 
+                        await Dispatcher.InvokeAsync(() =>
                         {
                             LogOperation($"Error in background scanning: {ex.Message}");
                             SetProcessingState(false);
@@ -683,7 +683,7 @@ public partial class MainWindow
             BtnSelectFiles.IsEnabled = true;
             BtnClearFiles.IsEnabled = true;
             BtnSendQuery.IsEnabled = true;
-        
+
             // Ensure processing state is reset
             SetProcessingState(false);
         }
@@ -901,18 +901,18 @@ public partial class MainWindow
                 BtnSelectFiles.IsEnabled = false;
                 BtnClearFiles.IsEnabled = false;
                 BtnSendQuery.IsEnabled = false;
-            
+
                 // Initialize the file collection if this is the first selection
                 if (string.IsNullOrEmpty(_selectedFolder))
                 {
                     // Use the directory of the first selected file as the base folder
                     _selectedFolder = Path.GetDirectoryName(dialog.FileNames[0]) ?? string.Empty;
                     TxtSelectedFolder.Text = _selectedFolder;
-                
+
                     // Clear any existing data
                     _filesByExtension.Clear();
                     await Dispatcher.InvokeAsync(() => LvFiles.Items.Clear());
-                
+
                     LogOperation($"Base folder set to: {_selectedFolder}");
                 }
 
@@ -921,30 +921,30 @@ public partial class MainWindow
                 StartOperationTimer("ProcessSelectedFiles");
 
                 // Process files in background without blocking UI
-                await Task.Run(async () => 
+                await Task.Run(async () =>
                 {
-                    try 
+                    try
                     {
                         // Process files without blocking UI thread
                         await ProcessSelectedFilesAsync(dialog.FileNames);
-                        
+
                         // Update UI on UI thread
-                        await Dispatcher.InvokeAsync(() => 
+                        await Dispatcher.InvokeAsync(() =>
                         {
                             var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
                             LogOperation($"Total files after selection: {totalFiles}");
 
                             // Update the files view
                             DisplayFilesByFolder();
-                        
+
                             EndOperationTimer("ProcessSelectedFiles");
-                            
+
                             SetProcessingState(false);
                         });
                     }
                     catch (Exception ex)
                     {
-                        await Dispatcher.InvokeAsync(() => 
+                        await Dispatcher.InvokeAsync(() =>
                         {
                             LogOperation($"Error in background processing: {ex.Message}");
                         });
@@ -964,7 +964,7 @@ public partial class MainWindow
             BtnSelectFiles.IsEnabled = true;
             BtnClearFiles.IsEnabled = true;
             BtnSendQuery.IsEnabled = true;
-        
+
             // Ensure processing state is reset
             SetProcessingState(false);
         }
@@ -1071,43 +1071,43 @@ public partial class MainWindow
 
     private async Task FindSourceFilesAsync(string folderPath)
     {
-        try 
+        try
         {
             var dirInfo = new DirectoryInfo(folderPath);
-        
+
             // Get all files with source extensions in this directory
             var files = dirInfo.EnumerateFiles()
                 .Where(f => _settingsManager.Settings.SourceFileExtensions.Contains(f.Extension.ToLowerInvariant()))
                 .Where(f => f.Length / 1024 <= _settingsManager.Settings.MaxFileSizeKb)
                 .ToList();
-            
+
             // Process files in batches
             const int batchSize = 50;
             for (var i = 0; i < files.Count; i += batchSize)
             {
                 // Take a batch of files
                 var batch = files.Skip(i).Take(batchSize).ToList();
-            
+
                 // Update UI with progress every few batches
                 if (i % 100 == 0)
                 {
-                    await Dispatcher.InvokeAsync(() => 
+                    await Dispatcher.InvokeAsync(() =>
                     {
                         TxtStatus.Text = $"Scanning folder... ({i}/{files.Count} files processed)";
                     });
                 }
-            
+
                 // Process batch of files
                 var fileTasks = new List<Task>();
                 foreach (var file in batch)
                 {
                     fileTasks.Add(ProcessFileInScanAsync(file, i));
                 }
-            
+
                 // Wait for all files in batch to complete
                 await Task.WhenAll(fileTasks);
             }
-        
+
             // Process subdirectories with concurrency limit
             var subDirs = dirInfo.GetDirectories()
                 .Where(d => !d.Attributes.HasFlag(FileAttributes.Hidden) &&
@@ -1118,28 +1118,28 @@ public partial class MainWindow
                             !d.Name.Equals("node_modules", StringComparison.OrdinalIgnoreCase) &&
                             !d.Name.Equals("packages", StringComparison.OrdinalIgnoreCase))
                 .ToList();
-        
+
             // Process directories with throttling
             var dirThrottler = new SemaphoreSlimSafe(5); // Process up to 5 directories at once
             var dirTasks = new List<Task>();
-        
+
             foreach (var dir in subDirs)
             {
                 await dirThrottler.WaitAsync();
                 dirTasks.Add(ProcessSubdirectoryAsync(dir, dirThrottler));
             }
-        
+
             // Wait for all directory tasks to complete
             await Task.WhenAll(dirTasks);
         }
         catch (Exception ex)
         {
-            await Dispatcher.InvokeAsync(() => 
+            await Dispatcher.InvokeAsync(() =>
                 LogOperation($"Error scanning directory {folderPath}: {ex.Message}")
             );
         }
     }
-    
+
     private async Task ProcessFileInScanAsync(FileInfo file, int batchIndex)
     {
         var ext = file.Extension.ToLowerInvariant();
@@ -1147,7 +1147,7 @@ public partial class MainWindow
         {
             // Read file content asynchronously - OUTSIDE any lock
             var content = await File.ReadAllTextAsync(file.FullName);
-        
+
             // Create the source file object
             var sourceFile = new SourceFile
             {
@@ -1156,9 +1156,9 @@ public partial class MainWindow
                 Extension = ext,
                 Content = content
             };
-        
+
             var fileAdded = false;
-        
+
             // Add to collection with thread safety
             lock (_filesByExtension)
             {
@@ -1167,7 +1167,7 @@ public partial class MainWindow
                     filesList = new List<SourceFile>();
                     _filesByExtension[ext] = filesList;
                 }
-            
+
                 // Skip duplicates
                 if (!filesList.Any(f => f.Path.Equals(file.FullName, StringComparison.OrdinalIgnoreCase)))
                 {
@@ -1175,23 +1175,23 @@ public partial class MainWindow
                     fileAdded = true;
                 }
             }
-        
+
             // Only log if needed (and outside the lock)
             if (fileAdded && batchIndex % 100 == 0) // Only log every 100 files to avoid flood
             {
-                await Dispatcher.InvokeAsync(() => 
+                await Dispatcher.InvokeAsync(() =>
                     LogOperation($"Added file: {sourceFile.RelativePath}")
                 );
             }
         }
         catch (Exception ex)
         {
-            await Dispatcher.InvokeAsync(() => 
+            await Dispatcher.InvokeAsync(() =>
                 LogOperation($"Error reading file {file.FullName}: {ex.Message}")
             );
         }
     }
-    
+
     private async Task ProcessSubdirectoryAsync(DirectoryInfo dir, SemaphoreSlimSafe throttler)
     {
         try
@@ -1288,7 +1288,7 @@ public partial class MainWindow
             // Determine context mode and generate appropriate prompt
             string prompt;
             var isFollowUp = _conversationHistory.Count >= 2 && SendfollowUpReminder.IsChecked == true;
-        
+
             // Create a temporary list to track files for this specific query
             var currentQueryFiles = new List<SourceFile>();
 
@@ -1304,7 +1304,7 @@ public partial class MainWindow
                     // Pass current list without clearing _lastIncludedFiles
                     prompt = AppendSelectedFilesToPrompt(prompt, currentQueryFiles);
                     LogOperation($"Added {currentQueryFiles.Count} selected files to follow-up prompt");
-                
+
                     // Update master list with any newly selected files
                     if (currentQueryFiles.Count > 0)
                     {
@@ -1326,7 +1326,7 @@ public partial class MainWindow
             {
                 // Process as initial query or simple follow-up
                 LogOperation("Handling as initial query or simple follow-up");
-            
+
                 // Prepare files if option is checked
                 var consolidatedFiles = new Dictionary<string, List<string>>();
                 if (ChkIncludeSelectedFiles.IsChecked == true)
@@ -1336,7 +1336,7 @@ public partial class MainWindow
                     consolidatedFiles = PrepareConsolidatedFiles(currentQueryFiles);
                     EndOperationTimer("PrepareFiles");
                     LogOperation($"Included {currentQueryFiles.Count} files");
-                
+
                     // For new queries, replace the master list completely
                     _lastIncludedFiles.Clear();
                     _lastIncludedFiles.AddRange(currentQueryFiles);
@@ -1385,17 +1385,17 @@ public partial class MainWindow
             // Store final prompt and send to AI
             _lastInputPrompt = prompt;
             var response = await SendToAiApi(apiSelection, prompt);
-        
+
             // Update conversation and UI
             _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = response });
             LogOperation($"Updated conversation history with response and file list ({_lastIncludedFiles.Count} files)");
             UpdateResponseDisplay(response, true);
-        
+
             // Reset query input and update UI
             TxtFollowupQuestion.Text = string.Empty;
             BtnSaveResponse.IsEnabled = true;
             BtnShowInputQuery.IsEnabled = true;
-        
+
             TxtStatus.Text = "Query processed successfully!";
             EndOperationTimer("QueryProcessing");
         }
@@ -2155,18 +2155,18 @@ public partial class MainWindow
         foreach (var filePath in filePaths)
         {
             await throttler.WaitAsync();
-        
+
             // Start a new task for each file
             tasks.Add(ProcessSingleFileAsync(filePath, throttler));
         }
 
         // Wait for all file processing tasks to complete
         await Task.WhenAll(tasks);
-    
+
         // Recalculate tokens on UI thread
         await Dispatcher.InvokeAsync(CalculateTotalTokens);
     }
-    
+
     private async Task ProcessSingleFileAsync(string filePath, SemaphoreSlimSafe throttler)
     {
         try
@@ -2212,9 +2212,9 @@ public partial class MainWindow
                     Extension = ext,
                     Content = content
                 };
-            
+
                 var fileAdded = false;
-            
+
                 // Use lock to safely update shared collection
                 lock (_filesByExtension)
                 {
@@ -2232,7 +2232,7 @@ public partial class MainWindow
                         fileAdded = true;
                     }
                 }
-            
+
                 // Log outside the lock
                 if (fileAdded)
                 {
@@ -3097,7 +3097,7 @@ public partial class MainWindow
             MessageBox.Show("An error occurred while saving your edits.", "Edit Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
-    
+
 
     private void BtnShowInputQuery_Click(object sender, RoutedEventArgs e)
     {
