@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -270,40 +269,15 @@ public partial class MainWindow
                 // Start the timer for the animation
                 _statusUpdateTimer.Start();
 
-                // Show visual processing state
+                // Only show wait cursor to indicate processing, don't disable buttons
+                // (buttons are disabled individually in each operation)
                 Mouse.OverrideCursor = Cursors.Wait;
-
-                // Disable certain controls to prevent multiple submissions
-                BtnSendQuery.IsEnabled = false;
-                BtnSelectFolder.IsEnabled = false;
-                BtnSelectFiles.IsEnabled = false;
 
                 // Show "Processing..." text in the Markdown viewer if it's empty
                 if (string.IsNullOrWhiteSpace(MarkdownViewer.Markdown))
                 {
-                    TxtResponse.Text = "Connecting to AI...";
-                    MarkdownViewer.Markdown = "## Processing request...\n\nConnecting to the AI service. This may take a few moments depending on the size of your code and the selected model.";
-                }
-
-                // Set a slightly tinted overlay on the response area to indicate processing
-                var overlay = new Border
-                {
-                    Name = "ProcessingOverlay",
-                    Background = new SolidColorBrush(Color.FromArgb(30, 0, 0, 0)), // Very light gray transparent overlay
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                    VerticalAlignment = VerticalAlignment.Stretch,
-                };
-
-                // Check if overlay already exists
-                var existingOverlay = MarkdownScrollViewer.FindName("ProcessingOverlay") as Border;
-                if (existingOverlay == null)
-                {
-                    MarkdownScrollViewer.RegisterName("ProcessingOverlay", overlay);
-                    if (MarkdownScrollViewer.Parent is Grid parentGrid)
-                    {
-                        parentGrid.Children.Add(overlay);
-                        Panel.SetZIndex(overlay, 1); // Ensure it's above the normal content
-                    }
+                    TxtResponse.Text = "Processing...";
+                    MarkdownViewer.Markdown = "## Processing request...\n\nPlease wait while the operation completes. The UI will remain responsive.";
                 }
             }
             else
@@ -313,28 +287,6 @@ public partial class MainWindow
 
                 // Clear the wait cursor
                 Mouse.OverrideCursor = null;
-
-                // Re-enable controls
-                BtnSendQuery.IsEnabled = true;
-                BtnSelectFolder.IsEnabled = true;
-                BtnSelectFiles.IsEnabled = true;
-
-                // Remove the overlay
-                try
-                {
-                    if (MarkdownScrollViewer.FindName("ProcessingOverlay") is Border existingOverlay)
-                    {
-                        if (MarkdownScrollViewer.Parent is Grid parentGrid)
-                        {
-                            parentGrid.Children.Remove(existingOverlay);
-                            MarkdownScrollViewer.UnregisterName("ProcessingOverlay");
-                        }
-                    }
-                }
-                catch
-                {
-                    // If there's an issue with the overlay, just continue
-                }
             }
         }));
     }
@@ -660,15 +612,80 @@ public partial class MainWindow
 
             if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
             {
+                // Update UI immediately to show selected folder
                 _selectedFolder = dialog.FileName;
                 TxtSelectedFolder.Text = _selectedFolder;
-                await ScanFolder();
+                TxtStatus.Text = "Scanning folder for source files...";
+            
+                // Disable relevant buttons before starting the operation
+                BtnSelectFolder.IsEnabled = false;
+                BtnSelectFiles.IsEnabled = false;
+                BtnClearFiles.IsEnabled = false;
+                BtnSendQuery.IsEnabled = false;
+            
+                // Show processing state without blocking UI
+                // SetProcessingState(true, "Scanning folder");
+            
+                // Use Task.Run to move heavy processing to background thread
+                await Task.Run(async () => 
+                {
+                    try 
+                    {
+                        // Clear collections on background thread
+                        _filesByExtension.Clear();
+                    
+                        // Clear UI on UI thread
+                        await Dispatcher.InvokeAsync(() => 
+                        {
+                            LvFiles.Items.Clear();
+                            LogOperation($"Starting folder scan: {_selectedFolder}");
+                            StartOperationTimer("FolderScan");
+                        });
+                    
+                        // Scan files on background thread
+                        await FindSourceFilesAsync(_selectedFolder);
+                    
+                        // Update UI with results on UI thread
+                        await Dispatcher.InvokeAsync(() => 
+                        {
+                            var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
+                            TxtStatus.Text = $"Found {totalFiles} source files.";
+                        
+                            // Display files organized by folder
+                            DisplayFilesByFolder();
+                        
+                            EndOperationTimer("FolderScan");
+                            CalculateTotalTokens();
+                            
+                            SetProcessingState(false);
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        await Dispatcher.InvokeAsync(() => 
+                        {
+                            LogOperation($"Error in background scanning: {ex.Message}");
+                            SetProcessingState(false);
+                        });
+                    }
+                });
             }
         }
         catch (Exception ex)
         {
             ErrorLogger.LogError(ex, "Opening folder selection dialog");
             TxtStatus.Text = "Error selecting folder.";
+        }
+        finally
+        {
+            // Re-enable buttons
+            BtnSelectFolder.IsEnabled = true;
+            BtnSelectFiles.IsEnabled = true;
+            BtnClearFiles.IsEnabled = true;
+            BtnSendQuery.IsEnabled = true;
+        
+            // Ensure processing state is reset
+            SetProcessingState(false);
         }
     }
 
@@ -879,34 +896,60 @@ public partial class MainWindow
 
             if (dialog.ShowDialog() == true)
             {
+                // Disable relevant buttons immediately
+                BtnSelectFolder.IsEnabled = false;
+                BtnSelectFiles.IsEnabled = false;
+                BtnClearFiles.IsEnabled = false;
+                BtnSendQuery.IsEnabled = false;
+            
                 // Initialize the file collection if this is the first selection
                 if (string.IsNullOrEmpty(_selectedFolder))
                 {
                     // Use the directory of the first selected file as the base folder
                     _selectedFolder = Path.GetDirectoryName(dialog.FileNames[0]) ?? string.Empty;
                     TxtSelectedFolder.Text = _selectedFolder;
-
+                
                     // Clear any existing data
                     _filesByExtension.Clear();
-                    LvFiles.Items.Clear();
-
+                    await Dispatcher.InvokeAsync(() => LvFiles.Items.Clear());
+                
                     LogOperation($"Base folder set to: {_selectedFolder}");
                 }
 
+                // SetProcessingState(true, "Processing selected files");
                 LogOperation($"Processing {dialog.FileNames.Length} selected files");
                 StartOperationTimer("ProcessSelectedFiles");
 
-                // Process files in background
-                await Task.Run(() => ProcessSelectedFiles(dialog.FileNames));
+                // Process files in background without blocking UI
+                await Task.Run(async () => 
+                {
+                    try 
+                    {
+                        // Process files without blocking UI thread
+                        await ProcessSelectedFilesAsync(dialog.FileNames);
+                        
+                        // Update UI on UI thread
+                        await Dispatcher.InvokeAsync(() => 
+                        {
+                            var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
+                            LogOperation($"Total files after selection: {totalFiles}");
 
-                // Display results
-                var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
-                LogOperation($"Total files after selection: {totalFiles}");
-
-                // Update the files view
-                DisplayFilesByFolder();
-
-                EndOperationTimer("ProcessSelectedFiles");
+                            // Update the files view
+                            DisplayFilesByFolder();
+                        
+                            EndOperationTimer("ProcessSelectedFiles");
+                            
+                            SetProcessingState(false);
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        await Dispatcher.InvokeAsync(() => 
+                        {
+                            LogOperation($"Error in background processing: {ex.Message}");
+                        });
+                    }
+                });
             }
         }
         catch (Exception ex)
@@ -914,7 +957,19 @@ public partial class MainWindow
             LogOperation($"Error selecting files: {ex.Message}");
             ErrorLogger.LogError(ex, "Selecting files");
         }
+        finally
+        {
+            // Re-enable buttons
+            BtnSelectFolder.IsEnabled = true;
+            BtnSelectFiles.IsEnabled = true;
+            BtnClearFiles.IsEnabled = true;
+            BtnSendQuery.IsEnabled = true;
+        
+            // Ensure processing state is reset
+            SetProcessingState(false);
+        }
     }
+
 
     private void ProcessSelectedFiles(string[] filePaths)
     {
@@ -942,7 +997,7 @@ public partial class MainWindow
                     }
 
                     // Initialize the extension group if needed
-                    if (!_filesByExtension.TryGetValue(ext, out List<SourceFile>? value))
+                    if (!_filesByExtension.TryGetValue(ext, out var value))
                     {
                         value = new List<SourceFile>();
                         _filesByExtension[ext] = value;
@@ -1016,84 +1071,136 @@ public partial class MainWindow
 
     private async Task FindSourceFilesAsync(string folderPath)
     {
-        var dirInfo = new DirectoryInfo(folderPath);
-
-        // Process files in batches to avoid overwhelming the system
-        const int batchSize = 20;
-        var fileBatches = new List<List<FileInfo>>();
-        var currentBatch = new List<FileInfo>();
-
-        // Get all files with source extensions in this directory
-        foreach (var file in dirInfo.GetFiles())
+        try 
         {
-            var ext = file.Extension.ToLowerInvariant();
-            if (_settingsManager.Settings.SourceFileExtensions.Contains(ext))
+            var dirInfo = new DirectoryInfo(folderPath);
+        
+            // Get all files with source extensions in this directory
+            var files = dirInfo.EnumerateFiles()
+                .Where(f => _settingsManager.Settings.SourceFileExtensions.Contains(f.Extension.ToLowerInvariant()))
+                .Where(f => f.Length / 1024 <= _settingsManager.Settings.MaxFileSizeKb)
+                .ToList();
+            
+            // Process files in batches
+            const int batchSize = 50;
+            for (var i = 0; i < files.Count; i += batchSize)
             {
-                // Check file size limit
-                var fileSizeKb = (int)(file.Length / 1024);
-                if (fileSizeKb <= _settingsManager.Settings.MaxFileSizeKb)
+                // Take a batch of files
+                var batch = files.Skip(i).Take(batchSize).ToList();
+            
+                // Update UI with progress every few batches
+                if (i % 100 == 0)
                 {
-                    currentBatch.Add(file);
-
-                    if (currentBatch.Count >= batchSize)
+                    await Dispatcher.InvokeAsync(() => 
                     {
-                        fileBatches.Add(currentBatch);
-                        currentBatch = new List<FileInfo>();
-                    }
+                        TxtStatus.Text = $"Scanning folder... ({i}/{files.Count} files processed)";
+                    });
                 }
-                else
+            
+                // Process batch of files
+                var fileTasks = new List<Task>();
+                foreach (var file in batch)
                 {
-                    var relativePath = file.FullName.Replace(_selectedFolder, "").TrimStart('\\', '/');
-                    await Dispatcher.InvokeAsync(() =>
-                        LogOperation($"Skipped file due to size limit: {relativePath} ({fileSizeKb} KB > {_settingsManager.Settings.MaxFileSizeKb} KB)")
-                    );
+                    fileTasks.Add(ProcessFileInScanAsync(file, i));
+                }
+            
+                // Wait for all files in batch to complete
+                await Task.WhenAll(fileTasks);
+            }
+        
+            // Process subdirectories with concurrency limit
+            var subDirs = dirInfo.GetDirectories()
+                .Where(d => !d.Attributes.HasFlag(FileAttributes.Hidden) &&
+                            !d.Attributes.HasFlag(FileAttributes.System) &&
+                            !d.Name.StartsWith('.') &&
+                            !d.Name.Equals("bin", StringComparison.OrdinalIgnoreCase) &&
+                            !d.Name.Equals("obj", StringComparison.OrdinalIgnoreCase) &&
+                            !d.Name.Equals("node_modules", StringComparison.OrdinalIgnoreCase) &&
+                            !d.Name.Equals("packages", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        
+            // Process directories with throttling
+            var dirThrottler = new SemaphoreSlimSafe(5); // Process up to 5 directories at once
+            var dirTasks = new List<Task>();
+        
+            foreach (var dir in subDirs)
+            {
+                await dirThrottler.WaitAsync();
+                dirTasks.Add(ProcessSubdirectoryAsync(dir, dirThrottler));
+            }
+        
+            // Wait for all directory tasks to complete
+            await Task.WhenAll(dirTasks);
+        }
+        catch (Exception ex)
+        {
+            await Dispatcher.InvokeAsync(() => 
+                LogOperation($"Error scanning directory {folderPath}: {ex.Message}")
+            );
+        }
+    }
+    
+    private async Task ProcessFileInScanAsync(FileInfo file, int batchIndex)
+    {
+        var ext = file.Extension.ToLowerInvariant();
+        try
+        {
+            // Read file content asynchronously - OUTSIDE any lock
+            var content = await File.ReadAllTextAsync(file.FullName);
+        
+            // Create the source file object
+            var sourceFile = new SourceFile
+            {
+                Path = file.FullName,
+                RelativePath = file.FullName.Replace(_selectedFolder, "").TrimStart('\\', '/'),
+                Extension = ext,
+                Content = content
+            };
+        
+            var fileAdded = false;
+        
+            // Add to collection with thread safety
+            lock (_filesByExtension)
+            {
+                if (!_filesByExtension.TryGetValue(ext, out var filesList))
+                {
+                    filesList = new List<SourceFile>();
+                    _filesByExtension[ext] = filesList;
+                }
+            
+                // Skip duplicates
+                if (!filesList.Any(f => f.Path.Equals(file.FullName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    filesList.Add(sourceFile);
+                    fileAdded = true;
                 }
             }
-        }
-
-        // Add any remaining files
-        if (currentBatch.Count > 0)
-        {
-            fileBatches.Add(currentBatch);
-        }
-
-        // Process each batch
-        foreach (var batch in fileBatches)
-        {
-            await ProcessFileBatchAsync(batch);
-        }
-
-        // Process subdirectories concurrently
-        var subdirTasks = new List<Task>();
-
-        foreach (var dir in dirInfo.GetDirectories())
-        {
-            // Skip hidden directories, bin, obj, node_modules, etc.
-            if (dir.Attributes.HasFlag(FileAttributes.Hidden) ||
-                dir.Attributes.HasFlag(FileAttributes.System) ||
-                dir.Name.StartsWith('.') ||
-                dir.Name.Equals("bin", StringComparison.OrdinalIgnoreCase) ||
-                dir.Name.Equals("obj", StringComparison.OrdinalIgnoreCase) ||
-                dir.Name.Equals("node_modules", StringComparison.OrdinalIgnoreCase) ||
-                dir.Name.Equals("packages", StringComparison.OrdinalIgnoreCase))
+        
+            // Only log if needed (and outside the lock)
+            if (fileAdded && batchIndex % 100 == 0) // Only log every 100 files to avoid flood
             {
-                continue;
-            }
-
-            subdirTasks.Add(FindSourceFilesAsync(dir.FullName));
-
-            // Limit concurrency to 5 directories at a time
-            if (subdirTasks.Count >= 5)
-            {
-                await Task.WhenAny(subdirTasks);
-                subdirTasks = subdirTasks.Where(t => !t.IsCompleted).ToList();
+                await Dispatcher.InvokeAsync(() => 
+                    LogOperation($"Added file: {sourceFile.RelativePath}")
+                );
             }
         }
-
-        // Wait for all remaining directory scans to complete
-        if (subdirTasks.Count > 0)
+        catch (Exception ex)
         {
-            await Task.WhenAll(subdirTasks);
+            await Dispatcher.InvokeAsync(() => 
+                LogOperation($"Error reading file {file.FullName}: {ex.Message}")
+            );
+        }
+    }
+    
+    private async Task ProcessSubdirectoryAsync(DirectoryInfo dir, SemaphoreSlimSafe throttler)
+    {
+        try
+        {
+            await FindSourceFilesAsync(dir.FullName);
+        }
+        finally
+        {
+            throttler.Release();
         }
     }
 
@@ -1124,7 +1231,7 @@ public partial class MainWindow
                 lock (_filesByExtension)
                 {
                     // Initialize the extension group if needed
-                    if (!_filesByExtension.TryGetValue(ext, out List<SourceFile>? value))
+                    if (!_filesByExtension.TryGetValue(ext, out var value))
                     {
                         value = new List<SourceFile>();
                         _filesByExtension[ext] = value;
@@ -1158,6 +1265,7 @@ public partial class MainWindow
 
     private async void BtnAnalyze_Click(object sender, RoutedEventArgs e)
     {
+        // Check for API key
         if (string.IsNullOrEmpty(TxtApiKey.Password))
         {
             MessageBox.Show("Please enter an API key.", "Missing API Key", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -1165,155 +1273,154 @@ public partial class MainWindow
             return;
         }
 
-        // Get query text
+        // Get query text and API selection
         var queryText = TxtFollowupQuestion.Text.Trim();
+        var apiSelection = CboAiApi.SelectedItem?.ToString() ?? "Claude API"; // Default to Claude
 
-        var apiSelection = CboAiApi.SelectedItem?.ToString() ?? "Claude API"; // Default to Claude if none selected
-
-        // Update status and show processing indicators
-        var statusMessage = $"Processing with {apiSelection}";
-        TxtStatus.Text = $"{statusMessage}...";
-        SetProcessingState(true, statusMessage);
-
+        // Setup processing UI
+        TxtStatus.Text = $"Processing with {apiSelection}...";
+        SetProcessingState(true, $"Processing with {apiSelection}");
         LogOperation($"Starting query with {apiSelection}");
         StartOperationTimer("QueryProcessing");
 
         try
         {
+            // Determine context mode and generate appropriate prompt
             string prompt;
-            _lastIncludedFiles.Clear(); // Clear the previous list
-
-            // Determine if this is a follow-up or initial query based on conversation history
             var isFollowUp = _conversationHistory.Count >= 2 && SendfollowUpReminder.IsChecked == true;
+        
+            // Create a temporary list to track files for this specific query
+            var currentQueryFiles = new List<SourceFile>();
 
             if (isFollowUp)
             {
-                // This is a follow-up question
-                LogOperation("Handling as follow-up question");
-
-                // Create enhanced follow-up prompt with context
+                // Process as follow-up query - use existing file history
+                LogOperation($"Handling as follow-up question with {_lastIncludedFiles.Count} previous files");
                 prompt = GenerateContextualFollowupPrompt(queryText);
 
-                // Check if selected files should be appended
+                // Add selected files if option is checked
                 if (ChkIncludeSelectedFiles.IsChecked == true && LvFiles.SelectedItems.Count > 0)
                 {
-                    prompt = AppendSelectedFilesToPrompt(prompt, _lastIncludedFiles); // Pass list to populate
-                    LogOperation($"Added {_lastIncludedFiles.Count} selected files to follow-up prompt");
-                }
-                else
-                {
-                    LogOperation("No specific files selected for follow-up prompt");
+                    // Pass current list without clearing _lastIncludedFiles
+                    prompt = AppendSelectedFilesToPrompt(prompt, currentQueryFiles);
+                    LogOperation($"Added {currentQueryFiles.Count} selected files to follow-up prompt");
+                
+                    // Update master list with any newly selected files
+                    if (currentQueryFiles.Count > 0)
+                    {
+                        // Add any new files that aren't already in the master list
+                        foreach (var file in currentQueryFiles)
+                        {
+                            if (_lastIncludedFiles.All(f => f.Path != file.Path))
+                            {
+                                _lastIncludedFiles.Add(file);
+                            }
+                        }
+                    }
                 }
 
-                // Add the user's follow-up text to conversation history
+                // Add to conversation history
                 _conversationHistory.Add(new ChatMessage { Role = "user", Content = queryText });
             }
             else
             {
-                // This is an initial query or follow-up without reminder/context
+                // Process as initial query or simple follow-up
                 LogOperation("Handling as initial query or simple follow-up");
-
-                Dictionary<string, List<string>> consolidatedFiles = new Dictionary<string, List<string>>();
-
-                // Prepare consolidated code files only if the checkbox is checked
+            
+                // Prepare files if option is checked
+                var consolidatedFiles = new Dictionary<string, List<string>>();
                 if (ChkIncludeSelectedFiles.IsChecked == true)
                 {
-                    LogOperation("Preparing consolidated files for initial prompt");
+                    LogOperation("Preparing consolidated files for prompt");
                     StartOperationTimer("PrepareFiles");
-                    consolidatedFiles = PrepareConsolidatedFiles(_lastIncludedFiles); // Pass list to populate
+                    consolidatedFiles = PrepareConsolidatedFiles(currentQueryFiles);
                     EndOperationTimer("PrepareFiles");
-                    LogOperation($"Included {_lastIncludedFiles.Count} files based on selection/scan");
+                    LogOperation($"Included {currentQueryFiles.Count} files");
+                
+                    // For new queries, replace the master list completely
+                    _lastIncludedFiles.Clear();
+                    _lastIncludedFiles.AddRange(currentQueryFiles);
+                    LogOperation($"Updated master file list with {_lastIncludedFiles.Count} files");
                 }
                 else
                 {
-                    LogOperation("Skipping file inclusion as requested");
+                    // If not including files in this query, clear the master list
+                    _lastIncludedFiles.Clear();
+                    LogOperation("Cleared master file list as no files were included");
                 }
 
-
-                // Begin a new conversation if it's truly initial
+                // Clear history if not using follow-up reminder
                 if (_conversationHistory.Count < 2 || SendfollowUpReminder.IsChecked == false)
                 {
                     _conversationHistory.Clear();
-                    LogOperation("Conversation history cleared for new initial query");
+                    LogOperation("Conversation history cleared for new query");
                 }
 
-
-                // Check if we should include the initial prompt template
+                // Generate prompt based on template option
+                StartOperationTimer("GeneratePrompt");
                 if (ChkIncludeInitialPrompt.IsChecked == true)
                 {
-                    LogOperation("Generating prompt using template");
-                    StartOperationTimer("GeneratePrompt");
-                    prompt = GenerateInitialPrompt(consolidatedFiles); // Use the template
-                    EndOperationTimer("GeneratePrompt");
+                    LogOperation("Using prompt template");
+                    prompt = GenerateInitialPrompt(consolidatedFiles);
                 }
                 else
                 {
-                    LogOperation("Generating minimal prompt (no template)");
-                    StartOperationTimer("GeneratePrompt");
-                    prompt = GenerateMinimalPrompt(consolidatedFiles); // Just include files if any
-                    EndOperationTimer("GeneratePrompt");
+                    LogOperation("Using minimal prompt (no template)");
+                    prompt = GenerateMinimalPrompt(consolidatedFiles);
                 }
 
-                // Add the additional query text if provided
+                EndOperationTimer("GeneratePrompt");
+
+                // Add user query if provided
                 if (!string.IsNullOrEmpty(queryText))
                 {
                     prompt += "\n\n--- Additional Instructions/Question ---\n" + queryText;
                     LogOperation("Added query text to the prompt");
                 }
 
-                // Add the final constructed prompt as the user message to conversation history
+                // Add to conversation history
                 _conversationHistory.Add(new ChatMessage { Role = "user", Content = prompt });
             }
 
-            // --- Store the final prompt before sending ---
+            // Store final prompt and send to AI
             _lastInputPrompt = prompt;
-            // _lastIncludedFiles is populated within PrepareConsolidatedFiles or AppendSelectedFilesToPrompt
-
-            // Send prompt to selected API
             var response = await SendToAiApi(apiSelection, prompt);
-
-            // Add assistant response to conversation history
+        
+            // Update conversation and UI
             _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = response });
-            LogOperation("Conversation history updated with assistant response");
-
-            // Display the response
-            LogOperation("Updating UI with response");
-            UpdateResponseDisplay(response, true); // isNewResponse = true
-
-            // Clear the query text box after successful submission
+            LogOperation($"Updated conversation history with response and file list ({_lastIncludedFiles.Count} files)");
+            UpdateResponseDisplay(response, true);
+        
+            // Reset query input and update UI
             TxtFollowupQuestion.Text = string.Empty;
-
-            // Enable buttons for the response
             BtnSaveResponse.IsEnabled = true;
-            BtnShowInputQuery.IsEnabled = true; // Enable the new button
-
+            BtnShowInputQuery.IsEnabled = true;
+        
             TxtStatus.Text = "Query processed successfully!";
             EndOperationTimer("QueryProcessing");
-            LogOperation("Query workflow completed successfully");
         }
         catch (Exception ex)
         {
-            LogOperation($"Error processing query: {ex.Message}");
-
-            // Avoid showing ErrorLogger dialog for token limits or self-thrown exceptions
-            if (!ex.Message.StartsWith("Token limit exceeded:", StringComparison.Ordinal) && ex is not ApplicationException)
-            {
-                ErrorLogger.LogError(ex, "Processing query");
-            }
-
-            TxtStatus.Text = "Error processing query.";
-            EndOperationTimer("QueryProcessing");
+            HandleQueryError(ex);
         }
         finally
         {
-            // Always reset the processing state
             SetProcessingState(false);
-
-            // Reset checkboxes for next query (optional, based on desired UX)
-            // ChkIncludeInitialPrompt.IsChecked = true;
-            // ChkIncludeSelectedFiles.IsChecked = true;
-            // SendfollowUpReminder.IsChecked = false; // Default to not sending the reminder
         }
+    }
+
+    private void HandleQueryError(Exception ex)
+    {
+        LogOperation($"Error processing query: {ex.Message}");
+
+        // Don't show ErrorLogger dialog for token limits or self-thrown exceptions
+        if (!ex.Message.StartsWith("Token limit exceeded:", StringComparison.Ordinal) && ex is not ApplicationException)
+        {
+            ErrorLogger.LogError(ex, "Processing query");
+        }
+
+        TxtStatus.Text = "Error processing query.";
+        EndOperationTimer("QueryProcessing");
     }
 
     private string GenerateMinimalPrompt(Dictionary<string, List<string>> consolidatedFiles)
@@ -1358,7 +1465,7 @@ public partial class MainWindow
         {
             var files = _filesByExtension[ext];
 
-            if (!consolidatedFiles.TryGetValue(ext, out List<string>? value))
+            if (!consolidatedFiles.TryGetValue(ext, out var value))
             {
                 value = new List<string>();
                 consolidatedFiles[ext] = value;
@@ -1843,7 +1950,7 @@ public partial class MainWindow
                 // Update the page width
                 UpdateMarkdownPageWidth();
 
-                // Log the switch to markdown view
+                // Log the switch to Markdown view
                 LogOperation("Switched to markdown view with preprocessing");
             }
             else
@@ -2041,115 +2148,119 @@ public partial class MainWindow
 
     private async Task ProcessSelectedFilesAsync(string[] filePaths)
     {
-        // Process files in parallel but with a maximum degree of parallelism
-        const int maxConcurrentOperations = 10;
-
-        var semaphore = new SemaphoreSlim(maxConcurrentOperations);
+        // Process files in parallel with a limit of 10 concurrent files
         var tasks = new List<Task>();
+        var throttler = new SemaphoreSlimSafe(10);
 
         foreach (var filePath in filePaths)
         {
-            await semaphore.WaitAsync(); // Wait for a slot to be available
-
-            tasks.Add(Task.Run(async () =>
-            {
-                try
-                {
-                    var fileInfo = new FileInfo(filePath);
-                    var ext = fileInfo.Extension.ToLowerInvariant();
-
-                    // Check file size limit only, don't filter by extension
-                    var fileSizeKb = (int)(fileInfo.Length / 1024);
-                    if (fileSizeKb <= _settingsManager.Settings.MaxFileSizeKb)
-                    {
-                        // Get a relative path (if the file is not in the selected folder, it will use its full path)
-                        string relativePath;
-                        if (filePath.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase))
-                        {
-                            relativePath = filePath.Substring(_selectedFolder.Length).TrimStart('\\', '/');
-                        }
-                        else
-                        {
-                            // If the file is outside the base folder, use the full path
-                            relativePath = filePath;
-                        }
-
-                        // Read file content asynchronously
-                        string content;
-                        try
-                        {
-                            // Get content before the lock
-                            content = await File.ReadAllTextAsync(filePath);
-                        }
-                        catch (Exception ex)
-                        {
-                            await Dispatcher.InvokeAsync(() =>
-                                LogOperation($"Error reading file {filePath}: {ex.Message}")
-                            );
-                            return;
-                        }
-
-                        // Add to a collection with lock
-                        lock (_filesByExtension)
-                        {
-                            // Initialize the extension group if needed
-                            if (!_filesByExtension.TryGetValue(ext, out List<SourceFile>? value))
-                            {
-                                value = new List<SourceFile>();
-                                _filesByExtension[ext] = value;
-                            }
-
-                            // Check if this file is already added
-                            if (!value.Any(f => f.Path.Equals(filePath, StringComparison.OrdinalIgnoreCase)))
-                            {
-                                value.Add(new SourceFile
-                                {
-                                    Path = filePath,
-                                    RelativePath = relativePath,
-                                    Extension = ext,
-                                    Content = content
-                                });
-
-                                // Log outside the lock
-                                Dispatcher.InvokeAsync(() =>
-                                    LogOperation($"Added file: {relativePath}")
-                                );
-                            }
-                            else
-                            {
-                                // Log outside the lock
-                                Dispatcher.InvokeAsync(() =>
-                                    LogOperation($"Skipped duplicate file: {relativePath}")
-                                );
-                            }
-                        }
-                    }
-                    else
-                    {
-                        await Dispatcher.InvokeAsync(() =>
-                            LogOperation($"Skipped file due to size limit: {filePath} ({fileSizeKb} KB > {_settingsManager.Settings.MaxFileSizeKb} KB)")
-                        );
-                    }
-                }
-                catch (Exception ex)
-                {
-                    await Dispatcher.InvokeAsync(() =>
-                        LogOperation($"Error processing file {filePath}: {ex.Message}")
-                    );
-                }
-                finally
-                {
-                    semaphore.Release(); // Release the slot when done
-                }
-            }));
+            await throttler.WaitAsync();
+        
+            // Start a new task for each file
+            tasks.Add(ProcessSingleFileAsync(filePath, throttler));
         }
 
         // Wait for all file processing tasks to complete
         await Task.WhenAll(tasks);
-
-        // Calculate tokens once all files are processed
+    
+        // Recalculate tokens on UI thread
         await Dispatcher.InvokeAsync(CalculateTotalTokens);
     }
+    
+    private async Task ProcessSingleFileAsync(string filePath, SemaphoreSlimSafe throttler)
+    {
+        try
+        {
+            var fileInfo = new FileInfo(filePath);
+            var ext = fileInfo.Extension.ToLowerInvariant();
+
+            // Check file size limit only, don't filter by extension
+            var fileSizeKb = (int)(fileInfo.Length / 1024);
+            if (fileSizeKb <= _settingsManager.Settings.MaxFileSizeKb)
+            {
+                // Get a relative path
+                string relativePath;
+                if (filePath.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase))
+                {
+                    relativePath = filePath.Substring(_selectedFolder.Length).TrimStart('\\', '/');
+                }
+                else
+                {
+                    // If the file is outside the base folder, use the full path
+                    relativePath = filePath;
+                }
+
+                // Read file asynchronously - OUTSIDE of any lock
+                string content;
+                try
+                {
+                    content = await File.ReadAllTextAsync(filePath);
+                }
+                catch (Exception ex)
+                {
+                    await Dispatcher.InvokeAsync(() =>
+                        LogOperation($"Error reading file {filePath}: {ex.Message}")
+                    );
+                    return;
+                }
+
+                // Create the file object we'll add
+                var sourceFile = new SourceFile
+                {
+                    Path = filePath,
+                    RelativePath = relativePath,
+                    Extension = ext,
+                    Content = content
+                };
+            
+                var fileAdded = false;
+            
+                // Use lock to safely update shared collection
+                lock (_filesByExtension)
+                {
+                    // Initialize the extension group if needed
+                    if (!_filesByExtension.TryGetValue(ext, out List<SourceFile>? value))
+                    {
+                        value = new List<SourceFile>();
+                        _filesByExtension[ext] = value;
+                    }
+
+                    // Check if this file is already added
+                    if (!value.Any(f => f.Path.Equals(filePath, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        value.Add(sourceFile);
+                        fileAdded = true;
+                    }
+                }
+            
+                // Log outside the lock
+                if (fileAdded)
+                {
+                    await Dispatcher.InvokeAsync(() =>
+                        LogOperation($"Added file: {relativePath}")
+                    );
+                }
+                else
+                {
+                    await Dispatcher.InvokeAsync(() =>
+                        LogOperation($"Skipped duplicate file: {relativePath}")
+                    );
+                }
+            }
+            else
+            {
+                await Dispatcher.InvokeAsync(() =>
+                    LogOperation($"Skipped file due to size limit: {filePath} ({fileSizeKb} KB > {_settingsManager.Settings.MaxFileSizeKb} KB)")
+                );
+            }
+        }
+        finally
+        {
+            // Release the throttler when done
+            throttler.Release();
+        }
+    }
+
 
     private void CboModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
