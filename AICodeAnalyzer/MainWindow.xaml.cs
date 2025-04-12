@@ -38,17 +38,19 @@ public partial class MainWindow
     private bool _isProcessing;
     private int _dotsIndex;
     private string _baseStatusMessage = string.Empty;
-    private const double ZoomIncrement = 10.0; // Zoom step (10%)
-    private const double MinZoom = 20.0; // Minimum zoom level (20%)
-    private const double MaxZoom = 500.0; // Maximum zoom level (500%)
-    private double _markdownZoomLevel = 100.0; // Current zoom level (default 100%)
     private readonly double _textBoxDefaultFontSize;
     private string _currentFilePath = string.Empty;
     private bool _isShowingInputQuery; // Flag to track if the input query is shown
     private string _previousMarkdownContent = string.Empty; // Store Markdown content before showing input
     private string _lastInputPrompt = string.Empty; // Store the last prompt sent
     private readonly List<SourceFile> _lastIncludedFiles = new(); // Store files included in the last prompt
-
+    
+    // Zoom variables
+    private const double ZoomIncrement = 10.0; // Zoom step (10%)
+    private const double MinZoom = 20.0; // Minimum zoom level (20%)
+    private const double MaxZoom = 500.0; // Maximum zoom level (500%)
+    private double _markdownZoomLevel = 100.0; // Current zoom level (default 100%)
+    
     public MainWindow()
     {
         InitializeComponent();
@@ -366,10 +368,7 @@ public partial class MainWindow
         // Schedule scroll position restore (needs to be delayed a bit)
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            if (scrollViewer != null)
-            {
-                scrollViewer.ScrollToVerticalOffset(verticalOffset);
-            }
+            scrollViewer?.ScrollToVerticalOffset(verticalOffset);
         }), DispatcherPriority.Loaded);
     }
 
@@ -408,7 +407,6 @@ public partial class MainWindow
             });
         }
     }
-
 
     private void BtnZoomIn_Click(object sender, RoutedEventArgs e)
     {
@@ -486,7 +484,7 @@ public partial class MainWindow
             // Limit log size (optional)
             if (TxtLog.Text.Length > 50000)
             {
-                TxtLog.Text = TxtLog.Text.Substring(TxtLog.Text.Length - 40000);
+                TxtLog.Text = TxtLog.Text[^40000..];
             }
         });
     }
@@ -593,52 +591,31 @@ public partial class MainWindow
                 BtnClearFiles.IsEnabled = false;
                 BtnSendQuery.IsEnabled = false;
 
-                // Show processing state without blocking UI
+                // Show processing state
                 SetProcessingState(true, "Scanning folder");
 
-                // Use Task.Run to move heavy processing to background thread
-                await Task.Run(async () =>
-                {
-                    try
-                    {
-                        // Clear collections on background thread
-                        _filesByExtension.Clear();
+                // Clear collections
+                _filesByExtension.Clear();
 
-                        // Clear UI on UI thread
-                        await Dispatcher.InvokeAsync(() =>
-                        {
-                            LvFiles.Items.Clear();
-                            LogOperation($"Starting folder scan: {_selectedFolder}");
-                            StartOperationTimer("FolderScan");
-                        });
+                // Clear UI
+                LvFiles.Items.Clear();
+                LogOperation($"Starting folder scan: {_selectedFolder}");
+                StartOperationTimer("FolderScan");
+                    
+                // Scan files
+                await FindSourceFilesAsync(_selectedFolder);
 
-                        // Scan files on background thread
-                        await FindSourceFilesAsync(_selectedFolder);
+                // Update UI with results
+                var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
+                TxtStatus.Text = $"Found {totalFiles} source files.";
 
-                        // Update UI with results on UI thread
-                        await Dispatcher.InvokeAsync(() =>
-                        {
-                            var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
-                            TxtStatus.Text = $"Found {totalFiles} source files.";
-
-                            // Display files organized by folder
-                            DisplayFilesByFolder();
-
-                            EndOperationTimer("FolderScan");
-                            CalculateTotalTokens();
-
-                            SetProcessingState(false);
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        await Dispatcher.InvokeAsync(() =>
-                        {
-                            LogOperation($"Error in background scanning: {ex.Message}");
-                            SetProcessingState(false);
-                        });
-                    }
-                });
+                // Display files organized by folder
+                DisplayFilesByFolder();
+                EndOperationTimer("FolderScan");
+                CalculateTotalTokens();
+                
+                // Ensure processing state is reset
+                SetProcessingState(false);
             }
         }
         catch (Exception ex)
@@ -669,26 +646,21 @@ public partial class MainWindow
             TxtStatus.Text = "Scanning folder for source files...";
             LogOperation($"Starting folder scan: {_selectedFolder}");
             StartOperationTimer("FolderScan");
-            // SetProcessingState(true, "Scanning folder");
+            SetProcessingState(true, "Scanning folder");
 
             _filesByExtension.Clear();
             LvFiles.Items.Clear();
 
-            // Make FindSourceFiles async and await it directly
             await FindSourceFilesAsync(_selectedFolder);
 
-            // Update UI on UI thread
-            await Dispatcher.InvokeAsync(() =>
-            {
-                var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
-                TxtStatus.Text = $"Found {totalFiles} source files.";
+            var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
+            TxtStatus.Text = $"Found {totalFiles} source files.";
 
-                // Display files organized by folder
-                DisplayFilesByFolder();
-
-                EndOperationTimer("FolderScan");
-                CalculateTotalTokens();
-            });
+            DisplayFilesByFolder();
+            EndOperationTimer("FolderScan");
+            CalculateTotalTokens();
+            
+            SetProcessingState(false);
         }
         catch (Exception ex)
         {
@@ -846,7 +818,7 @@ public partial class MainWindow
         };
     }
 
-    private string GenerateFileFilterFromExtensions()
+    private static string GenerateFileFilterFromExtensions()
     {
         // Return only the "All Files" filter as requested
         return "All Files (*.*)|*.*";
@@ -890,36 +862,18 @@ public partial class MainWindow
                 LogOperation($"Processing {dialog.FileNames.Length} selected files");
                 StartOperationTimer("ProcessSelectedFiles");
 
-                // Process files in background without blocking UI
-                await Task.Run(async () =>
-                {
-                    try
-                    {
-                        // Process files without blocking UI thread
-                        await ProcessSelectedFilesAsync(dialog.FileNames);
+                await ProcessSelectedFilesAsync(dialog.FileNames);
 
-                        // Update UI on UI thread
-                        await Dispatcher.InvokeAsync(() =>
-                        {
-                            var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
-                            LogOperation($"Total files after selection: {totalFiles}");
+                var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
+                LogOperation($"Total files after selection: {totalFiles}");
 
-                            // Update the files view
-                            DisplayFilesByFolder();
+                // Update the files view
+                DisplayFilesByFolder();
 
-                            EndOperationTimer("ProcessSelectedFiles");
-
-                            SetProcessingState(false);
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        await Dispatcher.InvokeAsync(() =>
-                        {
-                            LogOperation($"Error in background processing: {ex.Message}");
-                        });
-                    }
-                });
+                EndOperationTimer("ProcessSelectedFiles");
+                
+                // Ensure processing state is reset
+                SetProcessingState(false);
             }
         }
         catch (Exception ex)
@@ -939,7 +893,6 @@ public partial class MainWindow
             SetProcessingState(false);
         }
     }
-
 
     private void ProcessSelectedFiles(string[] filePaths)
     {
@@ -1222,17 +1175,13 @@ public partial class MainWindow
                 }
                 catch (Exception ex)
                 {
-                    await Dispatcher.InvokeAsync(() =>
-                        LogOperation($"Error scanning directory {currentDir}: {ex.Message}")
-                    );
+                    LogOperation($"Error scanning directory {currentDir}: {ex.Message}");
                 }
             }
         }
         catch (Exception ex)
         {
-            await Dispatcher.InvokeAsync(() =>
-                LogOperation($"Error in folder scan: {ex.Message}")
-            );
+            LogOperation($"Error in folder scan: {ex.Message}");
         }
     }
 
@@ -1272,7 +1221,7 @@ public partial class MainWindow
                 }
             }
 
-            // Only log if needed (and outside the lock)
+            // Only log if needed
             if (fileAdded && batchIndex % 100 == 0) // Only log every 100 files to avoid flood
             {
                 await Dispatcher.InvokeAsync(() =>
@@ -1282,9 +1231,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            await Dispatcher.InvokeAsync(() =>
-                LogOperation($"Error reading file {file.FullName}: {ex.Message}")
-            );
+            LogOperation($"Error reading file {file.FullName}: {ex.Message}");
         }
     }
 
@@ -1350,9 +1297,8 @@ public partial class MainWindow
                     }
                     else
                     {
-                        Dispatcher.InvokeAsync(() =>
-                            LogOperation($"Skipped duplicate file: {file.FullName.Replace(_selectedFolder, "").TrimStart('\\', '/')}")
-                        );
+                        LogOperation(
+                            $"Skipped duplicate file: {file.FullName.Replace(_selectedFolder, "").TrimStart('\\', '/')}");
                     }
                 }
             }
