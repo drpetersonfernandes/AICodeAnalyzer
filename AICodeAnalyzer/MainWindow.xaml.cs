@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -550,8 +551,6 @@ public partial class MainWindow
         }
 
         CboPreviousKeys.SelectedIndex = 0;
-
-        TxtApiKey.Clear();
     }
 
     private static string MaskKey(string key)
@@ -560,35 +559,6 @@ public partial class MainWindow
             return "*****";
 
         return string.Concat(key.AsSpan(0, 3), "*****", key.AsSpan(key.Length - 3));
-    }
-
-    private void CboPreviousKeys_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (CboPreviousKeys.SelectedIndex <= 0)
-            return;
-
-        var apiSelection = CboAiApi.SelectedItem?.ToString() ?? string.Empty;
-        var savedKeys = _keyManager.GetKeysForProvider(apiSelection);
-
-        if (CboPreviousKeys.SelectedIndex - 1 < savedKeys.Count)
-        {
-            TxtApiKey.Password = savedKeys[CboPreviousKeys.SelectedIndex - 1];
-        }
-    }
-
-    private void BtnSaveKey_Click(object sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrEmpty(TxtApiKey.Password))
-        {
-            MessageBox.Show("Please enter an API key before saving.", "No Key", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        var apiSelection = CboAiApi.SelectedItem?.ToString() ?? string.Empty;
-        _keyManager.SaveKey(apiSelection, TxtApiKey.Password);
-        UpdatePreviousKeys(apiSelection);
-
-        MessageBox.Show("API key saved successfully.", "Key Saved", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void MenuAbout_Click(object sender, RoutedEventArgs e)
@@ -624,7 +594,7 @@ public partial class MainWindow
                 BtnSendQuery.IsEnabled = false;
 
                 // Show processing state without blocking UI
-                // SetProcessingState(true, "Scanning folder");
+                SetProcessingState(true, "Scanning folder");
 
                 // Use Task.Run to move heavy processing to background thread
                 await Task.Run(async () =>
@@ -1073,69 +1043,195 @@ public partial class MainWindow
     {
         try
         {
-            var dirInfo = new DirectoryInfo(folderPath);
-
-            // Get all files with source extensions in this directory
-            var files = dirInfo.EnumerateFiles()
-                .Where(f => _settingsManager.Settings.SourceFileExtensions.Contains(f.Extension.ToLowerInvariant()))
-                .Where(f => f.Length / 1024 <= _settingsManager.Settings.MaxFileSizeKb)
-                .ToList();
-
-            // Process files in batches
-            const int batchSize = 50;
-            for (var i = 0; i < files.Count; i += batchSize)
+            // Convert SourceFileExtensions to a HashSet for O(1) lookups instead of O(n)
+            var allowedExtensions = new HashSet<string>(_settingsManager.Settings.SourceFileExtensions, StringComparer.OrdinalIgnoreCase);
+            var maxFileSizeKb = _settingsManager.Settings.MaxFileSizeKb;
+        
+            // Create a set of excluded directories for faster lookups
+            var excludedDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+                { "bin", "obj", "node_modules", "packages", ".git", ".vs" };
+        
+            // Use ConcurrentDictionary to avoid locks when adding files
+            var filesByExtConcurrent = new System.Collections.Concurrent.ConcurrentDictionary<string, List<SourceFile>>();
+        
+            // Keep track of processed paths to avoid duplicates (much faster than searching the lists)
+            var processedPaths = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
+        
+            // Optimize UI updates by throttling them
+            var lastUiUpdate = DateTime.MinValue;
+            var fileProcessedCount = 0;
+            var totalFileCount = 0;
+        
+            // Track if we need to throttle UI updates 
+            var updateThrottleSemaphore = new SemaphoreSlim(1, 1);
+        
+            // Use ParallelOptions for better control of parallelism
+            var parallelOptions = new ParallelOptions
             {
-                // Take a batch of files
-                var batch = files.Skip(i).Take(batchSize).ToList();
+                // Adjust this based on your CPU - maybe set to Environment.ProcessorCount
+                MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2)
+            };
 
-                // Update UI with progress every few batches
-                if (i % 100 == 0)
+            // Process files and directories using a custom recursive method
+            await ProcessDirectoryAsync(folderPath, 0);
+
+            // Sync the concurrent dictionary with the regular one
+            _filesByExtension.Clear();
+            foreach (var kvp in filesByExtConcurrent)
+            {
+                _filesByExtension[kvp.Key] = kvp.Value;
+            }
+
+            async Task ProcessDirectoryAsync(string currentDir, int depth)
+            {
+                try
+                {
+                    var dirInfo = new DirectoryInfo(currentDir);
+                
+                    // Skip excluded directories
+                    if (excludedDirs.Contains(dirInfo.Name) || 
+                        dirInfo.Attributes.HasFlag(FileAttributes.Hidden) ||
+                        dirInfo.Attributes.HasFlag(FileAttributes.System) ||
+                        dirInfo.Name.StartsWith('.'))
+                    {
+                        return;
+                    }
+
+                    // Process all matching files in this directory in parallel
+                    var matchingFiles = dirInfo.EnumerateFiles()
+                        .Where(f => allowedExtensions.Contains(f.Extension.ToLowerInvariant()) && 
+                                    f.Length / 1024 <= maxFileSizeKb)
+                        .ToList();
+                
+                    // Update total count atomically
+                    Interlocked.Add(ref totalFileCount, matchingFiles.Count);
+                
+                    // Update UI only occasionally - not on every batch
+                    var now = DateTime.Now;
+                    if ((now - lastUiUpdate).TotalMilliseconds > 500) // Only update every 500ms
+                    {
+                        await updateThrottleSemaphore.WaitAsync();
+                        try
+                        {
+                            if ((now - lastUiUpdate).TotalMilliseconds > 500)
+                            {
+                                lastUiUpdate = now;
+                                await Dispatcher.InvokeAsync(() =>
+                                {
+                                    TxtStatus.Text = $"Scanning folder... (Found {fileProcessedCount}/{totalFileCount} files)";
+                                });
+                            }
+                        }
+                        finally
+                        {
+                            updateThrottleSemaphore.Release();
+                        }
+                    }
+
+                    // Process files in parallel with better batching
+                    await Parallel.ForEachAsync(matchingFiles, parallelOptions, async (file, ct) =>
+                    {
+                        try
+                        {
+                            var ext = file.Extension.ToLowerInvariant();
+                        
+                            // Skip if already processed (avoid duplicates)
+                            if (!processedPaths.TryAdd(file.FullName, 0))
+                                return;
+                        
+                            // Calculate relative path once
+                            string relativePath;
+                            if (file.FullName.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase))
+                            {
+                                relativePath = file.FullName[_selectedFolder.Length..].TrimStart('\\', '/');
+                            }
+                            else
+                            {
+                                relativePath = file.FullName;
+                            }
+
+                            // Read file content asynchronously
+                            string content;
+                            try
+                            {
+                                // Read file with optimized buffering
+                                content = await File.ReadAllTextAsync(file.FullName, ct);
+                            }
+                            catch (Exception ex)
+                            {
+                                await Dispatcher.InvokeAsync(() =>
+                                    LogOperation($"Error reading file {file.FullName}: {ex.Message}")
+                                );
+                                return;
+                            }
+
+                            // Create source file
+                            var sourceFile = new SourceFile
+                            {
+                                Path = file.FullName,
+                                RelativePath = relativePath,
+                                Extension = ext,
+                                Content = content
+                            };
+
+                            // Add to concurrent dictionary
+                            filesByExtConcurrent.AddOrUpdate(
+                                ext,
+                                _ => new List<SourceFile> { sourceFile },
+                                (_, list) =>
+                                {
+                                    lock (list) // Still need a lock for the list itself
+                                    {
+                                        list.Add(sourceFile);
+                                    }
+
+                                    return list;
+                                }
+                            );
+
+                            // Increment processed count
+                            Interlocked.Increment(ref fileProcessedCount);
+                        }
+                        catch (Exception ex)
+                        {
+                            await Dispatcher.InvokeAsync(() =>
+                                LogOperation($"Error processing file {file.FullName}: {ex.Message}")
+                            );
+                        }
+                    });
+
+                    // Process subdirectories in parallel with depth throttling
+                    var subDirs = dirInfo.GetDirectories();
+                
+                    // For deep directories, process sequentially to avoid thread explosion
+                    if (depth > 3)
+                    {
+                        foreach (var dir in subDirs)
+                        {
+                            await ProcessDirectoryAsync(dir.FullName, depth + 1);
+                        }
+                    }
+                    else
+                    {
+                        // Process directories in parallel for better performance at shallow depths
+                        await Parallel.ForEachAsync(subDirs, parallelOptions, async (dir, ct) =>
+                        {
+                            await ProcessDirectoryAsync(dir.FullName, depth + 1);
+                        });
+                    }
+                }
+                catch (Exception ex)
                 {
                     await Dispatcher.InvokeAsync(() =>
-                    {
-                        TxtStatus.Text = $"Scanning folder... ({i}/{files.Count} files processed)";
-                    });
+                        LogOperation($"Error scanning directory {currentDir}: {ex.Message}")
+                    );
                 }
-
-                // Process batch of files
-                var fileTasks = new List<Task>();
-                foreach (var file in batch)
-                {
-                    fileTasks.Add(ProcessFileInScanAsync(file, i));
-                }
-
-                // Wait for all files in batch to complete
-                await Task.WhenAll(fileTasks);
             }
-
-            // Process subdirectories with concurrency limit
-            var subDirs = dirInfo.GetDirectories()
-                .Where(d => !d.Attributes.HasFlag(FileAttributes.Hidden) &&
-                            !d.Attributes.HasFlag(FileAttributes.System) &&
-                            !d.Name.StartsWith('.') &&
-                            !d.Name.Equals("bin", StringComparison.OrdinalIgnoreCase) &&
-                            !d.Name.Equals("obj", StringComparison.OrdinalIgnoreCase) &&
-                            !d.Name.Equals("node_modules", StringComparison.OrdinalIgnoreCase) &&
-                            !d.Name.Equals("packages", StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            // Process directories with throttling
-            var dirThrottler = new SemaphoreSlimSafe(5); // Process up to 5 directories at once
-            var dirTasks = new List<Task>();
-
-            foreach (var dir in subDirs)
-            {
-                await dirThrottler.WaitAsync();
-                dirTasks.Add(ProcessSubdirectoryAsync(dir, dirThrottler));
-            }
-
-            // Wait for all directory tasks to complete
-            await Task.WhenAll(dirTasks);
         }
         catch (Exception ex)
         {
             await Dispatcher.InvokeAsync(() =>
-                LogOperation($"Error scanning directory {folderPath}: {ex.Message}")
+                LogOperation($"Error in folder scan: {ex.Message}")
             );
         }
     }
@@ -1266,7 +1362,7 @@ public partial class MainWindow
     private async void BtnAnalyze_Click(object sender, RoutedEventArgs e)
     {
         // Check for API key
-        if (string.IsNullOrEmpty(TxtApiKey.Password))
+        if (CboPreviousKeys.SelectedIndex == -1)
         {
             MessageBox.Show("Please enter an API key.", "Missing API Key", MessageBoxButton.OK, MessageBoxImage.Warning);
             LogOperation("Analysis canceled: No API key provided");
@@ -1326,10 +1422,10 @@ public partial class MainWindow
                         // Add the files
                         foreach (var extensionGroup in _filesByExtension)
                         {
-                            allFilesSummary.AppendLine($"### {extensionGroup.Key.ToUpperInvariant()} FILES ({extensionGroup.Value.Count})");
+                            allFilesSummary.AppendLine(CultureInfo.InvariantCulture, $"### {extensionGroup.Key.ToUpperInvariant()} FILES ({extensionGroup.Value.Count})");
                             foreach (var file in extensionGroup.Value)
                             {
-                                allFilesSummary.AppendLine($"- {file.RelativePath}");
+                                allFilesSummary.AppendLine(CultureInfo.InvariantCulture, $"- {file.RelativePath}");
                                 currentQueryFiles.Add(file);
                             }
 
@@ -2419,33 +2515,64 @@ public partial class MainWindow
             StartOperationTimer($"ApiRequest-{apiSelection}");
             LogOperation($"Sending prompt to {apiSelection} ({prompt.Length} characters)");
 
-            // Send the prompt and return the response
-            string response;
-
-            // Special handling for providers with model selection
-            if (provider is DeepSeek deepSeekProvider && modelId != null)
+            // Check if a key is selected and get the actual API key
+            string? key;
+            if (CboPreviousKeys.SelectedIndex <= 0)
             {
-                response = await deepSeekProvider.SendPromptWithModelAsync(TxtApiKey.Password, prompt, _conversationHistory, modelId);
-            }
-            else if (provider is Claude claudeProvider && modelId != null)
-            {
-                response = await claudeProvider.SendPromptWithModelAsync(TxtApiKey.Password, prompt, _conversationHistory, modelId);
-            }
-            else if (provider is Grok grokProvider && modelId != null)
-            {
-                response = await grokProvider.SendPromptWithModelAsync(TxtApiKey.Password, prompt, _conversationHistory, modelId);
-            }
-            else if (provider is Gemini geminiProvider && modelId != null)
-            {
-                response = await geminiProvider.SendPromptWithModelAsync(TxtApiKey.Password, prompt, _conversationHistory, modelId);
-            }
-            else if (provider is OpenAi openAiProvider && modelId != null)
-            {
-                response = await openAiProvider.SendPromptWithModelAsync(TxtApiKey.Password, prompt, _conversationHistory, modelId);
+                MessageBox.Show("Please select an API key", "API Key Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+                throw new ApplicationException("No API key selected");
             }
             else
             {
-                response = await provider.SendPromptWithModelAsync(TxtApiKey.Password, prompt, _conversationHistory);
+                // Get the actual API key from the key manager (not the masked one shown in the UI)
+                // Subtract 1 from index because index 0 is "Select a key"
+                var savedKeys = _keyManager.GetKeysForProvider(apiSelection);
+                var keyIndex = CboPreviousKeys.SelectedIndex - 1;
+            
+                if (keyIndex >= 0 && keyIndex < savedKeys.Count)
+                {
+                    key = savedKeys[keyIndex];
+                }
+                else
+                {
+                    MessageBox.Show("The selected API key is invalid", "Invalid API Key", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    throw new ApplicationException("Invalid API key selection");
+                }
+            }
+
+            if (string.IsNullOrEmpty(key))
+            {
+                MessageBox.Show("The API key is empty", "Empty API Key", MessageBoxButton.OK, MessageBoxImage.Warning);
+                throw new ApplicationException("Empty API key");
+            }
+
+            // Send the prompt and return the response
+            string response;
+        
+            // Special handling for providers with model selection
+            if (provider is DeepSeek deepSeekProvider && modelId != null)
+            {
+                response = await deepSeekProvider.SendPromptWithModelAsync(key, prompt, _conversationHistory, modelId);
+            }
+            else if (provider is Claude claudeProvider && modelId != null)
+            {
+                response = await claudeProvider.SendPromptWithModelAsync(key, prompt, _conversationHistory, modelId);
+            }
+            else if (provider is Grok grokProvider && modelId != null)
+            {
+                response = await grokProvider.SendPromptWithModelAsync(key, prompt, _conversationHistory, modelId);
+            }
+            else if (provider is Gemini geminiProvider && modelId != null)
+            {
+                response = await geminiProvider.SendPromptWithModelAsync(key, prompt, _conversationHistory, modelId);
+            }
+            else if (provider is OpenAi openAiProvider && modelId != null)
+            {
+                response = await openAiProvider.SendPromptWithModelAsync(key, prompt, _conversationHistory, modelId);
+            }
+            else
+            {
+                response = await provider.SendPromptWithModelAsync(key, prompt, _conversationHistory);
             }
 
             // Log response received
@@ -3027,7 +3154,6 @@ public partial class MainWindow
                 CboModel.SelectedIndex = -1; // Default to none
 
                 // Reset API Key
-                TxtApiKey.Clear();
                 CboPreviousKeys.SelectedIndex = -1; // Default to none
 
                 // Reset Model description

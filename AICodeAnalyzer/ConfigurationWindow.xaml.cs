@@ -648,7 +648,7 @@ public partial class ConfigurationWindow
 
 
 // Update the ListView when provider selection changes
-    private void CboApiProviders_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void CboApiProviders_SelectionChanged(object? sender, SelectionChangedEventArgs? e)
     {
         if (CboApiProviders.SelectedItem is string selectedProvider)
         {

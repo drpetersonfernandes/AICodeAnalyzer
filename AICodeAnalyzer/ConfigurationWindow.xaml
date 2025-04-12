@@ -1,6 +1,8 @@
 ﻿<Window x:Class="AICodeAnalyzer.ConfigurationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
         Title="Configuration" Height="500" Width="600"
         WindowStartupLocation="CenterOwner" ResizeMode="CanResize">
     <Grid Margin="20">
@@ -225,7 +227,8 @@
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="{Binding Key}" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="0" Text="{Binding Key}" VerticalAlignment="Center"
+                                                       d:DataContext="{d:DesignInstance }" />
                                             <Button Grid.Column="1" Content="Remove"
                                                     Margin="10,0,0,0" Padding="5,2"
                                                     Click="BtnRemoveKey_Click" />

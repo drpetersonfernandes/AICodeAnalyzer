@@ -264,11 +264,12 @@
 
                     <!-- API Key Section -->
                     <TextBlock Text="API Key:" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,5,5" />
-                    <PasswordBox x:Name="TxtApiKey" Grid.Row="2" Grid.Column="1" Margin="0,0,5,5" />
-                    <Button x:Name="BtnSaveKey" Content="Save" Grid.Row="2" Grid.Column="2" Margin="0,0,5,5"
-                            Click="BtnSaveKey_Click" Padding="8,3" Height="25" />
-                    <ComboBox x:Name="CboPreviousKeys" Grid.Row="2" Grid.Column="3" Margin="0,0,5,5"
-                              SelectionChanged="CboPreviousKeys_SelectionChanged" Width="90" />
+                    <ComboBox x:Name="CboPreviousKeys" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                              HorizontalAlignment="Stretch" 
+                              Margin="0,0,5,5" />
+                    <Button x:Name="BtnAddKey" Grid.Row="2" Grid.Column="3" Content="Add Key"
+                            VerticalAlignment="Center"
+                            Margin="0,0,5,5" Height="25" Padding="8,3" Click="BtnConfigurePrompts_Click" />
 
                     <!-- Model Description -->
                     <TextBlock x:Name="TxtModelDescription"
