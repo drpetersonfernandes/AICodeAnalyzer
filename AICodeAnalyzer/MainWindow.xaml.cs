@@ -591,9 +591,6 @@ public partial class MainWindow
                 BtnClearFiles.IsEnabled = false;
                 BtnSendQuery.IsEnabled = false;
 
-                // Show processing state
-                SetProcessingState(true, "Scanning folder");
-
                 // Clear collections
                 _filesByExtension.Clear();
 
@@ -613,9 +610,6 @@ public partial class MainWindow
                 DisplayFilesByFolder();
                 EndOperationTimer("FolderScan");
                 CalculateTotalTokens();
-                
-                // Ensure processing state is reset
-                SetProcessingState(false);
             }
         }
         catch (Exception ex)
@@ -630,9 +624,6 @@ public partial class MainWindow
             BtnSelectFiles.IsEnabled = true;
             BtnClearFiles.IsEnabled = true;
             BtnSendQuery.IsEnabled = true;
-
-            // Ensure processing state is reset
-            SetProcessingState(false);
         }
     }
 
@@ -828,7 +819,6 @@ public partial class MainWindow
     {
         try
         {
-            // Create file selection dialog
             var dialog = new OpenFileDialog
             {
                 Multiselect = true,
@@ -858,7 +848,6 @@ public partial class MainWindow
                     LogOperation($"Base folder set to: {_selectedFolder}");
                 }
 
-                // SetProcessingState(true, "Processing selected files");
                 LogOperation($"Processing {dialog.FileNames.Length} selected files");
                 StartOperationTimer("ProcessSelectedFiles");
 
@@ -871,9 +860,6 @@ public partial class MainWindow
                 DisplayFilesByFolder();
 
                 EndOperationTimer("ProcessSelectedFiles");
-                
-                // Ensure processing state is reset
-                SetProcessingState(false);
             }
         }
         catch (Exception ex)
@@ -888,9 +874,6 @@ public partial class MainWindow
             BtnSelectFiles.IsEnabled = true;
             BtnClearFiles.IsEnabled = true;
             BtnSendQuery.IsEnabled = true;
-
-            // Ensure processing state is reset
-            SetProcessingState(false);
         }
     }
 
