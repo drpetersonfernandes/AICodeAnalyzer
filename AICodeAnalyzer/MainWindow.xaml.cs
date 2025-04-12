@@ -2204,7 +2204,7 @@ public partial class MainWindow
                 MarkdownViewer.Document.PagePadding = new Thickness(0);
                 MarkdownViewer.Document.TextAlignment = TextAlignment.Left;
 
-                LogOperation($"Updated Markdown page width to {contentWidth:F0}px (90% of {containerWidth:F0}px)");
+                // LogOperation($"Updated Markdown page width to {contentWidth:F0}px (90% of {containerWidth:F0}px)");
             }
         }
         catch (Exception ex)
