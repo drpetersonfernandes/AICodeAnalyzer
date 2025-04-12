@@ -1533,7 +1533,7 @@ public partial class MainWindow
         EndOperationTimer("QueryProcessing");
     }
 
-    private string GenerateMinimalPrompt(Dictionary<string, List<string>> consolidatedFiles)
+    private static string GenerateMinimalPrompt(Dictionary<string, List<string>> consolidatedFiles)
     {
         var prompt = new StringBuilder();
 
