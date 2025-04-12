@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Windows;
 using MessagePack; // Added MessagePack namespace
 
 namespace AICodeAnalyzer;
@@ -108,9 +109,10 @@ public class ApiKeyManager
             // Write the binary data to file
             File.WriteAllBytes(_keysFilePath, bytes);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Silently fail for now
+            ErrorLogger.LogError(ex, "Error saving API keys");
+            MessageBox.Show("Failed to save API keys. See error log for details.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

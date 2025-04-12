@@ -69,35 +69,65 @@ public class ApplicationSettings
         "Here are all the files from my project:";
 
     // Constructor with default values
+    // Constructor with all supported extensions
     public ApplicationSettings()
     {
-        // Set default extensions
+        // All supported extensions organized by category
         SourceFileExtensions = new List<string>
         {
-            // Original extensions
-            ".cs", ".xaml", ".java", ".js", ".ts", ".py", ".html", ".css",
-            ".cpp", ".h", ".c", ".go", ".rb", ".php", ".swift", ".kt",
-            ".rs", ".dart", ".scala", ".groovy", ".pl", ".sh", ".bat",
-            ".ps1", ".xml", ".json", ".yaml", ".yml", ".md", ".txt",
-
-            // Additional extensions from GetLanguageForExtension
-            ".sql", ".bash", ".r", ".vb", ".fs", ".lua", ".dockerfile",
-            ".ini", ".toml", ".asp", ".aspx", ".cshtml", ".axaml",
-
-            // Web development
-            ".jsx", ".tsx", ".vue", ".svelte", ".scss", ".sass", ".less",
-            ".mjs", ".cjs", ".graphql", ".gql",
-
+            // C# and .NET
+            ".cs", ".vb", ".fs", ".xaml", ".csproj", ".vbproj", ".fsproj", 
+            ".nuspec", ".aspx", ".asp", ".cshtml", ".axaml",
+            
+            // Web languages
+            ".html", ".htm", ".css", ".js", ".jsx", ".ts", ".tsx", 
+            ".vue", ".svelte", ".scss", ".sass", ".less", ".mjs", ".cjs",
+            
+            // JVM languages
+            ".java", ".kt", ".scala", ".groovy",
+            
+            // Python
+            ".py",
+            
+            // Ruby
+            ".rb", ".erb",
+            
+            // PHP
+            ".php",
+            
+            // C/C++
+            ".c", ".cpp", ".h",
+            
+            // Go
+            ".go",
+            
+            // Rust
+            ".rs",
+            
+            // Swift/Objective-C
+            ".swift", ".m", ".mm",
+            
+            // Dart/Flutter
+            ".dart",
+            
+            // Markup and Data
+            ".xml", ".json", ".yaml", ".yml", ".md", ".txt", ".plist",
+            
             // Templates
-            ".pug", ".jade", ".ejs", ".haml", ".erb",
-
-            // Other languages
-            ".ex", ".exs", ".jl", ".nim", ".hs", ".clj", ".elm", ".erl",
-            ".m", ".mm", ".asm", ".s",
-
-            // Config and infrastructure
-            ".tf", ".tfvars", ".proto", ".plist", ".config",
-            ".csproj", ".vbproj", ".fsproj", ".nuspec", ".wasm"
+            ".pug", ".jade", ".ejs", ".haml",
+            
+            // Query Languages
+            ".sql", ".graphql", ".gql",
+            
+            // Shell/Scripts
+            ".sh", ".bash", ".bat", ".ps1", ".pl",
+            
+            // Other Languages
+            ".r", ".lua", ".dockerfile", ".ex", ".exs", ".jl", ".nim",
+            ".hs", ".clj", ".elm", ".erl", ".asm", ".s", ".wasm",
+            
+            // Configuration/Infrastructure
+            ".ini", ".toml", ".tf", ".tfvars", ".proto", ".config"
         };
 
         // Set up default prompt

@@ -5,6 +5,7 @@ using System.Xml;
 using System.Xml.Serialization;
 using AICodeAnalyzer.Models;
 using System.Linq;
+using System.Windows;
 
 namespace AICodeAnalyzer;
 
@@ -83,7 +84,8 @@ public class SettingsManager
             // In a real app, we might want to log this exception
             Console.WriteLine($"Error saving settings: {ex.Message}");
 
-            // Silently fail for now
+            ErrorLogger.LogError(ex, $"Error saving settings: {ex.Message}");
+            MessageBox.Show("Error saving settings.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -144,7 +146,7 @@ public class SettingsManager
     /// <summary>
     /// Handles migrating settings from older versions to the new format
     /// </summary>
-    private void MigrateSettingsIfNeeded(ApplicationSettings settings)
+    private static void MigrateSettingsIfNeeded(ApplicationSettings settings)
     {
         // For older versions that don't have CodePrompts or only have InitialPrompt
         if (settings.CodePrompts.Count == 0 && !string.IsNullOrEmpty(settings.InitialPrompt))

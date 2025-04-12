@@ -31,7 +31,6 @@ public partial class MainWindow
     private readonly SettingsManager _settingsManager = new();
     private readonly string[] _loadingDots = { ".", "..", "...", "....", "....." };
     private int _currentResponseIndex = -1;
-    private int _estimatedTokenCount;
     private string _selectedFolder = string.Empty;
     private bool _isMarkdownViewActive = true;
     private string _currentResponseText = string.Empty;
@@ -44,6 +43,9 @@ public partial class MainWindow
     private string _previousMarkdownContent = string.Empty; // Store Markdown content before showing input
     private string _lastInputPrompt = string.Empty; // Store the last prompt sent
     private readonly List<SourceFile> _lastIncludedFiles = new(); // Store files included in the last prompt
+    
+    private readonly TokenCounterService _tokenCounterService = new();
+    private TokenCalculationResult _tokenCalculationResult = new();
     
     // Zoom variables
     private const double ZoomIncrement = 10.0; // Zoom step (10%)
@@ -784,27 +786,119 @@ public partial class MainWindow
     {
         return ext switch
         {
+            // C# and .NET
             ".cs" => "C#",
             ".xaml" => "XAML",
-            ".java" => "Java",
-            ".js" => "JavaScript",
-            ".ts" => "TypeScript",
-            ".py" => "Python",
+            ".csproj" => ".NET Project",
+            ".vbproj" => ".NET Project",
+            ".fsproj" => ".NET Project",
+            ".vb" => "Visual Basic",
+            ".fs" => "F#",
+            ".nuspec" => ".NET Package",
+            ".aspx" => "ASP.NET",
+            ".asp" => "ASP.NET",
+            ".cshtml" => "Razor",
+            ".axaml" => "Avalonia XAML",
+        
+            // Web languages
             ".html" or ".htm" => "HTML",
             ".css" => "CSS",
-            ".cpp" or ".h" or ".c" => "C/C++",
-            ".go" => "Go",
-            ".rb" => "Ruby",
-            ".php" => "PHP",
-            ".swift" => "Swift",
+            ".js" => "JavaScript",
+            ".jsx" => "React JSX",
+            ".ts" => "TypeScript",
+            ".tsx" => "React TSX",
+            ".vue" => "Vue.js",
+            ".svelte" => "Svelte",
+            ".scss" => "SASS",
+            ".sass" => "SASS",
+            ".less" => "LESS",
+            ".mjs" => "JavaScript Module",
+            ".cjs" => "CommonJS Module",
+        
+            // JVM languages
+            ".java" => "Java",
             ".kt" => "Kotlin",
+            ".scala" => "Scala",
+            ".groovy" => "Groovy",
+        
+            // Python
+            ".py" => "Python",
+        
+            // Ruby
+            ".rb" => "Ruby",
+            ".erb" => "ERB Template",
+        
+            // PHP
+            ".php" => "PHP",
+        
+            // C/C++
+            ".cpp" or ".h" or ".c" => "C/C++",
+        
+            // Go
+            ".go" => "Go",
+        
+            // Rust
             ".rs" => "Rust",
+        
+            // Swift/Objective-C
+            ".swift" => "Swift",
+            ".m" => "Objective-C",
+            ".mm" => "Objective-C++",
+        
+            // Dart/Flutter
             ".dart" => "Dart",
+        
+            // Markup and Data
             ".xml" => "XML",
             ".json" => "JSON",
             ".yaml" or ".yml" => "YAML",
             ".md" => "Markdown",
             ".txt" => "Text",
+            ".plist" => "Property List",
+        
+            // Templates
+            ".pug" => "Pug Template",
+            ".jade" => "Jade Template",
+            ".ejs" => "EJS Template",
+            ".haml" => "Haml Template",
+        
+            // Query Languages
+            ".sql" => "SQL",
+            ".graphql" => "GraphQL",
+            ".gql" => "GraphQL",
+        
+            // Shell/Scripts
+            ".sh" => "Shell Script",
+            ".bash" => "Bash Script",
+            ".bat" => "Batch Script",
+            ".ps1" => "PowerShell",
+            ".pl" => "Perl",
+        
+            // Other Languages
+            ".r" => "R",
+            ".lua" => "Lua",
+            ".dockerfile" => "Dockerfile",
+            ".ex" => "Elixir",
+            ".exs" => "Elixir Script",
+            ".jl" => "Julia",
+            ".nim" => "Nim",
+            ".hs" => "Haskell",
+            ".clj" => "Clojure",
+            ".elm" => "Elm",
+            ".erl" => "Erlang",
+            ".asm" => "Assembly",
+            ".s" => "Assembly",
+            ".wasm" => "WebAssembly",
+        
+            // Configuration/Infrastructure
+            ".ini" => "INI Config",
+            ".toml" => "TOML Config",
+            ".tf" => "Terraform",
+            ".tfvars" => "Terraform Vars",
+            ".proto" => "Protocol Buffers",
+            ".config" => "Config File",
+        
+            // Default case
             _ => "Other"
         };
     }
@@ -894,7 +988,7 @@ public partial class MainWindow
                     string relativePath;
                     if (filePath.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase))
                     {
-                        relativePath = filePath.Substring(_selectedFolder.Length).TrimStart('\\', '/');
+                        relativePath = filePath[_selectedFolder.Length..].TrimStart('\\', '/');
                     }
                     else
                     {
@@ -970,7 +1064,6 @@ public partial class MainWindow
         }
         finally
         {
-            _estimatedTokenCount = 0;
             UpdateTokenCountDisplay();
         }
     }
@@ -1046,21 +1139,21 @@ public partial class MainWindow
                     var now = DateTime.Now;
                     if ((now - lastUiUpdate).TotalMilliseconds > 500) // Only update every 500ms
                     {
-                        await updateThrottleSemaphore.WaitAsync();
-                        try
+                        if ((now - lastUiUpdate).TotalMilliseconds > 500)
                         {
-                            if ((now - lastUiUpdate).TotalMilliseconds > 500)
+                            lastUiUpdate = now;
+                            await updateThrottleSemaphore.WaitAsync();
+                            try
                             {
-                                lastUiUpdate = now;
                                 await Dispatcher.InvokeAsync(() =>
                                 {
                                     TxtStatus.Text = $"Scanning folder... (Found {fileProcessedCount}/{totalFileCount} files)";
                                 });
                             }
-                        }
-                        finally
-                        {
-                            updateThrottleSemaphore.Release();
+                            finally
+                            {
+                                updateThrottleSemaphore.Release();
+                            }
                         }
                     }
 
@@ -1595,81 +1688,124 @@ public partial class MainWindow
     {
         return ext switch
         {
+            // C# and .NET
             ".cs" => "csharp",
-            ".py" => "python",
-            ".js" => "javascript",
-            ".ts" => "typescript",
-            ".java" => "java",
-            ".html" => "html",
-            ".css" => "css",
-            ".cpp" or ".h" or ".c" => "cpp",
-            ".go" => "go",
-            ".rb" => "ruby",
-            ".php" => "php",
-            ".swift" => "swift",
-            ".kt" => "kotlin",
-            ".rs" => "rust",
-            ".dart" => "dart",
+            ".vb" => "vb",
+            ".fs" => "fsharp",
             ".xaml" => "xml",
+            ".csproj" => "xml",
+            ".vbproj" => "xml",
+            ".fsproj" => "xml",
+            ".nuspec" => "xml",
+            ".aspx" => "aspx",
+            ".asp" => "asp",
+            ".cshtml" => "cshtml",
+            ".axaml" => "xml",
+        
+            // Web languages
+            ".html" => "html",
+            ".htm" => "html",
+            ".css" => "css",
+            ".js" => "javascript",
+            ".jsx" => "jsx",
+            ".ts" => "typescript",
+            ".tsx" => "tsx",
+            ".vue" => "vue",
+            ".svelte" => "svelte",
+            ".scss" => "scss",
+            ".sass" => "sass",
+            ".less" => "less",
+            ".mjs" => "javascript",
+            ".cjs" => "javascript",
+        
+            // JVM languages
+            ".java" => "java",
+            ".kt" => "kotlin",
+            ".scala" => "scala",
+            ".groovy" => "groovy",
+        
+            // Python
+            ".py" => "python",
+        
+            // Ruby
+            ".rb" => "ruby",
+            ".erb" => "erb",
+        
+            // PHP
+            ".php" => "php",
+        
+            // C/C++
+            ".c" => "c",
+            ".cpp" => "cpp",
+            ".h" => "cpp", // C/C++ headers typically get cpp highlighting
+        
+            // Go
+            ".go" => "go",
+        
+            // Rust
+            ".rs" => "rust",
+        
+            // Swift/Objective-C
+            ".swift" => "swift",
+            ".m" => "objectivec", // Fixed from "nim" to "objectivec"
+            ".mm" => "objectivec",
+        
+            // Dart/Flutter
+            ".dart" => "dart",
+        
+            // Markup and Data
             ".xml" => "xml",
             ".json" => "json",
-            ".yaml" or ".yml" => "yaml",
+            ".yaml" => "yaml",
+            ".yml" => "yaml",
             ".md" => "markdown",
             ".txt" => "text",
-            ".sql" => "sql", // SQL
-            ".sh" or ".bash" => "bash",
+            ".plist" => "xml",
+        
+            // Templates
+            ".pug" => "pug",
+            ".jade" => "jade",
+            ".ejs" => "ejs",
+            ".haml" => "haml",
+        
+            // Query Languages
+            ".sql" => "sql",
+            ".graphql" => "graphql",
+            ".gql" => "graphql",
+        
+            // Shell/Scripts
+            ".sh" => "bash",
+            ".bash" => "bash",
+            ".bat" => "batch",
             ".ps1" => "powershell",
-            ".r" => "r", // R language
-            ".vb" => "vb", // Visual Basic
-            ".fs" => "fsharp", // F#
-            ".lua" => "lua", // Lua
             ".pl" => "perl",
-            ".groovy" => "groovy",
+        
+            // Other Languages
+            ".r" => "r",
+            ".lua" => "lua",
             ".dockerfile" => "dockerfile",
-            ".ini" => "ini", // INI configuration
-            ".toml" => "toml", // TOML configuration
-            ".asp" or ".aspx" => "asp", // ASP and ASPX
-            ".cshtml" => "cshtml", // Razor syntax
-            ".axaml" => "axml", // Avalonia XAML
-            ".jsx" => "jsx", // React JSX
-            ".tsx" => "tsx", // React TSX (TypeScript)
-            ".vue" => "vue", // Vue.js components
-            ".svelte" => "svelte", // Svelte components
-            ".scss" => "scss", // SCSS (Sass)
-            ".sass" => "sass", // Sass
-            ".less" => "less", // Less CSS
-            ".mjs" => "mjs", // JavaScript modules
-            ".cjs" => "cjs", // CommonJS modules
-            ".graphql" => "graphql", // GraphQL
-            ".gql" => "gpl", // GraphQL shorthand
-            ".pug" => "pug", // Pug templates
-            ".jade" => "jade", // Jade templates (older name for Pug)
-            ".ejs" => "ejs", // EJS templates
-            ".haml" => "haml", // Haml templates
-            ".erb" => "erb", // ERB templates (Ruby)
-            ".ex" => "ex", // Elixir
-            ".exs" => "exs", // Elixir script
-            ".jl" => "jl", // Julia
-            ".nim" => "nim", // Nim
-            ".hs" => "hs", // Haskell
-            ".clj" => "clj", // Clojure
-            ".elm" => "elm", // Elm
-            ".erl" => "erl", // Erlang
-            ".m" => "nim", // Objective-C
-            ".mm" => "mm", // Objective-C++
-            ".asm" => "asm", // Assembly
-            ".s" => "s", // Assembly
-            ".tf" => "tf", // Terraform
-            ".tfvars" => "tfvars", // Terraform variables
-            ".proto" => "proto", // Protocol Buffers
-            ".plist" => "plist", // Property List
-            ".config" => "config", // Configuration files
-            ".csproj" => "csproj", // C# project files
-            ".vbproj" => "vbproj", // VB project files
-            ".fsproj" => "fsproj", // F# project files
-            ".nuspec" => "nuspec", // NuGet specification
-            ".wasm" => "wasm", // WebAssembly
-            _ => "text" // Default to "text" for unknown extensions
+            ".ex" => "elixir",
+            ".exs" => "elixir",
+            ".jl" => "julia",
+            ".nim" => "nim",
+            ".hs" => "haskell",
+            ".clj" => "clojure",
+            ".elm" => "elm",
+            ".erl" => "erlang",
+            ".asm" => "asm",
+            ".s" => "asm",
+            ".wasm" => "wasm",
+        
+            // Configuration/Infrastructure
+            ".ini" => "ini",
+            ".toml" => "toml",
+            ".tf" => "hcl",
+            ".tfvars" => "hcl",
+            ".proto" => "proto",
+            ".config" => "xml",
+        
+            // Default case
+            _ => "text"
         };
     }
 
@@ -2800,6 +2936,9 @@ public partial class MainWindow
             if (!string.IsNullOrEmpty(_selectedFolder))
             {
                 projectName = new DirectoryInfo(_selectedFolder).Name;
+
+                // Sanitize the project name to remove invalid characters
+                projectName = string.Join("_", projectName.Split(Path.GetInvalidFileNameChars()));
             }
 
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
@@ -2819,116 +2958,82 @@ public partial class MainWindow
 
     private static int EstimateTokenCount(string text, string fileExtension = "")
     {
+        // Legacy method kept for backward compatibility with code that might call it directly
+        // This now delegates to the SharpToken implementation via the instance
+        // This should not be used for new code - instead use _tokenCounterService directly
         if (string.IsNullOrEmpty(text))
             return 0;
 
-        // Base tokenization ratio - approximately 2.5 characters per token
+        // Use a simplified fallback implementation since we can't access the instance method
+        // This is just a failsafe if this static method is called directly from legacy code
         var charsPerToken = 2.5;
-
-        // Adjust based on file type - code files generally use more tokens per character
-        if (!string.IsNullOrEmpty(fileExtension))
-        {
-            charsPerToken = fileExtension switch
-            {
-                // Code files often have more tokens due to special characters and syntax
-                ".cs" => 2.2, // C# has many operators and punctuation
-                ".java" => 2.2, // Similar to C#
-                ".xaml" => 2.0, // XML-based files have many tags and attributes
-                ".xml" => 2.0, // XML has many brackets and quotes
-                ".json" => 2.0, // JSON has many quotes and syntax characters
-                ".cpp" => 2.2, // C++ similar to C#
-                ".js" => 2.3, // JavaScript
-                ".py" => 2.5, // Python is somewhat more compact
-                ".html" => 2.0, // HTML has many tags
-                ".css" => 2.3, // CSS has special characters
-                ".md" => 3.0, // Markdown is closer to natural language
-                ".txt" => 3.5, // Plain text is closest to natural language
-                _ => 2.5 // Default conservative estimate
-            };
-        }
-
-        // Token calculation with more conservative rounding
+    
+        // Extremely simplified logic as this method should not be used anymore
         return (int)Math.Ceiling(text.Length / charsPerToken);
     }
 
     private void CalculateTotalTokens()
     {
-        _estimatedTokenCount = 0;
-
-        // Calculate tokens for each file with extension-specific adjustments
-        foreach (var extensionGroup in _filesByExtension)
-        {
-            var extension = extensionGroup.Key;
-            foreach (var file in extensionGroup.Value)
-            {
-                _estimatedTokenCount += EstimateTokenCount(file.Content, extension);
-            }
-        }
-
-        // Add tokens for the initial prompt
-        var promptTemplate = _settingsManager.Settings.InitialPrompt;
-        _estimatedTokenCount += EstimateTokenCount(promptTemplate);
-
-        // Add tokens for file headers and formatting (increased estimate)
-        // Each file gets a header like "File: path.ext" and code block markers
-        var fileCount = _filesByExtension.Values.Sum(list => list.Count);
-        _estimatedTokenCount += fileCount * EstimateTokenCount("File: filename.ext\n```language\n\n```\n");
-
-        // Add tokens for section headers and structural overhead
-        // This accounts for extension headers like "--- .CS FILES ---" and extra formatting
-        var extensionCount = _filesByExtension.Keys.Count;
-        _estimatedTokenCount += extensionCount * EstimateTokenCount("--- .EXTENSION FILES ---\n\n");
-
-        // Add additional overhead for organizing and structuring the content (15% buffer)
-        _estimatedTokenCount = (int)(_estimatedTokenCount * 1.15);
-
-        // Update the UI with the new estimate
+        // Get all source files as a flat list
+        var allFiles = _filesByExtension.Values
+            .SelectMany(files => files)
+            .ToList();
+    
+        // Get the prompt template text for token counting
+        var promptTemplate = GetPromptTemplateText();
+    
+        // Use SharpToken to calculate tokens
+        _tokenCalculationResult = _tokenCounterService.CalculateTotalTokens(allFiles, promptTemplate);
+    
+        // Update UI
         UpdateTokenCountDisplay();
+    
+        LogOperation($"Token calculation complete: {_tokenCalculationResult.TotalTokens:N0} tokens");
     }
 
     private void UpdateTokenCountDisplay()
     {
         Dispatcher.Invoke(() =>
         {
-            // Calculate lower and upper bounds with wider range (±30%)
-            var lowerBound = (int)(_estimatedTokenCount * 0.80);
-            var upperBound = (int)(_estimatedTokenCount * 1.50); // Wider upper bound for safety
-
-            // Format the display text with the range
-            TxtTokenCount.Text = $"Estimated Input Tokens: {_estimatedTokenCount:N0} (range {lowerBound:N0} - {upperBound:N0})";
+            // Get the total token count from the result
+            var totalTokens = _tokenCalculationResult.TotalTokens;
+        
+            // Format the display text with exact token count
+            TxtTokenCount.Text = $"Estimated tokens: {totalTokens:N0} (range {totalTokens * 0.8:N0} - {totalTokens * 1.2:N0})";
 
             // Detailed tooltip with model-specific information
-            var tooltipText = $"Base estimate: {_estimatedTokenCount:N0} tokens\n" +
-                              $"Range: {lowerBound:N0} - {upperBound:N0} tokens\n\n" +
-                              "⚠️ Token estimates are approximate and may vary by model\n";
-
-            TxtTokenCount.ToolTip = tooltipText;
-
-            LogOperation($"Updated token estimate range: {lowerBound:N0} - {upperBound:N0} tokens (base: {_estimatedTokenCount:N0})");
+            var tooltipBuilder = new StringBuilder();
+            tooltipBuilder.AppendLine(_tokenCalculationResult.GetBreakdown());
+        
+            TxtTokenCount.ToolTip = tooltipBuilder.ToString();
+        
+            LogOperation($"Updated token count display: {totalTokens:N0} tokens");
         });
     }
 
     private void HandleTokenLimitError(int actualTokens, int modelLimit)
     {
-        // Update our estimation algorithm based on actual token usage
-        var observedRatio = (double)_estimatedTokenCount / actualTokens;
-        LogOperation($"Token estimation accuracy: {observedRatio:P2} (estimated: {_estimatedTokenCount:N0}, actual: {actualTokens:N0})");
-
+        // Update our token calculation with actual token count from the API
+        _tokenCalculationResult.TotalTokens = actualTokens;
+    
+        // Log the discrepancy for monitoring
+        var accuracyPercent = (_tokenCalculationResult.TotalTokens * 100.0 / actualTokens);
+        LogOperation($"Token count accuracy: {accuracyPercent:F1}% (calculated: {_tokenCalculationResult.TotalTokens:N0}, actual: {actualTokens:N0})");
+    
         // Show error dialog with helpful guidance
         MessageBox.Show(
             $"Error: Token limit exceeded\n\n" +
-            $"Your code contains approximately {actualTokens:N0} tokens, but the model's limit is {modelLimit:N0} tokens.\n\n" +
+            $"Your input contains {actualTokens:N0} tokens, but the model's limit is {modelLimit:N0} tokens.\n\n" +
             "To fix this issue, try one of these approaches:\n" +
             "• Remove non-essential files from your selection\n" +
             "• Focus on specific parts of your codebase\n" +
             "• Try a model with a larger context window, if available\n\n" +
-            "The token count display has been updated to reflect this information.",
+            "The token count display has been updated to reflect the actual token count.",
             "Token Limit Exceeded",
             MessageBoxButton.OK,
             MessageBoxImage.Error);
-
-        // Update the estimation display with actual token count for future reference
-        _estimatedTokenCount = actualTokens;
+    
+        // Update the display with actual token information
         UpdateTokenCountDisplay();
     }
 
@@ -3052,7 +3157,6 @@ public partial class MainWindow
                 LvFiles.Items.Clear();
                 _selectedFolder = string.Empty;
                 TxtSelectedFolder.Text = string.Empty;
-                _estimatedTokenCount = 0;
                 TxtTokenCount.Text = string.Empty;
 
                 // Clear last prompt/files state

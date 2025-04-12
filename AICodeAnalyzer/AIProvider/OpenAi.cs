@@ -12,7 +12,7 @@ namespace AICodeAnalyzer.AIProvider;
 
 public class OpenAi : IAiApiProvider, IDisposable
 {
-    private readonly HttpClient _httpClient = new();
+    private static readonly HttpClient HttpClient = new();
 
     public string Name => "ChatGPT API";
     public string DefaultModel => "gpt-4o";
@@ -37,7 +37,7 @@ public class OpenAi : IAiApiProvider, IDisposable
             {
                 Id = Models.Gpt45Preview,
                 Name = "GPT-4.5 Preview",
-                Description = "Context window 128,000 tokens. Input price $75,00. Output price $150,00.",
+                Description = "128K context - $75/M input tokens - $150/M output tokens.",
                 ContextLength = 128000,
                 Category = "GPT-4.5 Models"
             },
@@ -47,7 +47,7 @@ public class OpenAi : IAiApiProvider, IDisposable
             {
                 Id = Models.Gpt4O,
                 Name = "GPT-4o",
-                Description = "Context window 128,000 tokens. Input price $2,50. Output price $10,00.",
+                Description = "128K context - $2,5/M input tokens - $10/M output tokens.",
                 ContextLength = 128000,
                 Category = "GPT-4o Models"
             },
@@ -57,7 +57,7 @@ public class OpenAi : IAiApiProvider, IDisposable
             {
                 Id = Models.Gpt4OMini,
                 Name = "GPT-4o Mini",
-                Description = "Context window 128,000 tokens. Input price $0,15. Output price $0,60.",
+                Description = "128K context - $0,15/M input tokens - $0,6/M output tokens.",
                 ContextLength = 128000,
                 Category = "GPT-4o Mini Models"
             },
@@ -67,7 +67,7 @@ public class OpenAi : IAiApiProvider, IDisposable
             {
                 Id = Models.O1,
                 Name = "o1",
-                Description = "Context window 200,000 tokens. Input price $15,00. Output price $60,00.",
+                Description = "200K context - $15/M input tokens - $60/M output tokens.",
                 ContextLength = 200000,
                 Category = "o1 Models"
             },
@@ -77,7 +77,7 @@ public class OpenAi : IAiApiProvider, IDisposable
             {
                 Id = Models.O1Pro,
                 Name = "o1 Pro",
-                Description = "Context window 200,000 tokens. Input price $150,00. Output price $600,00.",
+                Description = "200K context - $150/M input tokens - $600/M output tokens.",
                 ContextLength = 200000,
                 Category = "o1 Pro Models"
             },
@@ -87,7 +87,7 @@ public class OpenAi : IAiApiProvider, IDisposable
             {
                 Id = Models.O3Mini,
                 Name = "o3 Mini",
-                Description = "Context window 200,000 tokens. Input price $1,10. Output price $4,40.",
+                Description = "200K context - $1,1/M input tokens - $4,4/M output tokens.",
                 ContextLength = 200000,
                 Category = "o3 Models"
             },
@@ -97,7 +97,7 @@ public class OpenAi : IAiApiProvider, IDisposable
             {
                 Id = Models.O1Mini,
                 Name = "o1 Mini",
-                Description = "Context window 131,000 tokens. Input price $3,00. Output price $12,00.",
+                Description = "131K context - $3/M input tokens - $12/M output tokens.",
                 ContextLength = 131000,
                 Category = "o1 Mini Models"
             }
@@ -115,8 +115,8 @@ public class OpenAi : IAiApiProvider, IDisposable
         var model = modelId;
         const string apiUrl = "https://api.openai.com/v1/chat/completions";
 
-        _httpClient.DefaultRequestHeaders.Clear();
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        HttpClient.DefaultRequestHeaders.Clear();
+        HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         // Properly format the message history for OpenAI API
         var messages = new List<object>();
@@ -153,7 +153,7 @@ public class OpenAi : IAiApiProvider, IDisposable
             Encoding.UTF8,
             "application/json");
 
-        var response = await _httpClient.PostAsync(apiUrl, content);
+        var response = await HttpClient.PostAsync(apiUrl, content);
 
         JsonDocument? doc;
         if (!response.IsSuccessStatusCode)
@@ -195,10 +195,6 @@ public class OpenAi : IAiApiProvider, IDisposable
 
     public void Dispose()
     {
-        // Dispose of the HttpClient
-        _httpClient.Dispose();
-
-        // Suppress finalization since we've released unmanaged resources
         GC.SuppressFinalize(this);
     }
 }

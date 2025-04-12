@@ -12,7 +12,7 @@ namespace AICodeAnalyzer.AIProvider;
 
 public class Claude : IAiApiProvider, IDisposable
 {
-    private readonly HttpClient _httpClient = new();
+    private static readonly HttpClient HttpClient = new();
 
     public string Name => "Claude API";
     public string DefaultModel => "claude-3-sonnet-20240229";
@@ -39,7 +39,7 @@ public class Claude : IAiApiProvider, IDisposable
             {
                 Id = Models.Claude37Sonnet,
                 Name = "Claude 3.7 Sonnet",
-                Description = "Context window 200,000 tokens. Input price $3,00. Output price $15,00.",
+                Description = "200K context - $3/M input tokens - $15/M output tokens.",
                 ContextLength = 200000
             },
 
@@ -48,14 +48,14 @@ public class Claude : IAiApiProvider, IDisposable
             {
                 Id = Models.Claude35Sonnet,
                 Name = "Claude 3.5 Sonnet",
-                Description = "Context window 200,000 tokens. Input price $3,00. Output price $15,00.",
+                Description = "200K context - $3/M input tokens - $15/M output tokens.",
                 ContextLength = 200000
             },
             new()
             {
                 Id = Models.Claude35Haiku,
                 Name = "Claude 3.5 Haiku",
-                Description = "Context window 200,000 tokens. Input price $0,8. Output price $4,00.",
+                Description = "200K context - $0,8/M input tokens - $4/M output tokens.",
                 ContextLength = 200000
             },
 
@@ -64,7 +64,7 @@ public class Claude : IAiApiProvider, IDisposable
             {
                 Id = Models.Claude3Opus,
                 Name = "Claude 3 Opus",
-                Description = "Context window 200,000 tokens. Input price $15,00. Output price $75,00.",
+                Description = "200K context - $15/M input tokens - $75/M output tokens.",
                 ContextLength = 200000
             }
         };
@@ -75,9 +75,9 @@ public class Claude : IAiApiProvider, IDisposable
         var model = modelId;
         const string apiUrl = "https://api.anthropic.com/v1/messages";
 
-        _httpClient.DefaultRequestHeaders.Clear();
-        _httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
-        _httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+        HttpClient.DefaultRequestHeaders.Clear();
+        HttpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
+        HttpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
 
         // Properly format the message history for Claude API
         var messages = new List<object>();
@@ -103,7 +103,7 @@ public class Claude : IAiApiProvider, IDisposable
             Encoding.UTF8,
             "application/json");
 
-        var response = await _httpClient.PostAsync(apiUrl, content);
+        var response = await HttpClient.PostAsync(apiUrl, content);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -121,10 +121,6 @@ public class Claude : IAiApiProvider, IDisposable
 
     public void Dispose()
     {
-        // Dispose the HttpClient to release resources
-        _httpClient.Dispose();
-
-        // Suppress finalization since we've explicitly disposed resources
         GC.SuppressFinalize(this);
     }
 }

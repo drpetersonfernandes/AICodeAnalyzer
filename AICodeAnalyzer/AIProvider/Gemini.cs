@@ -11,7 +11,7 @@ namespace AICodeAnalyzer.AIProvider;
 
 public class Gemini : IAiApiProvider, IDisposable
 {
-    private readonly HttpClient _httpClient = new();
+    private static readonly HttpClient HttpClient = new();
 
     public string Name => "Gemini API";
     public string DefaultModel => "gemini-2.0-flash";
@@ -33,7 +33,7 @@ public class Gemini : IAiApiProvider, IDisposable
             {
                 Id = Models.Gemini25ProExp,
                 Name = "Gemini 2.5 Pro Experimental",
-                Description = "Context window 1,000,000 tokens. Input TBA. Output TBA.",
+                Description = "1M context - $TBA/M input tokens - $TBA/M output tokens.",
                 ContextLength = 1000000,
                 ApiVersion = "v1beta"
             },
@@ -41,7 +41,7 @@ public class Gemini : IAiApiProvider, IDisposable
             {
                 Id = Models.Gemini20Flash,
                 Name = "Gemini 2.0 Flash",
-                Description = "Context window 1,000,000 tokens. Input price $0,10. Output price $0,40.",
+                Description = "1M context - $0,1/M input tokens - $0,4/M output tokens.",
                 ContextLength = 1000000,
                 ApiVersion = "v1beta"
             },
@@ -49,7 +49,7 @@ public class Gemini : IAiApiProvider, IDisposable
             {
                 Id = Models.Gemini20FlashLite,
                 Name = "Gemini 2.0 Flash-Lite",
-                Description = "Context window 1,000,000 tokens. Input price $0,075. Output price $0,30.",
+                Description = "1M context - $0,075/M input tokens - $0,3/M output tokens.",
                 ContextLength = 1000000,
                 ApiVersion = "v1beta"
             },
@@ -57,7 +57,7 @@ public class Gemini : IAiApiProvider, IDisposable
             {
                 Id = Models.Gemini15Flash,
                 Name = "Gemini 1.5 Flash",
-                Description = "Context window 100,000,000 tokens. Input price $0,075. Output price $0,30.",
+                Description = "1M context - $0,075/M input tokens - $0,3/M output tokens.",
                 ContextLength = 1000000,
                 ApiVersion = "v1"
             },
@@ -65,7 +65,7 @@ public class Gemini : IAiApiProvider, IDisposable
             {
                 Id = Models.Gemini15Pro,
                 Name = "Gemini 1.5 Pro",
-                Description = "Context window 2,000,000 tokens. Input price $2,5. Output price $10,00.",
+                Description = "2M context - $2,5/M input tokens - $10/M output tokens.",
                 ContextLength = 2000000,
                 ApiVersion = "v1"
             }
@@ -100,7 +100,7 @@ public class Gemini : IAiApiProvider, IDisposable
             // Build the API URL with the correct version
             var apiUrl = $"https://generativelanguage.googleapis.com/{apiVersion}/models/{model}:generateContent?key={apiKey}";
 
-            _httpClient.DefaultRequestHeaders.Clear();
+            HttpClient.DefaultRequestHeaders.Clear();
 
             // Build message content based on conversation history
             var contents = new List<object>();
@@ -146,7 +146,7 @@ public class Gemini : IAiApiProvider, IDisposable
                 Encoding.UTF8,
                 "application/json");
 
-            var response = await _httpClient.PostAsync(apiUrl, content);
+            var response = await HttpClient.PostAsync(apiUrl, content);
 
             JsonDocument? doc;
             if (!response.IsSuccessStatusCode)
@@ -200,7 +200,7 @@ public class Gemini : IAiApiProvider, IDisposable
         }
     }
 
-    private int GetMaxTokensForModel(string model)
+    private static int GetMaxTokensForModel(string model)
     {
         return model switch
         {
@@ -215,10 +215,6 @@ public class Gemini : IAiApiProvider, IDisposable
 
     public void Dispose()
     {
-        // Dispose the HttpClient
-        _httpClient.Dispose();
-
-        // Suppress finalization since we've explicitly cleaned up resources
         GC.SuppressFinalize(this);
     }
 }

@@ -12,7 +12,7 @@ namespace AICodeAnalyzer.AIProvider;
 
 public class Grok : IAiApiProvider, IDisposable
 {
-    private readonly HttpClient _httpClient = new();
+    private static readonly HttpClient HttpClient = new();
 
     public string Name => "Grok API";
     public string DefaultModel => "grok-3-beta";
@@ -25,19 +25,19 @@ public class Grok : IAiApiProvider, IDisposable
             {
                 Name = "Grok 3",
                 Id = "grok-3-beta",
-                Description = "Context window 131,072 tokens. Input price $3.00. Output price $15.00."
+                Description = "131K context - $3/M input tokens - $15/M output tokens."
             },
             new()
             {
                 Name = "Grok 3 Mini",
                 Id = "grok-3-mini-beta",
-                Description = "Context window 131,072 tokens. Input price $0.30. Output price $0.50."
+                Description = "131K context - $0,3/M input tokens - $0,5/M output tokens."
             },
             new()
             {
                 Name = "Grok 2",
                 Id = "grok-2-1212",
-                Description = "Context window 131,072 tokens. Input price $2.00. Output price $10.00."
+                Description = "131K context - $2/M input tokens - $10/M output tokens."
             }
         };
     }
@@ -53,8 +53,8 @@ public class Grok : IAiApiProvider, IDisposable
         var model = modelId;
         const string apiUrl = "https://api.grok.x/v1/chat/completions";
 
-        _httpClient.DefaultRequestHeaders.Clear();
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        HttpClient.DefaultRequestHeaders.Clear();
+        HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         // Properly format the message history for Grok API
         var messages = new List<object>();
@@ -88,7 +88,7 @@ public class Grok : IAiApiProvider, IDisposable
             Encoding.UTF8,
             "application/json");
 
-        var response = await _httpClient.PostAsync(apiUrl, content);
+        var response = await HttpClient.PostAsync(apiUrl, content);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -106,10 +106,6 @@ public class Grok : IAiApiProvider, IDisposable
 
     public void Dispose()
     {
-        // Dispose the HttpClient
-        _httpClient.Dispose();
-
-        // Suppress finalization since we've already cleaned up resources
         GC.SuppressFinalize(this);
     }
 }
