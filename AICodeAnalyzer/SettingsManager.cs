@@ -113,7 +113,7 @@ public class SettingsManager
         if (!string.IsNullOrEmpty(Settings.SelectedPromptName) && Settings.CodePrompts.All(p => p.Name != Settings.SelectedPromptName))
         {
             // If selected prompt was removed, select the Default prompt or the first available
-            var defaultPrompt = Settings.CodePrompts.FirstOrDefault(p => p.Name == "Default");
+            var defaultPrompt = Settings.CodePrompts.FirstOrDefault(p => p.Name == "Analyze Source Code");
             Settings.SelectedPromptName = defaultPrompt?.Name ?? Settings.CodePrompts.FirstOrDefault()?.Name;
         }
     }
@@ -124,13 +124,13 @@ public class SettingsManager
     private void EnsureDefaultPrompt()
     {
         // Check if default prompt already exists
-        var defaultPrompt = Settings.CodePrompts.FirstOrDefault(p => p.Name == "Default");
+        var defaultPrompt = Settings.CodePrompts.FirstOrDefault(p => p.Name == "Analyze Source Code");
 
         if (defaultPrompt == null)
         {
             // Default prompt does not exist, create it
             var defaultSettings = new ApplicationSettings();
-            defaultPrompt = new CodePrompt("Default", defaultSettings.InitialPrompt);
+            defaultPrompt = new CodePrompt("Analyze Source Code", defaultSettings.InitialPrompt);
             Settings.CodePrompts.Add(defaultPrompt);
         }
 
@@ -152,8 +152,8 @@ public class SettingsManager
         if (settings.CodePrompts.Count == 0 && !string.IsNullOrEmpty(settings.InitialPrompt))
         {
             // Add the existing InitialPrompt as a "Default" template
-            settings.CodePrompts.Add(new CodePrompt("Default", settings.InitialPrompt));
-            settings.SelectedPromptName = "Default";
+            settings.CodePrompts.Add(new CodePrompt("Analyze Source Code", settings.InitialPrompt));
+            settings.SelectedPromptName = "Analyze Source Code";
         }
 
         // Add more migration logic here if needed for future versions

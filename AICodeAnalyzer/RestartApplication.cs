@@ -4,12 +4,13 @@ using System.Windows;
 
 namespace AICodeAnalyzer;
 
-public class RestartApplication
+public static class RestartApplication
 {
     public static void Restart()
     {
-        var processModule = Process.GetCurrentProcess()?.MainModule;
+        var processModule = Process.GetCurrentProcess().MainModule;
         if (processModule == null) return;
+
         var startInfo = new ProcessStartInfo
         {
             FileName = processModule.FileName,

@@ -26,8 +26,8 @@ public class ApplicationSettings
             // If we're setting this directly, update the default prompt or create it if needed
             if (CodePrompts.Count == 0)
             {
-                CodePrompts.Add(new CodePrompt("Default", value));
-                SelectedPromptName = "Default";
+                CodePrompts.Add(new CodePrompt("Analyze Source Code", value));
+                SelectedPromptName = "Analyze Source Code";
             }
             else if (SelectedPromptName != null)
             {
@@ -43,14 +43,14 @@ public class ApplicationSettings
             }
             else
             {
-                CodePrompts.Add(new CodePrompt("Default", value));
-                SelectedPromptName = "Default";
+                CodePrompts.Add(new CodePrompt("Analyze Source Code", value));
+                SelectedPromptName = "Analyze Source Code";
             }
         }
     }
 
     // Collection of code prompts
-    public List<CodePrompt> CodePrompts { get; set; } = new List<CodePrompt>();
+    public List<CodePrompt> CodePrompts { get; set; } = new();
 
     // Currently selected prompt name
     public string? SelectedPromptName { get; set; }
@@ -58,7 +58,7 @@ public class ApplicationSettings
     // Other settings can be added here in the future
 
     // Default prompt text
-    private string DefaultPrompt =>
+    private static string DefaultPrompt =>
         "Please analyze the following source code files from my project. I would like you to:" + Environment.NewLine +
         "1. Understand the overall structure and purpose of the codebase" + Environment.NewLine +
         "2. Identify any bugs, errors, or inconsistencies" + Environment.NewLine +
@@ -76,62 +76,62 @@ public class ApplicationSettings
         SourceFileExtensions = new List<string>
         {
             // C# and .NET
-            ".cs", ".vb", ".fs", ".xaml", ".csproj", ".vbproj", ".fsproj", 
+            ".cs", ".vb", ".fs", ".xaml", ".csproj", ".vbproj", ".fsproj",
             ".nuspec", ".aspx", ".asp", ".cshtml", ".axaml",
-            
+
             // Web languages
-            ".html", ".htm", ".css", ".js", ".jsx", ".ts", ".tsx", 
+            ".html", ".htm", ".css", ".js", ".jsx", ".ts", ".tsx",
             ".vue", ".svelte", ".scss", ".sass", ".less", ".mjs", ".cjs",
-            
+
             // JVM languages
             ".java", ".kt", ".scala", ".groovy",
-            
+
             // Python
             ".py",
-            
+
             // Ruby
             ".rb", ".erb",
-            
+
             // PHP
             ".php",
-            
+
             // C/C++
             ".c", ".cpp", ".h",
-            
+
             // Go
             ".go",
-            
+
             // Rust
             ".rs",
-            
+
             // Swift/Objective-C
             ".swift", ".m", ".mm",
-            
+
             // Dart/Flutter
             ".dart",
-            
+
             // Markup and Data
             ".xml", ".json", ".yaml", ".yml", ".md", ".txt", ".plist",
-            
+
             // Templates
             ".pug", ".jade", ".ejs", ".haml",
-            
+
             // Query Languages
             ".sql", ".graphql", ".gql",
-            
+
             // Shell/Scripts
             ".sh", ".bash", ".bat", ".ps1", ".pl",
-            
+
             // Other Languages
             ".r", ".lua", ".dockerfile", ".ex", ".exs", ".jl", ".nim",
             ".hs", ".clj", ".elm", ".erl", ".asm", ".s", ".wasm",
-            
+
             // Configuration/Infrastructure
             ".ini", ".toml", ".tf", ".tfvars", ".proto", ".config"
         };
 
         // Set up default prompt
-        CodePrompts.Add(new CodePrompt("Default", DefaultPrompt));
-        SelectedPromptName = "Default";
+        CodePrompts.Add(new CodePrompt("Analyze Source Code", DefaultPrompt));
+        SelectedPromptName = "Analyze Source Code";
     }
 }

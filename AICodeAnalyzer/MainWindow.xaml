@@ -266,7 +266,7 @@
                     <!-- API Key Section -->
                     <TextBlock Text="API Key:" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,5,5" />
                     <ComboBox x:Name="CboPreviousKeys" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
-                              HorizontalAlignment="Stretch" 
+                              HorizontalAlignment="Stretch"
                               Margin="0,0,5,5" />
                     <Button x:Name="BtnAddKey" Grid.Row="2" Grid.Column="3" Content="Add Key"
                             VerticalAlignment="Center"

@@ -5,7 +5,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using AICodeAnalyzer.Interfaces;
 using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;

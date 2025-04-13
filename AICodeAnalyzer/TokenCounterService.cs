@@ -12,10 +12,10 @@ public class TokenCounterService
 {
     // Dictionary of encoding instances, keyed by model name
     private readonly Dictionary<string, GptEncoding> _encodings = new();
-    
+
     // Default encoding (cl100k_base for Claude/GPT4)
     private const string DefaultEncodingName = "cl100k_base";
-    
+
     /// <summary>
     /// Initializes a new instance of the TokenCounterService class
     /// </summary>
@@ -23,66 +23,44 @@ public class TokenCounterService
     {
         // Initialize default encoder
         _encodings[DefaultEncodingName] = GptEncoding.GetEncoding(DefaultEncodingName);
-        
+
         // Optional: Initialize other encodings if needed
         // _encodings["p50k_base"] = GptEncoding.GetEncoding("p50k_base"); // For older models
     }
-    
-    /// <summary>
-    /// Gets the number of tokens in the given text using the specified encoding
-    /// </summary>
-    /// <param name="text">The text to count tokens for</param>
-    /// <param name="encodingName">The encoding name (default is cl100k_base)</param>
-    /// <returns>The number of tokens in the text</returns>
-    public int CountTokens(string text, string encodingName = DefaultEncodingName)
-    {
-        if (string.IsNullOrEmpty(text))
-            return 0;
-            
-        // Get or create the encoding
-        if (!_encodings.TryGetValue(encodingName, out var encoding))
-        {
-            encoding = GptEncoding.GetEncoding(encodingName);
-            _encodings[encodingName] = encoding;
-        }
-        
-        // Count tokens
-        return encoding.Encode(text).Count;
-    }
-    
+
     /// <summary>
     /// Counts tokens in a source file, including tokens for formatting
     /// </summary>
     /// <param name="file">The source file</param>
     /// <param name="encodingName">The encoding name (default is cl100k_base)</param>
     /// <returns>The total number of tokens for the file</returns>
-    public int CountFileTokens(SourceFile file, string encodingName = DefaultEncodingName)
+    private int CountFileTokens(SourceFile file, string encodingName = DefaultEncodingName)
     {
         if (file == null || string.IsNullOrEmpty(file.Content))
             return 0;
-            
+
         // Get the encoding
         if (!_encodings.TryGetValue(encodingName, out var encoding))
         {
             encoding = GptEncoding.GetEncoding(encodingName);
             _encodings[encodingName] = encoding;
         }
-        
+
         // Calculate tokens for the file content
         var contentTokens = encoding.Encode(file.Content).Count;
-        
+
         // Calculate tokens for the file metadata and formatting
         // Format: "File: {file.RelativePath}\n```{language}\n{content}\n```\n"
         var fileHeaderLanguage = GetLanguageForExtension(file.Extension);
         var fileHeader = $"File: {file.RelativePath}\n```{fileHeaderLanguage}\n";
-        var fileFooter = "\n```\n";
-        
+        const string fileFooter = "\n```\n";
+
         var headerTokens = encoding.Encode(fileHeader).Count;
         var footerTokens = encoding.Encode(fileFooter).Count;
-        
+
         return contentTokens + headerTokens + footerTokens;
     }
-    
+
     /// <summary>
     /// Counts tokens for a list of files and options
     /// </summary>
@@ -91,27 +69,27 @@ public class TokenCounterService
     /// <param name="encodingName">The encoding name (default is cl100k_base)</param>
     /// <returns>Token calculation result with details</returns>
     public TokenCalculationResult CalculateTotalTokens(
-        IEnumerable<SourceFile> files, 
-        string includePrompt = "", 
+        IEnumerable<SourceFile> files,
+        string includePrompt = "",
         string encodingName = DefaultEncodingName)
     {
         var result = new TokenCalculationResult();
         var filesList = files.ToList();
-        
+
         // Get encoding
         if (!_encodings.TryGetValue(encodingName, out var encoding))
         {
             encoding = GptEncoding.GetEncoding(encodingName);
             _encodings[encodingName] = encoding;
         }
-        
+
         // Count prompt tokens if provided
         if (!string.IsNullOrEmpty(includePrompt))
         {
             result.PromptTokens = encoding.Encode(includePrompt).Count;
             result.TotalTokens += result.PromptTokens;
         }
-        
+
         // Section headers tokens (extension groups)
         if (filesList.Count > 0)
         {
@@ -124,27 +102,27 @@ public class TokenCounterService
                 result.TotalTokens += sectionTokens;
             }
         }
-        
+
         // Individual file tokens
         foreach (var file in filesList)
         {
             var fileTokens = CountFileTokens(file, encodingName);
             result.FileTokens += fileTokens;
             result.TotalTokens += fileTokens;
-            
+
             // Store detailed file token count for analysis
             result.TokensByFile[file.RelativePath] = fileTokens;
         }
-        
+
         // Add a small buffer for other formatting not captured (5%)
         // This is much lower than the previous 15% because our token counting is now more accurate
         var bufferTokens = (int)(result.TotalTokens * 0.05);
         result.BufferTokens = bufferTokens;
         result.TotalTokens += bufferTokens;
-        
+
         return result;
     }
-    
+
     /// <summary>
     /// Gets the language identifier for a file extension to be used in markdown code blocks
     /// </summary>

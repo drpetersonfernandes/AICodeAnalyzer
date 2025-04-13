@@ -25,7 +25,7 @@ public static class ErrorLogger
 
             sb.AppendLine(CultureInfo.InvariantCulture, $"Error Type: {ex.GetType().Name}");
             sb.AppendLine(CultureInfo.InvariantCulture, $"Message: {ex.Message}");
-            sb.AppendLine($"Stack Trace:");
+            sb.AppendLine("Stack Trace:");
             sb.AppendLine(ex.StackTrace);
 
             // Add any inner exception details
@@ -90,7 +90,7 @@ public static class ErrorLogger
 
             sb.AppendLine(CultureInfo.InvariantCulture, $"Error Type: {ex.GetType().Name}");
             sb.AppendLine(CultureInfo.InvariantCulture, $"Message: {ex.Message}");
-            sb.AppendLine($"Stack Trace:");
+            sb.AppendLine("Stack Trace:");
             sb.AppendLine(ex.StackTrace);
 
             // Add any inner exception details

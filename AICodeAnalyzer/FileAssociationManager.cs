@@ -9,21 +9,15 @@ namespace AICodeAnalyzer;
 /// <summary>
 /// Handles file associations using Windows API Code Pack
 /// </summary>
-public partial class FileAssociationManager
+public partial class FileAssociationManager(Action<string> logInfo, Action<string> logError)
 {
     private const string FileExtension = ".md";
     private const string ProgId = "AICodeAnalyzer";
     private const string FileTypeDescription = "Markdown Document";
     private const string DefaultValueName = ""; // Empty string for default registry value
 
-    private readonly Action<string> _logInfo;
-    private readonly Action<string> _logError;
-
-    public FileAssociationManager(Action<string> logInfo, Action<string> logError)
-    {
-        _logInfo = logInfo;
-        _logError = logError;
-    }
+    private readonly Action<string> _logInfo = logInfo;
+    private readonly Action<string> _logError = logError;
 
     /// <summary>
     /// Checks if the application is currently registered for MD files
@@ -71,25 +65,13 @@ public partial class FileAssociationManager
 
                     // Set the default icon
                     using var iconKey = progIdKey.CreateSubKey("DefaultIcon");
-                    if (iconKey != null)
-                    {
-                        iconKey.SetValue(DefaultValueName, $"\"{exePath}\",0");
-                    }
+                    iconKey.SetValue(DefaultValueName, $"\"{exePath}\",0");
 
                     // Set up the open command
                     using var shellKey = progIdKey.CreateSubKey("shell");
-                    if (shellKey != null)
-                    {
-                        using var openKey = shellKey.CreateSubKey("open");
-                        if (openKey != null)
-                        {
-                            using var commandKey = openKey.CreateSubKey("command");
-                            if (commandKey != null)
-                            {
-                                commandKey.SetValue(DefaultValueName, $"\"{exePath}\" \"%1\"");
-                            }
-                        }
-                    }
+                    using var openKey = shellKey.CreateSubKey("open");
+                    using var commandKey = openKey.CreateSubKey("command");
+                    commandKey.SetValue(DefaultValueName, $"\"{exePath}\" \"%1\"");
                 }
             }
 
@@ -123,7 +105,7 @@ public partial class FileAssociationManager
     /// <summary>
     /// Unregisters the application as the handler for MD files
     /// </summary>
-    public bool UnregisterApplication()
+    public void UnregisterApplication()
     {
         try
         {
@@ -131,7 +113,7 @@ public partial class FileAssociationManager
             if (!IsApplicationRegistered())
             {
                 _logInfo("Application is not registered as handler for .md files");
-                return true;
+                return;
             }
 
             // Remove file association
@@ -164,13 +146,11 @@ public partial class FileAssociationManager
             SHChangeNotify(0x08000000, 0x0000, IntPtr.Zero, IntPtr.Zero);
 
             _logInfo("Successfully unregistered application");
-            return true;
         }
         catch (Exception ex)
         {
             _logError($"Error unregistering application: {ex.Message}");
             ErrorLogger.LogError(ex, "Unregistering file association");
-            return false;
         }
     }
 

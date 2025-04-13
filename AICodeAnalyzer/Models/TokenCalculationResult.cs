@@ -11,32 +11,32 @@ public class TokenCalculationResult
     /// Total number of tokens including all components
     /// </summary>
     public int TotalTokens { get; set; }
-    
+
     /// <summary>
     /// Tokens in the initial prompt or system message
     /// </summary>
     public int PromptTokens { get; set; }
-    
+
     /// <summary>
     /// Total tokens in file contents
     /// </summary>
     public int FileTokens { get; set; }
-    
+
     /// <summary>
     /// Tokens from section headers and formatting
     /// </summary>
     public int SectionHeadersTokens { get; set; }
-    
+
     /// <summary>
     /// Buffer tokens added for safety
     /// </summary>
     public int BufferTokens { get; set; }
-    
+
     /// <summary>
     /// Detailed breakdown of tokens by file
     /// </summary>
-    public Dictionary<string, int> TokensByFile { get; } = new Dictionary<string, int>();
-    
+    public Dictionary<string, int> TokensByFile { get; } = new();
+
     /// <summary>
     /// Gets a human-readable breakdown of the token allocation
     /// </summary>

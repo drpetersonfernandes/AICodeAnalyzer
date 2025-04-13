@@ -8,10 +8,10 @@ namespace AICodeAnalyzer;
 
 public class ApiKeyManager
 {
-    private const string KeysFileName = "keys.dat"; // Changed from "keys.xml"
+    private const string KeysFileName = "keys.dat";
     private readonly string _keysFilePath;
 
-    private ApiKeyStorage KeyStorage { get; set; } // Initialize with non-null value
+    private ApiKeyStorage KeyStorage { get; set; }
 
     public ApiKeyManager()
     {
@@ -106,7 +106,7 @@ public class ApiKeyManager
 public class ApiKeyStorage
 {
     [Key(0)] // Key index for MessagePack serialization
-    public List<ApiProvider> Providers { get; set; } = new List<ApiProvider>();
+    public List<ApiProvider> Providers { get; set; } = new();
 }
 
 [Serializable]
@@ -117,5 +117,5 @@ public class ApiProvider
     public string Name { get; set; } = string.Empty;
 
     [Key(1)] // Key index for MessagePack serialization
-    public List<string> Keys { get; set; } = new List<string>();
+    public List<string> Keys { get; set; } = new();
 }

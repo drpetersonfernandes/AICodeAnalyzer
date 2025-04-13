@@ -10,7 +10,7 @@ namespace AICodeAnalyzer;
 [Serializable]
 public class RecentFilesData
 {
-    public List<string> FilePaths { get; set; } = new List<string>();
+    public List<string> FilePaths { get; set; } = new();
 }
 
 public class RecentFilesManager
@@ -37,7 +37,7 @@ public class RecentFilesManager
 
     public void AddRecentFile(string filePath)
     {
-        // Get absolute path
+        // Get the absolute path
         filePath = Path.GetFullPath(filePath);
 
         // Remove the file if it already exists in the list
@@ -95,9 +95,9 @@ public class RecentFilesManager
             var serializer = new XmlSerializer(typeof(RecentFilesData));
             serializer.Serialize(writer, _recentFiles);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Silently fail for now
+            ErrorLogger.LogError(ex, "Error saving recent files");
         }
     }
 }

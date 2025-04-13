@@ -43,16 +43,16 @@ public partial class MainWindow
     private string _previousMarkdownContent = string.Empty; // Store Markdown content before showing input
     private string _lastInputPrompt = string.Empty; // Store the last prompt sent
     private readonly List<SourceFile> _lastIncludedFiles = new(); // Store files included in the last prompt
-    
+
     private readonly TokenCounterService _tokenCounterService = new();
     private TokenCalculationResult _tokenCalculationResult = new();
-    
+
     // Zoom variables
     private const double ZoomIncrement = 10.0; // Zoom step (10%)
     private const double MinZoom = 20.0; // Minimum zoom level (20%)
     private const double MaxZoom = 500.0; // Maximum zoom level (500%)
     private double _markdownZoomLevel = 100.0; // Current zoom level (default 100%)
-    
+
     public MainWindow()
     {
         InitializeComponent();
@@ -177,11 +177,10 @@ public partial class MainWindow
                 {
                     Header = Path.GetFileName(filePath),
                     ToolTip = filePath,
-                    Tag = filePath
+                    Tag = filePath,
+                    // Add document icon to each menu item
+                    Icon = new TextBlock { Text = "📄", FontSize = 14 }
                 };
-
-                // Add document icon to each menu item
-                menuItem.Icon = new TextBlock { Text = "📄", FontSize = 14 };
 
                 menuItem.Click += RecentFileMenuItem_Click;
                 MenuRecentFiles.Items.Add(menuItem);
@@ -190,8 +189,11 @@ public partial class MainWindow
             // Add separator and "Clear Recent Files" option
             MenuRecentFiles.Items.Add(new Separator());
 
-            var clearMenuItem = new MenuItem { Header = "Clear Recent Files" };
-            clearMenuItem.Icon = new TextBlock { Text = "🗑️", FontSize = 14 }; // Trash icon for a clear option
+            var clearMenuItem = new MenuItem
+            {
+                Header = "Clear Recent Files",
+                Icon = new TextBlock { Text = "🗑️", FontSize = 14 } // Trash icon for a clear option
+            };
             clearMenuItem.Click += ClearRecentFiles_Click;
             MenuRecentFiles.Items.Add(clearMenuItem);
         }
@@ -199,14 +201,21 @@ public partial class MainWindow
 
     private async void RecentFileMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem menuItem && menuItem.Tag is string filePath)
+        try
         {
-            await LoadMarkdownFileAsync(filePath);
+            if (sender is MenuItem menuItem && menuItem.Tag is string filePath)
+            {
+                await LoadMarkdownFileAsync(filePath);
 
-            // Ensure the input query button is disabled after loading
-            BtnShowInputQuery.IsEnabled = false;
-            _isShowingInputQuery = false;
-            BtnShowInputQuery.Content = "Show Input Query";
+                // Ensure the input query button is disabled after loading
+                BtnShowInputQuery.IsEnabled = false;
+                _isShowingInputQuery = false;
+                BtnShowInputQuery.Content = "Show Input Query";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Error opening recent file");
         }
     }
 
@@ -574,7 +583,7 @@ public partial class MainWindow
                 LvFiles.Items.Clear();
                 LogOperation($"Starting folder scan: {_selectedFolder}");
                 StartOperationTimer("FolderScan");
-                    
+
                 // Scan files
                 await FindSourceFilesAsync(_selectedFolder);
 
@@ -647,10 +656,13 @@ public partial class MainWindow
                 }
 
                 // Add to folder dictionary
-                if (!filesByFolder.ContainsKey(folderPath))
-                    filesByFolder[folderPath] = new List<SourceFile>();
+                if (!filesByFolder.TryGetValue(folderPath, out var value))
+                {
+                    value = new List<SourceFile>();
+                    filesByFolder[folderPath] = value;
+                }
 
-                filesByFolder[folderPath].Add(file);
+                value.Add(file);
             }
         }
 
@@ -826,25 +838,25 @@ public partial class MainWindow
             // Convert SourceFileExtensions to a HashSet for O(1) lookups instead of O(n)
             var allowedExtensions = new HashSet<string>(_settingsManager.Settings.SourceFileExtensions, StringComparer.OrdinalIgnoreCase);
             var maxFileSizeKb = _settingsManager.Settings.MaxFileSizeKb;
-        
+
             // Create a set of excluded directories for faster lookups
-            var excludedDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+            var excludedDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 { "bin", "obj", "node_modules", "packages", ".git", ".vs" };
-        
+
             // Use ConcurrentDictionary to avoid locks when adding files
             var filesByExtConcurrent = new System.Collections.Concurrent.ConcurrentDictionary<string, List<SourceFile>>();
-        
+
             // Keep track of processed paths to avoid duplicates (much faster than searching the lists)
             var processedPaths = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
-        
+
             // Optimize UI updates by throttling them
             var lastUiUpdate = DateTime.MinValue;
             var fileProcessedCount = 0;
             var totalFileCount = 0;
-        
-            // Track if we need to throttle UI updates 
+
+            // Track if we need to throttle UI updates
             var updateThrottleSemaphore = new SemaphoreSlim(1, 1);
-        
+
             // Use ParallelOptions for better control of parallelism
             var parallelOptions = new ParallelOptions
             {
@@ -867,9 +879,9 @@ public partial class MainWindow
                 try
                 {
                     var dirInfo = new DirectoryInfo(currentDir);
-                
+
                     // Skip excluded directories
-                    if (excludedDirs.Contains(dirInfo.Name) || 
+                    if (excludedDirs.Contains(dirInfo.Name) ||
                         dirInfo.Attributes.HasFlag(FileAttributes.Hidden) ||
                         dirInfo.Attributes.HasFlag(FileAttributes.System) ||
                         dirInfo.Name.StartsWith('.'))
@@ -879,13 +891,13 @@ public partial class MainWindow
 
                     // Process all matching files in this directory in parallel
                     var matchingFiles = dirInfo.EnumerateFiles()
-                        .Where(f => allowedExtensions.Contains(f.Extension.ToLowerInvariant()) && 
+                        .Where(f => allowedExtensions.Contains(f.Extension.ToLowerInvariant()) &&
                                     f.Length / 1024 <= maxFileSizeKb)
                         .ToList();
-                
+
                     // Update total count atomically
                     Interlocked.Add(ref totalFileCount, matchingFiles.Count);
-                
+
                     // Update UI only occasionally - not on every batch
                     var now = DateTime.Now;
                     if ((now - lastUiUpdate).TotalMilliseconds > 500) // Only update every 500ms
@@ -914,11 +926,11 @@ public partial class MainWindow
                         try
                         {
                             var ext = file.Extension.ToLowerInvariant();
-                        
+
                             // Skip if already processed (avoid duplicates)
                             if (!processedPaths.TryAdd(file.FullName, 0))
                                 return;
-                        
+
                             // Calculate relative path once
                             string relativePath;
                             if (file.FullName.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase))
@@ -982,7 +994,7 @@ public partial class MainWindow
 
                     // Process subdirectories in parallel with depth throttling
                     var subDirs = dirInfo.GetDirectories();
-                
+
                     // For deep directories, process sequentially to avoid thread explosion
                     if (depth > 3)
                     {
@@ -1014,145 +1026,152 @@ public partial class MainWindow
 
     private async void BtnAnalyze_Click(object sender, RoutedEventArgs e)
     {
-        // Check for API key
-        if (CboPreviousKeys.SelectedIndex == -1)
-        {
-            MessageBox.Show("Please enter an API key.", "Missing API Key", MessageBoxButton.OK, MessageBoxImage.Warning);
-            LogOperation("Analysis canceled: No API key provided");
-            return;
-        }
-
-        // Get query text and API selection
-        var queryText = TxtFollowupQuestion.Text.Trim();
-        var apiSelection = CboAiApi.SelectedItem?.ToString() ?? "Claude API"; // Default to Claude
-
-        // Setup processing UI
-        TxtStatus.Text = $"Processing with {apiSelection}...";
-        SetProcessingState(true, $"Processing with {apiSelection}");
-        LogOperation($"Starting query with {apiSelection}");
-        StartOperationTimer("QueryProcessing");
-
         try
         {
-            // Initialize prompt variable
-            string prompt;
-
-            // Create a temporary list to track files for this specific query
-            var currentQueryFiles = new List<SourceFile>();
-
-            
-            // Process as initial query or non-follow-up
-            LogOperation("Handling as initial query or simple follow-up");
-
-            // First determine if we need to include files
-            if (ChkIncludeSelectedFiles.IsChecked == true)
+            // Check for API key
+            if (CboPreviousKeys.SelectedIndex == -1)
             {
-                LogOperation("Include Files checkbox is checked - preparing files");
-                StartOperationTimer("PrepareFiles");
+                MessageBox.Show("Please enter an API key.", "Missing API Key", MessageBoxButton.OK, MessageBoxImage.Warning);
+                LogOperation("Analysis canceled: No API key provided");
+                return;
+            }
 
-                // Generate base prompt based on whether to include template
-                if (ChkIncludeInitialPrompt.IsChecked == true)
-                {
-                    LogOperation("Including prompt template");
-                    prompt = GetPromptTemplateText() + "\n\n";
-                }
-                else
-                {
-                    LogOperation("Not using prompt template");
-                    prompt = "Please analyze the following code files:\n\n";
-                }
+            // Get query text and API selection
+            var queryText = TxtFollowupQuestion.Text.Trim();
+            var apiSelection = CboAiApi.SelectedItem?.ToString() ?? "Claude API"; // Default to Claude
 
-                // Now determine which files to include
-                if (LvFiles.SelectedItems.Count > 0)
-                {
-                    // User has specifically selected files in the list
-                    prompt = AppendSelectedFilesToPrompt(prompt, currentQueryFiles);
-                    LogOperation($"Added {currentQueryFiles.Count} specifically selected files to the prompt");
-                }
-                else if (_filesByExtension.Count > 0)
-                {
-                    // No specific selection, include all files
-                    var consolidatedFiles = PrepareConsolidatedFiles(currentQueryFiles);
+            // Setup processing UI
+            TxtStatus.Text = $"Processing with {apiSelection}...";
+            SetProcessingState(true, $"Processing with {apiSelection}");
+            LogOperation($"Starting query with {apiSelection}");
+            StartOperationTimer("QueryProcessing");
 
-                    // Add files to the prompt
-                    foreach (var ext in consolidatedFiles.Keys)
+            try
+            {
+                // Initialize prompt variable
+                string prompt;
+
+                // Create a temporary list to track files for this specific query
+                var currentQueryFiles = new List<SourceFile>();
+
+
+                // Process as initial query or non-follow-up
+                LogOperation("Handling as initial query or simple follow-up");
+
+                // First determine if we need to include files
+                if (ChkIncludeSelectedFiles.IsChecked == true)
+                {
+                    LogOperation("Include Files checkbox is checked - preparing files");
+                    StartOperationTimer("PrepareFiles");
+
+                    // Generate base prompt based on whether to include template
+                    if (ChkIncludeInitialPrompt.IsChecked == true)
                     {
-                        prompt += $"--- {ext.ToUpperInvariant()} FILES ---\n\n";
-
-                        foreach (var fileContent in consolidatedFiles[ext])
-                        {
-                            prompt += fileContent + "\n\n";
-                        }
+                        LogOperation("Including prompt template");
+                        prompt = GetPromptTemplateText() + "\n\n";
+                    }
+                    else
+                    {
+                        LogOperation("Not using prompt template");
+                        prompt = "Please analyze the following code files:\n\n";
                     }
 
-                    LogOperation($"Added all {currentQueryFiles.Count} files to the prompt");
+                    // Now determine which files to include
+                    if (LvFiles.SelectedItems.Count > 0)
+                    {
+                        // User has specifically selected files in the list
+                        prompt = AppendSelectedFilesToPrompt(prompt, currentQueryFiles);
+                        LogOperation($"Added {currentQueryFiles.Count} specifically selected files to the prompt");
+                    }
+                    else if (_filesByExtension.Count > 0)
+                    {
+                        // No specific selection, include all files
+                        var consolidatedFiles = PrepareConsolidatedFiles(currentQueryFiles);
+
+                        // Add files to the prompt
+                        foreach (var ext in consolidatedFiles.Keys)
+                        {
+                            prompt += $"--- {ext.ToUpperInvariant()} FILES ---\n\n";
+
+                            foreach (var fileContent in consolidatedFiles[ext])
+                            {
+                                prompt += fileContent + "\n\n";
+                            }
+                        }
+
+                        LogOperation($"Added all {currentQueryFiles.Count} files to the prompt");
+                    }
+                    else
+                    {
+                        prompt += "--- NO FILES AVAILABLE TO INCLUDE ---\n\n";
+                        LogOperation("No files available to include");
+                    }
+
+                    EndOperationTimer("PrepareFiles");
+
+                    // Update the master list of included files
+                    _lastIncludedFiles.Clear();
+                    _lastIncludedFiles.AddRange(currentQueryFiles);
+                    LogOperation($"Set master file list to {_lastIncludedFiles.Count} files");
                 }
                 else
                 {
-                    prompt += "--- NO FILES AVAILABLE TO INCLUDE ---\n\n";
-                    LogOperation("No files available to include");
+                    // Files not included - generate a basic prompt
+                    if (ChkIncludeInitialPrompt.IsChecked == true)
+                    {
+                        LogOperation("Using prompt template only (no files)");
+                        prompt = GetPromptTemplateText() + "\n\n";
+                    }
+                    else
+                    {
+                        LogOperation("Using minimal prompt (no template, no files)");
+                        prompt = "Please respond to the following:\n\n";
+                    }
+
+                    // Clear the master list of included files
+                    _lastIncludedFiles.Clear();
+                    LogOperation("Cleared master file list as Include Files was unchecked");
                 }
 
-                EndOperationTimer("PrepareFiles");
-
-                // Update the master list of included files
-                _lastIncludedFiles.Clear();
-                _lastIncludedFiles.AddRange(currentQueryFiles);
-                LogOperation($"Set master file list to {_lastIncludedFiles.Count} files");
-            }
-            else
-            {
-                // Files not included - generate a basic prompt
-                if (ChkIncludeInitialPrompt.IsChecked == true)
+                // Add user query if provided
+                if (!string.IsNullOrEmpty(queryText))
                 {
-                    LogOperation("Using prompt template only (no files)");
-                    prompt = GetPromptTemplateText() + "\n\n";
-                }
-                else
-                {
-                    LogOperation("Using minimal prompt (no template, no files)");
-                    prompt = "Please respond to the following:\n\n";
+                    prompt += "--- Additional Instructions/Question ---\n" + queryText;
+                    LogOperation("Added query text to the prompt");
                 }
 
-                // Clear the master list of included files
-                _lastIncludedFiles.Clear();
-                LogOperation("Cleared master file list as Include Files was unchecked");
+                // Add to conversation history
+                _conversationHistory.Add(new ChatMessage { Role = "user", Content = prompt });
+
+                // Store final prompt and send to AI
+                _lastInputPrompt = prompt;
+                var response = await SendToAiApi(apiSelection, prompt);
+
+                // Update conversation and UI
+                _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = response });
+                LogOperation($"Updated conversation history with response and file list ({_lastIncludedFiles.Count} files)");
+                UpdateResponseDisplay(response, true);
+
+                // Reset query input and update UI
+                TxtFollowupQuestion.Text = string.Empty;
+                BtnSaveResponse.IsEnabled = true;
+                BtnShowInputQuery.IsEnabled = true;
+
+                TxtStatus.Text = "Query processed successfully!";
+                EndOperationTimer("QueryProcessing");
             }
-
-            // Add user query if provided
-            if (!string.IsNullOrEmpty(queryText))
+            catch (Exception ex)
             {
-                prompt += "--- Additional Instructions/Question ---\n" + queryText;
-                LogOperation("Added query text to the prompt");
+                HandleQueryError(ex);
             }
-
-            // Add to conversation history
-            _conversationHistory.Add(new ChatMessage { Role = "user", Content = prompt });
-            
-            // Store final prompt and send to AI
-            _lastInputPrompt = prompt;
-            var response = await SendToAiApi(apiSelection, prompt);
-
-            // Update conversation and UI
-            _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = response });
-            LogOperation($"Updated conversation history with response and file list ({_lastIncludedFiles.Count} files)");
-            UpdateResponseDisplay(response, true);
-
-            // Reset query input and update UI
-            TxtFollowupQuestion.Text = string.Empty;
-            BtnSaveResponse.IsEnabled = true;
-            BtnShowInputQuery.IsEnabled = true;
-
-            TxtStatus.Text = "Query processed successfully!";
-            EndOperationTimer("QueryProcessing");
+            finally
+            {
+                SetProcessingState(false);
+            }
         }
         catch (Exception ex)
         {
-            HandleQueryError(ex);
-        }
-        finally
-        {
-            SetProcessingState(false);
+            ErrorLogger.LogError(ex, "Error processing query");
         }
     }
 
@@ -1219,7 +1238,7 @@ public partial class MainWindow
             ".asp" => "asp",
             ".cshtml" => "cshtml",
             ".axaml" => "xml",
-        
+
             // Web languages
             ".html" => "html",
             ".htm" => "html",
@@ -1235,42 +1254,42 @@ public partial class MainWindow
             ".less" => "less",
             ".mjs" => "javascript",
             ".cjs" => "javascript",
-        
+
             // JVM languages
             ".java" => "java",
             ".kt" => "kotlin",
             ".scala" => "scala",
             ".groovy" => "groovy",
-        
+
             // Python
             ".py" => "python",
-        
+
             // Ruby
             ".rb" => "ruby",
             ".erb" => "erb",
-        
+
             // PHP
             ".php" => "php",
-        
+
             // C/C++
             ".c" => "c",
             ".cpp" => "cpp",
             ".h" => "cpp", // C/C++ headers typically get cpp highlighting
-        
+
             // Go
             ".go" => "go",
-        
+
             // Rust
             ".rs" => "rust",
-        
+
             // Swift/Objective-C
             ".swift" => "swift",
             ".m" => "objectivec", // Fixed from "nim" to "objectivec"
             ".mm" => "objectivec",
-        
+
             // Dart/Flutter
             ".dart" => "dart",
-        
+
             // Markup and Data
             ".xml" => "xml",
             ".json" => "json",
@@ -1279,25 +1298,25 @@ public partial class MainWindow
             ".md" => "markdown",
             ".txt" => "text",
             ".plist" => "xml",
-        
+
             // Templates
             ".pug" => "pug",
             ".jade" => "jade",
             ".ejs" => "ejs",
             ".haml" => "haml",
-        
+
             // Query Languages
             ".sql" => "sql",
             ".graphql" => "graphql",
             ".gql" => "graphql",
-        
+
             // Shell/Scripts
             ".sh" => "bash",
             ".bash" => "bash",
             ".bat" => "batch",
             ".ps1" => "powershell",
             ".pl" => "perl",
-        
+
             // Other Languages
             ".r" => "r",
             ".lua" => "lua",
@@ -1313,7 +1332,7 @@ public partial class MainWindow
             ".asm" => "asm",
             ".s" => "asm",
             ".wasm" => "wasm",
-        
+
             // Configuration/Infrastructure
             ".ini" => "ini",
             ".toml" => "toml",
@@ -1321,7 +1340,7 @@ public partial class MainWindow
             ".tfvars" => "hcl",
             ".proto" => "proto",
             ".config" => "xml",
-        
+
             // Default case
             _ => "text"
         };
@@ -1776,7 +1795,7 @@ public partial class MainWindow
         }
     }
 
-    private async Task ProcessSelectedFilesAsync(string[] filePaths)
+    private async Task ProcessSelectedFilesAsync(IEnumerable<string> filePaths)
     {
         // Process files in parallel with a limit of 10 concurrent files
         var tasks = new List<Task>();
@@ -1954,7 +1973,7 @@ public partial class MainWindow
                 // Subtract 1 from index because index 0 is "Select a key"
                 var savedKeys = _keyManager.GetKeysForProvider(apiSelection);
                 var keyIndex = CboPreviousKeys.SelectedIndex - 1;
-            
+
                 if (keyIndex >= 0 && keyIndex < savedKeys.Count)
                 {
                     key = savedKeys[keyIndex];
@@ -1974,7 +1993,7 @@ public partial class MainWindow
 
             // Send the prompt and return the response
             string response;
-        
+
             // Special handling for providers with model selection
             if (provider is DeepSeek deepSeekProvider && modelId != null)
             {
@@ -2323,16 +2342,16 @@ public partial class MainWindow
         var allFiles = _filesByExtension.Values
             .SelectMany(files => files)
             .ToList();
-    
+
         // Get the prompt template text for token counting
         var promptTemplate = GetPromptTemplateText();
-    
+
         // Use SharpToken to calculate tokens
         _tokenCalculationResult = _tokenCounterService.CalculateTotalTokens(allFiles, promptTemplate);
-    
+
         // Update UI
         UpdateTokenCountDisplay();
-    
+
         LogOperation($"Token calculation complete: {_tokenCalculationResult.TotalTokens:N0} tokens");
     }
 
@@ -2342,16 +2361,16 @@ public partial class MainWindow
         {
             // Get the total token count from the result
             var totalTokens = _tokenCalculationResult.TotalTokens;
-        
+
             // Format the display text with exact token count
             TxtTokenCount.Text = $"Estimated tokens: {totalTokens:N0} (range {totalTokens * 0.8:N0} - {totalTokens * 1.2:N0})";
 
             // Detailed tooltip with model-specific information
             var tooltipBuilder = new StringBuilder();
             tooltipBuilder.AppendLine(_tokenCalculationResult.GetBreakdown());
-        
+
             TxtTokenCount.ToolTip = tooltipBuilder.ToString();
-        
+
             LogOperation($"Updated token count display: {totalTokens:N0} tokens");
         });
     }
@@ -2360,11 +2379,11 @@ public partial class MainWindow
     {
         // Update our token calculation with actual token count from the API
         _tokenCalculationResult.TotalTokens = actualTokens;
-    
+
         // Log the discrepancy for monitoring
-        var accuracyPercent = (_tokenCalculationResult.TotalTokens * 100.0 / actualTokens);
+        var accuracyPercent = _tokenCalculationResult.TotalTokens * 100.0 / actualTokens;
         LogOperation($"Token count accuracy: {accuracyPercent:F1}% (calculated: {_tokenCalculationResult.TotalTokens:N0}, actual: {actualTokens:N0})");
-    
+
         // Show error dialog with helpful guidance
         MessageBox.Show(
             $"Error: Token limit exceeded\n\n" +
@@ -2377,7 +2396,7 @@ public partial class MainWindow
             "Token Limit Exceeded",
             MessageBoxButton.OK,
             MessageBoxImage.Error);
-    
+
         // Update the display with actual token information
         UpdateTokenCountDisplay();
     }
@@ -2420,7 +2439,7 @@ public partial class MainWindow
         {
             var child = VisualTreeHelper.GetChild(depObj, i);
 
-            var result = (child as T) ?? FindVisualChild<T>(child);
+            var result = child as T ?? FindVisualChild<T>(child);
             if (result != null) return result;
         }
 

@@ -4,15 +4,10 @@ using System.Threading.Tasks;
 
 namespace AICodeAnalyzer;
 
-public class SemaphoreSlimSafe : IDisposable
+public class SemaphoreSlimSafe(int initialCount) : IDisposable
 {
-    private readonly SemaphoreSlim _semaphore;
+    private readonly SemaphoreSlim _semaphore = new(initialCount);
     private bool _disposed;
-
-    public SemaphoreSlimSafe(int initialCount)
-    {
-        _semaphore = new SemaphoreSlim(initialCount);
-    }
 
     public Task WaitAsync()
     {

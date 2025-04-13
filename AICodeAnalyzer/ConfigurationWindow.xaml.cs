@@ -60,8 +60,8 @@ public partial class ConfigurationWindow
         // If there are no prompts, add the default one
         if (_workingSettings.CodePrompts.Count == 0)
         {
-            _workingSettings.CodePrompts.Add(new CodePrompt("Default", _workingSettings.InitialPrompt));
-            _workingSettings.SelectedPromptName = "Default";
+            _workingSettings.CodePrompts.Add(new CodePrompt("Analyze Source Code", _workingSettings.InitialPrompt));
+            _workingSettings.SelectedPromptName = "Analyze Source Code";
         }
 
         LoadSettingsToUi();
@@ -142,7 +142,9 @@ public partial class ConfigurationWindow
                 CboPromptTemplates.SelectedIndex = 0;
                 _currentPrompt = CboPromptTemplates.Items[0] as CodePrompt;
                 if (_currentPrompt != null)
+                {
                     TxtInitialPrompt.Text = _currentPrompt.Content;
+                }
             }
         }
         else if (CboPromptTemplates.Items.Count > 0)
@@ -150,7 +152,9 @@ public partial class ConfigurationWindow
             CboPromptTemplates.SelectedIndex = 0;
             _currentPrompt = CboPromptTemplates.Items[0] as CodePrompt;
             if (_currentPrompt != null)
+            {
                 TxtInitialPrompt.Text = _currentPrompt.Content;
+            }
         }
 
         // Update buttons based on selection
@@ -159,7 +163,7 @@ public partial class ConfigurationWindow
         InitializeFileAssociationTab();
     }
 
-    private bool IsApplicationRegisteredForMdFiles()
+    private static bool IsApplicationRegisteredForMdFiles()
     {
         try
         {
@@ -277,7 +281,7 @@ public partial class ConfigurationWindow
     private void UpdatePromptButtons()
     {
         var hasPrompts = _workingSettings.CodePrompts.Count > 0;
-        var isDefaultSelected = _currentPrompt?.Name == "Default";
+        var isDefaultSelected = _currentPrompt?.Name == "Analyze Source Code";
 
         // Always enable New button
         BtnNewPrompt.IsEnabled = true;
@@ -340,7 +344,7 @@ public partial class ConfigurationWindow
 
     private void BtnRenamePrompt_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentPrompt == null || _currentPrompt.Name == "Default")
+        if (_currentPrompt == null || _currentPrompt.Name == "Analyze Source Code")
             return;
 
         // Show dialog to enter new name
@@ -376,7 +380,7 @@ public partial class ConfigurationWindow
 
     private void BtnDeletePrompt_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentPrompt == null || _currentPrompt.Name == "Default" || _workingSettings.CodePrompts.Count <= 1)
+        if (_currentPrompt == null || _currentPrompt.Name == "Analyze Source Code" || _workingSettings.CodePrompts.Count <= 1)
             return;
 
         // Confirm deletion
@@ -394,7 +398,7 @@ public partial class ConfigurationWindow
             // Update selected prompt if needed
             if (needToUpdateSelected)
             {
-                var defaultPrompt = _workingSettings.CodePrompts.FirstOrDefault(p => p.Name == "Default");
+                var defaultPrompt = _workingSettings.CodePrompts.FirstOrDefault(p => p.Name == "Analyze Source Code");
                 _workingSettings.SelectedPromptName = defaultPrompt?.Name ?? _workingSettings.CodePrompts.FirstOrDefault()?.Name;
             }
 
@@ -577,12 +581,12 @@ public partial class ConfigurationWindow
         }
 
         DialogResult = true;
-        
+
         RestartApplication.Restart();
-        
+
         Close();
     }
-    
+
     private void BtnCancel_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;
@@ -694,7 +698,7 @@ public partial class ConfigurationWindow
         // Check if key already exists
         if (_providerKeysMap.TryGetValue(_currentProvider, out var existingKeys))
         {
-            if (existingKeys != null && existingKeys.Any(k => k.ActualKey == newKey))
+            if (existingKeys.Any(k => k.ActualKey == newKey))
             {
                 MessageBox.Show("This API key already exists for this provider.", "Duplicate Key", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;

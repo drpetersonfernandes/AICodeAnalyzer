@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using AICodeAnalyzer.AIProvider;
-using AICodeAnalyzer.Interfaces;
 
 namespace AICodeAnalyzer;
 
@@ -15,7 +14,7 @@ public class ApiProviderFactory
     /// <summary>
     /// Gets all available API providers
     /// </summary>
-    public IReadOnlyList<IAiApiProvider> AllProviders => new List<IAiApiProvider>(_providers.Values).AsReadOnly();
+    public IEnumerable<IAiApiProvider> AllProviders => new List<IAiApiProvider>(_providers.Values).AsReadOnly();
 
     public ApiProviderFactory()
     {

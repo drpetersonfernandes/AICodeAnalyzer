@@ -5,7 +5,6 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using AICodeAnalyzer.Interfaces;
 using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
@@ -15,7 +14,7 @@ public class Claude : IAiApiProvider, IDisposable
     private static readonly HttpClient HttpClient = new();
 
     public string Name => "Claude API";
-    public string DefaultModel => "claude-3-sonnet-20240229";
+    private static string DefaultModel => "claude-3-7-sonnet-20250219";
 
     public Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
     {
