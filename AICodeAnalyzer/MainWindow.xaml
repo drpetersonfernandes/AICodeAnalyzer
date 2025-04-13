@@ -223,7 +223,7 @@
                                Foreground="#707070" />
 
                     <!-- Files ListView fills the remaining space -->
-                    <ListView x:Name="LvFiles" VerticalAlignment="Stretch">
+                    <ListView x:Name="ListOfFiles" VerticalAlignment="Stretch">
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
                                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -250,27 +250,27 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- AI API ComboBox -->
-                    <ComboBox x:Name="CboAiApi" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,5,5,5"
-                              SelectionChanged="CboAiApi_SelectionChanged" />
+                    <ComboBox x:Name="AiProvider" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,5,5,5"
+                              SelectionChanged="AiProvider_SelectionChanged" />
 
                     <!-- Model Selection -->
                     <Label Content="Model:" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,5,0" />
-                    <ComboBox x:Name="CboModel"
+                    <ComboBox x:Name="AiModel"
                               Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
                               IsEnabled="False"
                               Margin="0,0,5,5"
                               HorizontalAlignment="Stretch"
                               VerticalAlignment="Center"
-                              SelectionChanged="CboModel_SelectionChanged" />
+                              SelectionChanged="AiModel_SelectionChanged" />
 
                     <!-- API Key Section -->
                     <TextBlock Text="API Key:" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,5,5" />
-                    <ComboBox x:Name="CboPreviousKeys" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                    <ComboBox x:Name="AiProviderKeys" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
                               HorizontalAlignment="Stretch"
                               Margin="0,0,5,5" />
                     <Button x:Name="BtnAddKey" Grid.Row="2" Grid.Column="3" Content="Add Key"
                             VerticalAlignment="Center"
-                            Margin="0,0,5,5" Height="25" Padding="8,3" Click="BtnConfigurePrompts_Click" />
+                            Margin="0,0,5,5" Height="25" Padding="8,3" Click="PromptTemplatesEdit_Click" />
 
                     <!-- Model Description -->
                     <TextBlock x:Name="TxtModelDescription"
@@ -295,22 +295,22 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <ComboBox x:Name="CboPromptTemplate" Grid.Column="0"
-                                  SelectionChanged="CboPromptTemplate_SelectionChanged"
+                        <ComboBox x:Name="PromptTemplates" Grid.Column="0"
+                                  SelectionChanged="PromptTemplates_SelectionChanged"
                                   DisplayMemberPath="Name"
                                   Margin="0,0,5,0" />
                         <Button x:Name="BtnConfigurePrompts" Content="Edit"
                                 Grid.Column="1" Padding="8,3" Height="25"
-                                Click="BtnConfigurePrompts_Click" />
+                                Click="PromptTemplatesEdit_Click" />
                     </Grid>
 
                     <!-- Option Checkboxes -->
                     <StackPanel Margin="0,0,0,10">
-                        <CheckBox x:Name="ChkIncludeInitialPrompt" Content="Include initial prompt template"
+                        <CheckBox x:Name="IncludePromptTemplate" Content="Include initial prompt template"
                                   IsChecked="True" Margin="0,0,0,5"
                                   ToolTip="When checked, the initial prompt template will be included in your request" />
 
-                        <CheckBox x:Name="ChkIncludeSelectedFiles" Content="Include selected files"
+                        <CheckBox x:Name="IncludeSelectedFilesChecker" Content="Include selected files"
                                   IsChecked="True" Margin="0,0,0,5"
                                   ToolTip="Include the files selected in the file list with your request" />
                     </StackPanel>
@@ -413,9 +413,9 @@
                         <Button x:Name="BtnSaveResponse" Content="Save Response" Grid.Column="1" Height="30"
                                 Margin="0,0,2,0" Click="BtnSaveResponse_Click" IsEnabled="False" />
                         <Button x:Name="BtnSaveEdits" Content="Apply Edits" Grid.Column="2" Height="30"
-                                Margin="0,0,2,0" Click="BtnSaveEdits_Click" IsEnabled="False" />
+                                Margin="0,0,2,0" Click="SaveEdits_Click" IsEnabled="False" />
                         <Button x:Name="BtnToggleMarkdown" Content="Show Raw Text" Grid.Column="3" Height="30"
-                                Margin="2,0,0,0" Click="BtnToggleMarkdown_Click" IsEnabled="False" />
+                                Margin="2,0,0,0" Click="ToggleMarkdownView_Click" IsEnabled="False" />
                     </Grid>
 
                     <!-- Markdown Display -->

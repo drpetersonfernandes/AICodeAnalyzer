@@ -4,7 +4,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -43,7 +42,6 @@ public partial class MainWindow
     private string _previousMarkdownContent = string.Empty; // Store Markdown content before showing input
     private string _lastInputPrompt = string.Empty; // Store the last prompt sent
     private readonly List<SourceFile> _lastIncludedFiles = new(); // Store files included in the last prompt
-
     private readonly TokenCounterService _tokenCounterService = new();
     private TokenCalculationResult _tokenCalculationResult = new();
 
@@ -59,19 +57,19 @@ public partial class MainWindow
 
         _textBoxDefaultFontSize = TxtResponse.FontSize;
         TxtFollowupQuestion.IsEnabled = true;
-        ChkIncludeSelectedFiles.IsEnabled = true;
+        IncludeSelectedFilesChecker.IsEnabled = true;
 
-        // Populate API dropdown using provider names from the factory, sorted alphabetically
+        // Populate API dropdown using provider names from the factory
         var providers = _apiProviderFactory.AllProviders
             .OrderBy(p => p.Name)
             .ToList();
 
         foreach (var provider in providers)
         {
-            CboAiApi.Items.Add(provider.Name);
+            AiProvider.Items.Add(provider.Name);
         }
 
-        CboAiApi.SelectedIndex = -1; // Default to none
+        AiProvider.SelectedIndex = -1; // Default to none
 
         UpdateRecentFilesMenu();
 
@@ -79,14 +77,11 @@ public partial class MainWindow
         if (Application.Current.Properties["StartupFilePath"] is string filePath)
         {
             // Load the file asynchronously, but don't await here since we're in the constructor
-            Dispatcher.InvokeAsync(async () =>
-            {
-                await LoadMarkdownFileAsync(filePath);
-            });
+            Dispatcher.InvokeAsync(async () => { await LoadMarkdownFileAsync(filePath); });
         }
 
         LogOperation("Application started");
-        InitializePromptSelection();
+        LoadPromptTemplates();
         UpdateZoomDisplay();
         SetupStatusUpdateTimer();
     }
@@ -98,7 +93,8 @@ public partial class MainWindow
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
                 LogOperation($"Invalid file path: {filePath}");
-                MessageBox.Show("The specified file does not exist.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("The specified file does not exist.", "Error", MessageBoxButton.OK,
+                    MessageBoxImage.Error);
                 return;
             }
 
@@ -219,7 +215,6 @@ public partial class MainWindow
         }
     }
 
-    // Event handler for clearing recent files
     private void ClearRecentFiles_Click(object sender, RoutedEventArgs e)
     {
         _recentFilesManager.ClearRecentFiles();
@@ -267,7 +262,8 @@ public partial class MainWindow
                 if (string.IsNullOrWhiteSpace(MarkdownViewer.Markdown))
                 {
                     TxtResponse.Text = "Processing...";
-                    MarkdownViewer.Markdown = "## Processing request...\n\nPlease wait while the operation completes. The UI will remain responsive.";
+                    MarkdownViewer.Markdown =
+                        "## Processing request...\n\nPlease wait while the operation completes. The UI will remain responsive.";
                 }
             }
             else
@@ -351,10 +347,8 @@ public partial class MainWindow
         }
 
         // Schedule scroll position restore (needs to be delayed a bit)
-        Dispatcher.BeginInvoke(new Action(() =>
-        {
-            scrollViewer?.ScrollToVerticalOffset(verticalOffset);
-        }), DispatcherPriority.Loaded);
+        Dispatcher.BeginInvoke(new Action(() => { scrollViewer?.ScrollToVerticalOffset(verticalOffset); }),
+            DispatcherPriority.Loaded);
     }
 
     private void ZoomIn()
@@ -419,13 +413,6 @@ public partial class MainWindow
                 UpdateZoomDisplay();
             });
         }
-    }
-
-    private void InitializePromptSelection()
-    {
-        // Initialize prompt templates
-        LoadPromptTemplates();
-        LogOperation("Loaded prompt templates");
     }
 
     private void MenuConfigure_Click(object sender, RoutedEventArgs e)
@@ -524,16 +511,16 @@ public partial class MainWindow
 
     private void UpdatePreviousKeys(string apiProvider)
     {
-        CboPreviousKeys.Items.Clear();
-        CboPreviousKeys.Items.Add("Select a key");
+        AiProviderKeys.Items.Clear();
+        AiProviderKeys.Items.Add("Select a key");
 
         var savedKeys = _keyManager.GetKeysForProvider(apiProvider);
         foreach (var key in savedKeys)
         {
-            CboPreviousKeys.Items.Add(MaskKey(key));
+            AiProviderKeys.Items.Add(MaskKey(key));
         }
 
-        CboPreviousKeys.SelectedIndex = 0;
+        AiProviderKeys.SelectedIndex = 0;
     }
 
     private static string MaskKey(string key)
@@ -580,7 +567,7 @@ public partial class MainWindow
                 _filesByExtension.Clear();
 
                 // Clear UI
-                LvFiles.Items.Clear();
+                ListOfFiles.Items.Clear();
                 LogOperation($"Starting folder scan: {_selectedFolder}");
                 StartOperationTimer("FolderScan");
 
@@ -667,10 +654,10 @@ public partial class MainWindow
         }
 
         // Clear the list before adding items
-        LvFiles.Items.Clear();
+        ListOfFiles.Items.Clear();
 
         // Add mode indicator (folder scan or manual selection)
-        LvFiles.Items.Add(new ListViewItem
+        ListOfFiles.Items.Add(new ListViewItem
         {
             Content = $"===== Files Summary ({_filesByExtension.Values.Sum(v => v.Count)} total) =====",
             FontWeight = FontWeights.Bold,
@@ -679,16 +666,16 @@ public partial class MainWindow
 
         if (manuallyAddedFiles > 0)
         {
-            LvFiles.Items.Add($"    {manuallyAddedFiles} manually selected files");
+            ListOfFiles.Items.Add($"    {manuallyAddedFiles} manually selected files");
         }
 
         if (folderScannedFiles > 0)
         {
-            LvFiles.Items.Add($"    {folderScannedFiles} files from folder scan");
+            ListOfFiles.Items.Add($"    {folderScannedFiles} files from folder scan");
         }
 
         // Now display stats by extension
-        LvFiles.Items.Add(new ListViewItem
+        ListOfFiles.Items.Add(new ListViewItem
         {
             Content = "===== File Extensions Summary =====",
             FontWeight = FontWeights.Bold
@@ -697,11 +684,11 @@ public partial class MainWindow
         foreach (var ext in _filesByExtension.Keys.OrderBy(k => k))
         {
             var count = _filesByExtension[ext].Count;
-            LvFiles.Items.Add($"    {ext} - {count} files");
+            ListOfFiles.Items.Add($"    {ext} - {count} files");
             LogOperation($"Found {count} {ext} files");
         }
 
-        LvFiles.Items.Add(new ListViewItem
+        ListOfFiles.Items.Add(new ListViewItem
         {
             Content = "===== Files By Folder =====",
             FontWeight = FontWeights.Bold
@@ -711,7 +698,7 @@ public partial class MainWindow
         foreach (var folderPath in filesByFolder.Keys.OrderBy(f => f))
         {
             // Add folder as a header
-            LvFiles.Items.Add(new ListViewItem
+            ListOfFiles.Items.Add(new ListViewItem
             {
                 Content = folderPath,
                 FontWeight = FontWeights.Bold,
@@ -725,15 +712,9 @@ public partial class MainWindow
                 var isOutsideBaseFolder = !file.Path.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase);
                 var prefix = isOutsideBaseFolder ? "+" : "    ";
 
-                LvFiles.Items.Add($"{prefix} {Path.GetFileName(file.RelativePath)}");
+                ListOfFiles.Items.Add($"{prefix} {Path.GetFileName(file.RelativePath)}");
             }
         }
-    }
-
-    private static string GenerateFileFilterFromExtensions()
-    {
-        // Return only the "All Files" filter as requested
-        return "All Files (*.*)|*.*";
     }
 
     private async void BtnSelectFiles_Click(object sender, RoutedEventArgs e)
@@ -744,7 +725,7 @@ public partial class MainWindow
             {
                 Multiselect = true,
                 Title = "Select Source Files",
-                Filter = GenerateFileFilterFromExtensions()
+                Filter = "All Files (*.*)|*.*"
             };
 
             if (dialog.ShowDialog() == true)
@@ -764,7 +745,7 @@ public partial class MainWindow
 
                     // Clear any existing data
                     _filesByExtension.Clear();
-                    await Dispatcher.InvokeAsync(() => LvFiles.Items.Clear());
+                    await Dispatcher.InvokeAsync(() => ListOfFiles.Items.Clear());
 
                     LogOperation($"Base folder set to: {_selectedFolder}");
                 }
@@ -805,15 +786,13 @@ public partial class MainWindow
             // Ask for confirmation
             var result = MessageBox.Show(
                 "Are you sure you want to clear all currently selected files?",
-                "Clear Files",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+                "Clear Files", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
             if (result == MessageBoxResult.Yes)
             {
                 // Clear the file collections
                 _filesByExtension.Clear();
-                LvFiles.Items.Clear();
+                ListOfFiles.Items.Clear();
                 _selectedFolder = string.Empty;
                 TxtSelectedFolder.Text = string.Empty;
 
@@ -836,7 +815,8 @@ public partial class MainWindow
         try
         {
             // Convert SourceFileExtensions to a HashSet for O(1) lookups instead of O(n)
-            var allowedExtensions = new HashSet<string>(_settingsManager.Settings.SourceFileExtensions, StringComparer.OrdinalIgnoreCase);
+            var allowedExtensions = new HashSet<string>(_settingsManager.Settings.SourceFileExtensions,
+                StringComparer.OrdinalIgnoreCase);
             var maxFileSizeKb = _settingsManager.Settings.MaxFileSizeKb;
 
             // Create a set of excluded directories for faster lookups
@@ -844,10 +824,12 @@ public partial class MainWindow
                 { "bin", "obj", "node_modules", "packages", ".git", ".vs" };
 
             // Use ConcurrentDictionary to avoid locks when adding files
-            var filesByExtConcurrent = new System.Collections.Concurrent.ConcurrentDictionary<string, List<SourceFile>>();
+            var filesByExtConcurrent =
+                new System.Collections.Concurrent.ConcurrentDictionary<string, List<SourceFile>>();
 
             // Keep track of processed paths to avoid duplicates (much faster than searching the lists)
-            var processedPaths = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
+            var processedPaths =
+                new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
 
             // Optimize UI updates by throttling them
             var lastUiUpdate = DateTime.MinValue;
@@ -910,7 +892,8 @@ public partial class MainWindow
                             {
                                 await Dispatcher.InvokeAsync(() =>
                                 {
-                                    TxtStatus.Text = $"Scanning folder... (Found {fileProcessedCount}/{totalFileCount} files)";
+                                    TxtStatus.Text =
+                                        $"Scanning folder... (Found {fileProcessedCount}/{totalFileCount} files)";
                                 });
                             }
                             finally
@@ -1006,10 +989,8 @@ public partial class MainWindow
                     else
                     {
                         // Process directories in parallel for better performance at shallow depths
-                        await Parallel.ForEachAsync(subDirs, parallelOptions, async (dir, _) =>
-                        {
-                            await ProcessDirectoryAsync(dir.FullName, depth + 1);
-                        });
+                        await Parallel.ForEachAsync(subDirs, parallelOptions,
+                            async (dir, _) => { await ProcessDirectoryAsync(dir.FullName, depth + 1); });
                     }
                 }
                 catch (Exception ex)
@@ -1029,16 +1010,17 @@ public partial class MainWindow
         try
         {
             // Check for API key
-            if (CboPreviousKeys.SelectedIndex == -1)
+            if (AiProviderKeys.SelectedIndex == -1)
             {
-                MessageBox.Show("Please enter an API key.", "Missing API Key", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Please enter an API key.", "Missing API Key", MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 LogOperation("Analysis canceled: No API key provided");
                 return;
             }
 
             // Get query text and API selection
             var queryText = TxtFollowupQuestion.Text.Trim();
-            var apiSelection = CboAiApi.SelectedItem?.ToString() ?? "Claude API"; // Default to Claude
+            var apiSelection = AiProvider.SelectedItem?.ToString() ?? "Gemini API"; // Default to Claude
 
             // Setup processing UI
             TxtStatus.Text = $"Processing with {apiSelection}...";
@@ -1059,13 +1041,13 @@ public partial class MainWindow
                 LogOperation("Handling as initial query or simple follow-up");
 
                 // First determine if we need to include files
-                if (ChkIncludeSelectedFiles.IsChecked == true)
+                if (IncludeSelectedFilesChecker.IsChecked == true)
                 {
                     LogOperation("Include Files checkbox is checked - preparing files");
                     StartOperationTimer("PrepareFiles");
 
                     // Generate base prompt based on whether to include template
-                    if (ChkIncludeInitialPrompt.IsChecked == true)
+                    if (IncludePromptTemplate.IsChecked == true)
                     {
                         LogOperation("Including prompt template");
                         prompt = GetPromptTemplateText() + "\n\n";
@@ -1077,7 +1059,7 @@ public partial class MainWindow
                     }
 
                     // Now determine which files to include
-                    if (LvFiles.SelectedItems.Count > 0)
+                    if (ListOfFiles.SelectedItems.Count > 0)
                     {
                         // User has specifically selected files in the list
                         prompt = AppendSelectedFilesToPrompt(prompt, currentQueryFiles);
@@ -1117,7 +1099,7 @@ public partial class MainWindow
                 else
                 {
                     // Files not included - generate a basic prompt
-                    if (ChkIncludeInitialPrompt.IsChecked == true)
+                    if (IncludePromptTemplate.IsChecked == true)
                     {
                         LogOperation("Using prompt template only (no files)");
                         prompt = GetPromptTemplateText() + "\n\n";
@@ -1149,7 +1131,8 @@ public partial class MainWindow
 
                 // Update conversation and UI
                 _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = response });
-                LogOperation($"Updated conversation history with response and file list ({_lastIncludedFiles.Count} files)");
+                LogOperation(
+                    $"Updated conversation history with response and file list ({_lastIncludedFiles.Count} files)");
                 UpdateResponseDisplay(response, true);
 
                 // Reset query input and update UI
@@ -1178,7 +1161,7 @@ public partial class MainWindow
     private string GetPromptTemplateText()
     {
         // Get the selected prompt content from the dropdown or settings
-        var selectedPromptTemplate = CboPromptTemplate.SelectedItem as CodePrompt;
+        var selectedPromptTemplate = PromptTemplates.SelectedItem as CodePrompt;
         return selectedPromptTemplate?.Content ?? _settingsManager.Settings.InitialPrompt; // Fallback
     }
 
@@ -1359,15 +1342,16 @@ public partial class MainWindow
         var selectedFilesContent = new StringBuilder();
         var fileCount = 0;
 
-        // Ensure LvFiles.SelectedItems is accessed on the UI thread if necessary,
+        // Ensure ListOfFiles.SelectedItems is accessed on the UI thread if necessary,
         // but since this method is likely called from BtnAnalyze_Click (UI thread), it should be fine.
-        foreach (var item in LvFiles.SelectedItems)
+        foreach (var item in ListOfFiles.SelectedItems)
         {
             // Check if the item is a string representing a file path/name
             if (item is string displayString)
             {
                 // Basic check to filter out headers or summary lines
-                if (!displayString.StartsWith("=====", StringComparison.Ordinal) && !displayString.Contains(" files") && !displayString.Contains(" - "))
+                if (!displayString.StartsWith("=====", StringComparison.Ordinal) && !displayString.Contains(" files") &&
+                    !displayString.Contains(" - "))
                 {
                     // Clean the display string (remove potential prefixes like '+' or '')
                     var cleanFileName = displayString.TrimStart(' ', '+');
@@ -1394,8 +1378,10 @@ public partial class MainWindow
                         includedFiles.Add(matchingFile); // Add the SourceFile object to the list
 
                         // Append file content in a code block with language identification
-                        selectedFilesContent.AppendLine(CultureInfo.InvariantCulture, $"File: {matchingFile.RelativePath}");
-                        selectedFilesContent.AppendLine(CultureInfo.InvariantCulture, $"```{GetLanguageForExtension(matchingFile.Extension)}");
+                        selectedFilesContent.AppendLine(CultureInfo.InvariantCulture,
+                            $"File: {matchingFile.RelativePath}");
+                        selectedFilesContent.AppendLine(CultureInfo.InvariantCulture,
+                            $"```{GetLanguageForExtension(matchingFile.Extension)}");
                         selectedFilesContent.AppendLine(matchingFile.Content);
                         selectedFilesContent.AppendLine("```");
                         selectedFilesContent.AppendLine();
@@ -1411,7 +1397,8 @@ public partial class MainWindow
         // Add summary of selected files to the prompt
         if (fileCount > 0)
         {
-            promptBuilder.AppendLine(CultureInfo.InvariantCulture, $"Specifically, I've selected the following {fileCount} file(s) for you to focus on or reference:");
+            promptBuilder.AppendLine(CultureInfo.InvariantCulture,
+                $"Specifically, I've selected the following {fileCount} file(s) for you to focus on or reference:");
             foreach (var fileName in selectedFileNames)
             {
                 promptBuilder.AppendLine(CultureInfo.InvariantCulture, $"- {fileName}");
@@ -1427,7 +1414,6 @@ public partial class MainWindow
             promptBuilder.AppendLine("(No specific files were selected in the list for focused reference)");
             promptBuilder.AppendLine();
         }
-
 
         // Log the operation
         LogOperation($"Included {fileCount} specifically selected files in the prompt");
@@ -1449,7 +1435,8 @@ public partial class MainWindow
 
             if (string.IsNullOrWhiteSpace(_currentResponseText))
             {
-                MessageBox.Show("There is no response to save.", "No Response", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("There is no response to save.", "No Response", MessageBoxButton.OK,
+                    MessageBoxImage.Information);
                 return;
             }
 
@@ -1473,7 +1460,8 @@ public partial class MainWindow
 
                     LogOperation($"Overwrote file: {_currentFilePath}");
                     TxtStatus.Text = $"File saved: {Path.GetFileName(_currentFilePath)}";
-                    MessageBox.Show($"File saved: {Path.GetFileName(_currentFilePath)}", "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show($"File saved: {Path.GetFileName(_currentFilePath)}", "Save Successful",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
                     SetProcessingState(false);
                     return;
                 }
@@ -1532,14 +1520,16 @@ public partial class MainWindow
                 TxtStatus.Text = $"File saved: {Path.GetFileName(saveFileDialog.FileName)}";
 
                 LogOperation($"Saved response to: {saveFileDialog.FileName}");
-                MessageBox.Show($"Response saved to {saveFileDialog.FileName}", "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Response saved to {saveFileDialog.FileName}", "Save Successful", MessageBoxButton.OK,
+                    MessageBoxImage.Information);
             }
         }
         catch (Exception ex)
         {
             LogOperation($"Error saving response: {ex.Message}");
             ErrorLogger.LogError(ex, "Saving response to file");
-            MessageBox.Show("An error occurred while saving the response.", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("An error occurred while saving the response.", "Save Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
         finally
         {
@@ -1547,7 +1537,7 @@ public partial class MainWindow
         }
     }
 
-    private void BtnToggleMarkdown_Click(object sender, RoutedEventArgs e)
+    private void ToggleMarkdownView_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -1563,9 +1553,7 @@ public partial class MainWindow
                 {
                     var result = MessageBox.Show(
                         "You have made changes to the raw text. Do you want to apply these changes?",
-                        "Save Changes",
-                        MessageBoxButton.YesNoCancel,
-                        MessageBoxImage.Question);
+                        "Save Changes", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
 
                     if (result == MessageBoxResult.Cancel)
                     {
@@ -1619,7 +1607,8 @@ public partial class MainWindow
         {
             LogOperation($"Error toggling markdown view: {ex.Message}");
             ErrorLogger.LogError(ex, "Toggling markdown view");
-            MessageBox.Show("An error occurred while toggling the markdown view.", "View Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("An error occurred while toggling the markdown view.", "View Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
 
             // Revert to a raw text as a fallback
             TxtResponse.Visibility = Visibility.Visible;
@@ -1648,25 +1637,23 @@ public partial class MainWindow
                 MarkdownViewer.Document.PageWidth = contentWidth;
                 MarkdownViewer.Document.PagePadding = new Thickness(0);
                 MarkdownViewer.Document.TextAlignment = TextAlignment.Left;
-
-                // LogOperation($"Updated Markdown page width to {contentWidth:F0}px (90% of {containerWidth:F0}px)");
             }
         }
         catch (Exception ex)
         {
-            // Log the error but don't crash the application
             LogOperation($"Error setting Markdown document properties: {ex.Message}");
+            ErrorLogger.LogError(ex, $"Error setting Markdown document properties: {ex.Message}");
         }
     }
 
     private void PopulateModelDropdown()
     {
-        CboModel.Items.Clear();
+        AiModel.Items.Clear();
 
-        if (CboAiApi.SelectedItem == null)
+        if (AiProvider.SelectedItem == null)
             return;
 
-        var providerName = CboAiApi.SelectedItem.ToString();
+        var providerName = AiProvider.SelectedItem.ToString();
 
         try
         {
@@ -1678,7 +1665,7 @@ public partial class MainWindow
 
                 foreach (var model in models)
                 {
-                    CboModel.Items.Add(new ModelDropdownItem
+                    AiModel.Items.Add(new ModelDropdownItem
                     {
                         DisplayText = model.Name,
                         ModelId = model.Id,
@@ -1686,7 +1673,7 @@ public partial class MainWindow
                     });
                 }
 
-                CboModel.IsEnabled = true;
+                AiModel.IsEnabled = true;
                 // No automatic selection
             }
             else if (providerName == "Claude API")
@@ -1696,7 +1683,7 @@ public partial class MainWindow
 
                 foreach (var model in models)
                 {
-                    CboModel.Items.Add(new ModelDropdownItem
+                    AiModel.Items.Add(new ModelDropdownItem
                     {
                         DisplayText = model.Name,
                         ModelId = model.Id,
@@ -1704,7 +1691,7 @@ public partial class MainWindow
                     });
                 }
 
-                CboModel.IsEnabled = true;
+                AiModel.IsEnabled = true;
                 // No automatic selection
             }
             else if (providerName == "Grok API")
@@ -1714,7 +1701,7 @@ public partial class MainWindow
 
                 foreach (var model in models)
                 {
-                    CboModel.Items.Add(new ModelDropdownItem
+                    AiModel.Items.Add(new ModelDropdownItem
                     {
                         DisplayText = model.Name,
                         ModelId = model.Id,
@@ -1722,7 +1709,7 @@ public partial class MainWindow
                     });
                 }
 
-                CboModel.IsEnabled = true;
+                AiModel.IsEnabled = true;
                 // No automatic selection
             }
             else if (providerName == "Gemini API")
@@ -1732,7 +1719,7 @@ public partial class MainWindow
 
                 foreach (var model in models)
                 {
-                    CboModel.Items.Add(new ModelDropdownItem
+                    AiModel.Items.Add(new ModelDropdownItem
                     {
                         DisplayText = model.Name,
                         ModelId = model.Id,
@@ -1740,7 +1727,7 @@ public partial class MainWindow
                     });
                 }
 
-                CboModel.IsEnabled = true;
+                AiModel.IsEnabled = true;
                 // No automatic selection
             }
             else if (providerName == "ChatGPT API")
@@ -1750,7 +1737,7 @@ public partial class MainWindow
 
                 foreach (var model in models)
                 {
-                    CboModel.Items.Add(new ModelDropdownItem
+                    AiModel.Items.Add(new ModelDropdownItem
                     {
                         DisplayText = model.Name,
                         ModelId = model.Id,
@@ -1758,29 +1745,30 @@ public partial class MainWindow
                     });
                 }
 
-                CboModel.IsEnabled = true;
+                AiModel.IsEnabled = true;
                 // No automatic selection
             }
             else
             {
                 // For other providers, disable the model dropdown
-                CboModel.IsEnabled = false;
-                CboModel.Items.Add("Default model");
-                CboModel.SelectedIndex = 0; // Only set this for unsupported providers
-                CboModel.ToolTip = null;
+                AiModel.IsEnabled = false;
+                AiModel.Items.Add("Default model");
+                AiModel.SelectedIndex = 0; // Only set this for unsupported providers
+                AiModel.ToolTip = null;
             }
         }
         catch (Exception ex)
         {
             LogOperation($"Error populating model dropdown: {ex.Message}");
+            ErrorLogger.LogError(ex, $"Error populating model dropdown: {ex.Message}");
         }
     }
 
-    private void CboAiApi_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void AiProvider_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (CboAiApi.SelectedItem != null)
+        if (AiProvider.SelectedItem != null)
         {
-            var apiSelection = CboAiApi.SelectedItem.ToString() ?? string.Empty;
+            var apiSelection = AiProvider.SelectedItem.ToString() ?? string.Empty;
             UpdatePreviousKeys(apiSelection);
             PopulateModelDropdown();
 
@@ -1788,7 +1776,7 @@ public partial class MainWindow
             TxtModelDescription.Text = string.Empty;
 
             // Add an instruction to select a model
-            if (CboModel.IsEnabled)
+            if (AiModel.IsEnabled)
             {
                 TxtModelDescription.Text = "Please select a model from the dropdown above.";
             }
@@ -1899,7 +1887,8 @@ public partial class MainWindow
             else
             {
                 await Dispatcher.InvokeAsync(() =>
-                    LogOperation($"Skipped file due to size limit: {filePath} ({fileSizeKb} KB > {_settingsManager.Settings.MaxFileSizeKb} KB)")
+                    LogOperation(
+                        $"Skipped file due to size limit: {filePath} ({fileSizeKb} KB > {_settingsManager.Settings.MaxFileSizeKb} KB)")
                 );
             }
         }
@@ -1911,9 +1900,9 @@ public partial class MainWindow
     }
 
 
-    private void CboModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void AiModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (CboModel.SelectedItem is ModelDropdownItem selectedModel)
+        if (AiModel.SelectedItem is ModelDropdownItem selectedModel)
         {
             // Update the model description TextBlock
             TxtModelDescription.Text = selectedModel.Description;
@@ -1937,7 +1926,7 @@ public partial class MainWindow
 
             // Get selected model ID for providers that support model selection
             string? modelId = null;
-            if (CboModel.IsEnabled && CboModel.SelectedItem is ModelDropdownItem selectedModel)
+            if (AiModel.IsEnabled && AiModel.SelectedItem is ModelDropdownItem selectedModel)
             {
                 // Check if it's not the placeholder item (which has empty ModelId)
                 if (!string.IsNullOrEmpty(selectedModel.ModelId))
@@ -1962,9 +1951,10 @@ public partial class MainWindow
 
             // Check if a key is selected and get the actual API key
             string? key;
-            if (CboPreviousKeys.SelectedIndex <= 0)
+            if (AiProviderKeys.SelectedIndex <= 0)
             {
-                MessageBox.Show("Please select an API key", "API Key Required", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Please select an API key", "API Key Required", MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 throw new ApplicationException("No API key selected");
             }
             else
@@ -1972,7 +1962,7 @@ public partial class MainWindow
                 // Get the actual API key from the key manager (not the masked one shown in the UI)
                 // Subtract 1 from index because index 0 is "Select a key"
                 var savedKeys = _keyManager.GetKeysForProvider(apiSelection);
-                var keyIndex = CboPreviousKeys.SelectedIndex - 1;
+                var keyIndex = AiProviderKeys.SelectedIndex - 1;
 
                 if (keyIndex >= 0 && keyIndex < savedKeys.Count)
                 {
@@ -1980,7 +1970,8 @@ public partial class MainWindow
                 }
                 else
                 {
-                    MessageBox.Show("The selected API key is invalid", "Invalid API Key", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("The selected API key is invalid", "Invalid API Key", MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
                     throw new ApplicationException("Invalid API key selection");
                 }
             }
@@ -2029,61 +2020,10 @@ public partial class MainWindow
         catch (Exception ex)
         {
             LogOperation($"Error calling {apiSelection} API: {ex.Message}");
-
-            // Check if it's a token limit error
-            if (ex.Message.Contains("maximum context length") || ex.Message.Contains("token limit exceeded"))
-            {
-                // Log error silently (no dialog)
-                ErrorLogger.LogErrorSilently(ex, $"Sending prompt to {apiSelection}");
-
-                // Parse error message to extract token information
-                var actualTokens = 0;
-                var modelLimit = 0;
-
-                try
-                {
-                    // Try to parse the token information from error message
-                    // Typical message: "...maximum context length is 65536 tokens. However, you requested 97153 tokens (88961 in the messages..."
-                    var message = ex.Message;
-
-                    // Extract model limit
-                    var limitMatch = MyRegex().Match(message);
-                    if (limitMatch.Success && limitMatch.Groups.Count > 1)
-                    {
-                        modelLimit = int.Parse(limitMatch.Groups[1].Value, CultureInfo.InvariantCulture);
-                    }
-
-                    // Extract actual tokens
-                    var tokensMatch = MyRegex1().Match(message);
-                    if (tokensMatch.Success && tokensMatch.Groups.Count > 1)
-                    {
-                        actualTokens = int.Parse(tokensMatch.Groups[1].Value, CultureInfo.InvariantCulture);
-                    }
-
-                    // Handle the token limit error with our specialized method
-                    if (actualTokens > 0 && modelLimit > 0)
-                    {
-                        HandleTokenLimitError(actualTokens, modelLimit);
-
-                        // Throw a custom exception so the calling method knows what happened
-                        throw new ApplicationException($"Token limit exceeded: {actualTokens} tokens exceeds model limit of {modelLimit}");
-                    }
-                }
-                catch (FormatException)
-                {
-                    // If parsing fails, just continue with normal error handling
-                }
-            }
-
-            // Don't log the "No model selected" exception that we throw ourselves
-            if (ex.Message != "No model selected")
-            {
-                // For non-token limit errors, log as normal
-                ErrorLogger.LogError(ex, $"Sending prompt to {apiSelection}");
-            }
-
-            throw; // Re-throw to let the caller handle it
+            ErrorLogger.LogError(ex, $"Error calling {apiSelection} API");
         }
+
+        return "The response is null";
     }
 
     private void NavigateToResponse(int index)
@@ -2235,8 +2175,8 @@ public partial class MainWindow
 
     private void LoadPromptTemplates()
     {
-        CboPromptTemplate.ItemsSource = null;
-        CboPromptTemplate.ItemsSource = _settingsManager.Settings.CodePrompts;
+        PromptTemplates.ItemsSource = null;
+        PromptTemplates.ItemsSource = _settingsManager.Settings.CodePrompts;
 
         // Select the current prompt
         if (!string.IsNullOrEmpty(_settingsManager.Settings.SelectedPromptName))
@@ -2246,22 +2186,22 @@ public partial class MainWindow
 
             if (selectedPrompt != null)
             {
-                CboPromptTemplate.SelectedItem = selectedPrompt;
+                PromptTemplates.SelectedItem = selectedPrompt;
             }
             else if (_settingsManager.Settings.CodePrompts.Count > 0)
             {
-                CboPromptTemplate.SelectedIndex = 0;
+                PromptTemplates.SelectedIndex = 0;
             }
         }
         else if (_settingsManager.Settings.CodePrompts.Count > 0)
         {
-            CboPromptTemplate.SelectedIndex = 0;
+            PromptTemplates.SelectedIndex = 0;
         }
     }
 
-    private void CboPromptTemplate_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void PromptTemplates_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (CboPromptTemplate.SelectedItem is CodePrompt selectedPrompt)
+        if (PromptTemplates.SelectedItem is CodePrompt selectedPrompt)
         {
             _settingsManager.Settings.SelectedPromptName = selectedPrompt.Name;
             _settingsManager.SaveSettings();
@@ -2269,7 +2209,7 @@ public partial class MainWindow
         }
     }
 
-    private void BtnConfigurePrompts_Click(object sender, RoutedEventArgs e)
+    private void PromptTemplatesEdit_Click(object sender, RoutedEventArgs e)
     {
         OpenConfigurationWindow();
     }
@@ -2375,32 +2315,6 @@ public partial class MainWindow
         });
     }
 
-    private void HandleTokenLimitError(int actualTokens, int modelLimit)
-    {
-        // Update our token calculation with actual token count from the API
-        _tokenCalculationResult.TotalTokens = actualTokens;
-
-        // Log the discrepancy for monitoring
-        var accuracyPercent = _tokenCalculationResult.TotalTokens * 100.0 / actualTokens;
-        LogOperation($"Token count accuracy: {accuracyPercent:F1}% (calculated: {_tokenCalculationResult.TotalTokens:N0}, actual: {actualTokens:N0})");
-
-        // Show error dialog with helpful guidance
-        MessageBox.Show(
-            $"Error: Token limit exceeded\n\n" +
-            $"Your input contains {actualTokens:N0} tokens, but the model's limit is {modelLimit:N0} tokens.\n\n" +
-            "To fix this issue, try one of these approaches:\n" +
-            "• Remove non-essential files from your selection\n" +
-            "• Focus on specific parts of your codebase\n" +
-            "• Try a model with a larger context window, if available\n\n" +
-            "The token count display has been updated to reflect the actual token count.",
-            "Token Limit Exceeded",
-            MessageBoxButton.OK,
-            MessageBoxImage.Error);
-
-        // Update the display with actual token information
-        UpdateTokenCountDisplay();
-    }
-
     private string PreprocessMarkdown(string markdownContent)
     {
         if (string.IsNullOrEmpty(markdownContent))
@@ -2431,7 +2345,7 @@ public partial class MainWindow
         return markdownContent;
     }
 
-    private T? FindVisualChild<T>(DependencyObject depObj) where T : DependencyObject
+    private static T? FindVisualChild<T>(DependencyObject depObj) where T : DependencyObject
     {
         if (depObj == null) return null;
 
@@ -2480,7 +2394,7 @@ public partial class MainWindow
 
                 // Clear file list
                 _filesByExtension.Clear();
-                LvFiles.Items.Clear();
+                ListOfFiles.Items.Clear();
                 _selectedFolder = string.Empty;
                 TxtSelectedFolder.Text = string.Empty;
                 TxtTokenCount.Text = string.Empty;
@@ -2501,17 +2415,17 @@ public partial class MainWindow
 
 
                 // Reset checkboxes to default state
-                ChkIncludeInitialPrompt.IsChecked = true;
-                ChkIncludeSelectedFiles.IsChecked = true;
+                IncludePromptTemplate.IsChecked = true;
+                IncludeSelectedFilesChecker.IsChecked = true;
 
                 // Reset AI provider
-                CboAiApi.SelectedIndex = -1; // Default to none
+                AiProvider.SelectedIndex = -1; // Default to none
 
                 // Reset AI Model
-                CboModel.SelectedIndex = -1; // Default to none
+                AiModel.SelectedIndex = -1; // Default to none
 
                 // Reset API Key
-                CboPreviousKeys.SelectedIndex = -1; // Default to none
+                AiProviderKeys.SelectedIndex = -1; // Default to none
 
                 // Reset Model description
                 TxtModelDescription.Text = string.Empty;
@@ -2626,7 +2540,7 @@ public partial class MainWindow
         Application.Current.Shutdown();
     }
 
-    private async void BtnSaveEdits_Click(object sender, RoutedEventArgs e)
+    private async void SaveEdits_Click(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -2643,19 +2557,10 @@ public partial class MainWindow
             {
                 _currentResponseText = TxtResponse.Text;
             }
-            else // If in Markdown view, the content is conceptually read-only here, but we sync anyway
+            else
             {
-                // Potentially get content from MarkdownViewer if it were editable,
-                // but Markdig.Wpf viewer isn't directly editable like TextBox.
-                // We assume edits happen in TxtResponse. So, if _isMarkdownViewActive is true,
-                // we might need to decide if saving edits is allowed or if the user should switch first.
-                // For simplicity, let's assume edits are primarily done in TxtResponse.
-                // If the user somehow edited the underlying document (unlikely with current setup),
-                // those changes wouldn't be captured here.
-                // Let's update _previousMarkdownContent just in case.
                 _previousMarkdownContent = PreprocessMarkdown(_currentResponseText);
             }
-
 
             // Set the Markdown content with preprocessing (updates the viewer if visible)
             var processedMarkdown = PreprocessMarkdown(_currentResponseText);
@@ -2689,7 +2594,6 @@ public partial class MainWindow
         }
     }
 
-
     private void BtnShowInputQuery_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -2698,13 +2602,7 @@ public partial class MainWindow
 
             if (_isShowingInputQuery)
             {
-                // --- Show Input Query ---
-                LogOperation("Showing input query view");
-
-                // 1. Save current Markdown view content
-                // We assume _previousMarkdownContent holds the latest AI response Markdown
-
-                // 2. Generate File Summary
+                // Generate File Summary
                 var fileSummary = new StringBuilder();
                 fileSummary.AppendLine("## Files Included in Query");
                 fileSummary.AppendLine(CultureInfo.InvariantCulture, $"Total files: {_lastIncludedFiles.Count}");
@@ -2725,7 +2623,7 @@ public partial class MainWindow
 
                 fileSummary.AppendLine("\n---\n");
 
-                // 3. Combine Summary and Prompt
+                // Combine Summary and Prompt
                 var fullInputView = new StringBuilder();
                 fullInputView.Append(fileSummary);
                 fullInputView.AppendLine("## Full Input Prompt Sent to AI");
@@ -2733,7 +2631,7 @@ public partial class MainWindow
                 fullInputView.AppendLine(_lastInputPrompt);
                 fullInputView.AppendLine("```");
 
-                // 4. Update MarkdownViewer
+                // Update MarkdownViewer
                 // Ensures we are in Markdown view visually
                 if (!_isMarkdownViewActive)
                 {
@@ -2748,10 +2646,10 @@ public partial class MainWindow
                 MarkdownViewer.Markdown = fullInputView.ToString();
                 UpdateMarkdownPageWidth(); // Adjust width for the new content
 
-                // 5. Update Button Text
+                // Update Button Text
                 BtnShowInputQuery.Content = "Show AI Response";
 
-                // 6. Disable irrelevant buttons
+                // Disable irrelevant buttons
                 BtnPreviousResponse.IsEnabled = false;
                 BtnNextResponse.IsEnabled = false;
                 BtnSaveResponse.IsEnabled = false;
@@ -2760,9 +2658,6 @@ public partial class MainWindow
             }
             else
             {
-                // --- Show AI Response ---
-                LogOperation("Showing AI response view");
-
                 // 1. Restore previous Markdown content
                 MarkdownViewer.Markdown = _previousMarkdownContent; // Restore the saved AI response
                 UpdateMarkdownPageWidth();
@@ -2792,10 +2687,4 @@ public partial class MainWindow
             BtnToggleMarkdown.IsEnabled = !string.IsNullOrEmpty(_currentResponseText);
         }
     }
-
-    [GeneratedRegex(@"maximum context length is (\d+)")]
-    private static partial Regex MyRegex();
-
-    [GeneratedRegex(@"you requested (\d+) tokens")]
-    private static partial Regex MyRegex1();
 }
