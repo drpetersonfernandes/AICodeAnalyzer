@@ -51,7 +51,7 @@ public class Grok : IAiApiProvider, IDisposable
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
     {
         var model = modelId;
-        const string apiUrl = "https://api.grok.x/v1/chat/completions";
+        const string apiUrl = "https://api.x.ai/v1/chat/completions";
 
         HttpClient.DefaultRequestHeaders.Clear();
         HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);

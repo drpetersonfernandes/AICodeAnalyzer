@@ -577,9 +577,12 @@ public partial class ConfigurationWindow
         }
 
         DialogResult = true;
+        
+        RestartApplication.Restart();
+        
         Close();
     }
-
+    
     private void BtnCancel_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;
@@ -590,7 +593,7 @@ public partial class ConfigurationWindow
     {
         // Populate provider dropdown
         CboApiProviders.Items.Clear();
-        foreach (var provider in _apiProviderFactory.AllProviders)
+        foreach (var provider in _apiProviderFactory.AllProviders.OrderBy(p => p.Name))
         {
             CboApiProviders.Items.Add(provider.Name);
         }
