@@ -492,7 +492,7 @@ public partial class ConfigurationWindow
             Margin = new Thickness(0, 0, 10, 0),
             IsDefault = true
         };
-        okButton.Click += (s, e) => { dialog.DialogResult = true; };
+        okButton.Click += (_, _) => { dialog.DialogResult = true; };
 
         var cancelButton = new Button
         {

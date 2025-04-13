@@ -20,11 +20,6 @@ public partial class AboutWindow
         Close();
     }
 
-    private void BtnOk_Click(object sender, RoutedEventArgs e)
-    {
-        Close();
-    }
-
     private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e)
     {
         try

@@ -62,22 +62,6 @@ public class ApiKeyManager
         return removed;
     }
 
-    /// <summary>
-    /// Clears all keys for a specific provider
-    /// </summary>
-    /// <param name="provider">The provider name</param>
-    /// <returns>True if the provider was found and keys were cleared</returns>
-    public bool ClearKeysForProvider(string provider)
-    {
-        var providerEntry = KeyStorage.Providers.Find(p => p.Name == provider);
-        if (providerEntry == null)
-            return false;
-
-        providerEntry.Keys.Clear();
-        SaveKeys();
-        return true;
-    }
-
     private ApiKeyStorage LoadKeys()
     {
         if (!File.Exists(_keysFilePath))

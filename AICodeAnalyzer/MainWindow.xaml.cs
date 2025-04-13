@@ -224,30 +224,6 @@ public partial class MainWindow
         _statusUpdateTimer.Tick += StatusUpdateTimer_Tick;
     }
 
-    private async void MenuOpenFile_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var dialog = new OpenFileDialog
-            {
-                Title = "Open Markdown File",
-                Filter = "Markdown files (*.md)|*.md|Text files (*.txt)|*.txt|All files (*.*)|*.*",
-                DefaultExt = "md"
-            };
-
-            if (dialog.ShowDialog() == true)
-            {
-                LogOperation($"Opening file: {Path.GetFileName(dialog.FileName)}");
-                await LoadMarkdownFileAsync(dialog.FileName);
-            }
-        }
-        catch (Exception ex)
-        {
-            LogOperation($"Error opening file: {ex.Message}");
-            ErrorLogger.LogError(ex, "Opening file dialog");
-        }
-    }
-
     private void StatusUpdateTimer_Tick(object? sender, EventArgs e)
     {
         if (!_isProcessing) return;
@@ -318,8 +294,6 @@ public partial class MainWindow
 
         // Update the TextBlock display
         TxtZoomLevel.Text = $"{_markdownZoomLevel:F0}%";
-
-        LogOperation($"Zoom set to {_markdownZoomLevel:F0}%");
 
         // When zooming, we might want to update the page width as well
         UpdateMarkdownPageWidth();
@@ -629,44 +603,6 @@ public partial class MainWindow
         }
     }
 
-    private async Task ScanFolder()
-    {
-        if (string.IsNullOrEmpty(_selectedFolder) || !Directory.Exists(_selectedFolder))
-            return;
-
-        try
-        {
-            TxtStatus.Text = "Scanning folder for source files...";
-            LogOperation($"Starting folder scan: {_selectedFolder}");
-            StartOperationTimer("FolderScan");
-            SetProcessingState(true, "Scanning folder");
-
-            _filesByExtension.Clear();
-            LvFiles.Items.Clear();
-
-            await FindSourceFilesAsync(_selectedFolder);
-
-            var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
-            TxtStatus.Text = $"Found {totalFiles} source files.";
-
-            DisplayFilesByFolder();
-            EndOperationTimer("FolderScan");
-            CalculateTotalTokens();
-            
-            SetProcessingState(false);
-        }
-        catch (Exception ex)
-        {
-            LogOperation($"Error scanning folder: {ex.Message}");
-            ErrorLogger.LogError(ex, "Scanning folder");
-            TxtStatus.Text = "Error scanning folder.";
-        }
-        finally
-        {
-            SetProcessingState(false);
-        }
-    }
-
     private void DisplayFilesByFolder()
     {
         // First, organize files by their folder structure
@@ -782,127 +718,6 @@ public partial class MainWindow
         }
     }
 
-    private static string GetLanguageGroupForExtension(string ext)
-    {
-        return ext switch
-        {
-            // C# and .NET
-            ".cs" => "C#",
-            ".xaml" => "XAML",
-            ".csproj" => ".NET Project",
-            ".vbproj" => ".NET Project",
-            ".fsproj" => ".NET Project",
-            ".vb" => "Visual Basic",
-            ".fs" => "F#",
-            ".nuspec" => ".NET Package",
-            ".aspx" => "ASP.NET",
-            ".asp" => "ASP.NET",
-            ".cshtml" => "Razor",
-            ".axaml" => "Avalonia XAML",
-        
-            // Web languages
-            ".html" or ".htm" => "HTML",
-            ".css" => "CSS",
-            ".js" => "JavaScript",
-            ".jsx" => "React JSX",
-            ".ts" => "TypeScript",
-            ".tsx" => "React TSX",
-            ".vue" => "Vue.js",
-            ".svelte" => "Svelte",
-            ".scss" => "SASS",
-            ".sass" => "SASS",
-            ".less" => "LESS",
-            ".mjs" => "JavaScript Module",
-            ".cjs" => "CommonJS Module",
-        
-            // JVM languages
-            ".java" => "Java",
-            ".kt" => "Kotlin",
-            ".scala" => "Scala",
-            ".groovy" => "Groovy",
-        
-            // Python
-            ".py" => "Python",
-        
-            // Ruby
-            ".rb" => "Ruby",
-            ".erb" => "ERB Template",
-        
-            // PHP
-            ".php" => "PHP",
-        
-            // C/C++
-            ".cpp" or ".h" or ".c" => "C/C++",
-        
-            // Go
-            ".go" => "Go",
-        
-            // Rust
-            ".rs" => "Rust",
-        
-            // Swift/Objective-C
-            ".swift" => "Swift",
-            ".m" => "Objective-C",
-            ".mm" => "Objective-C++",
-        
-            // Dart/Flutter
-            ".dart" => "Dart",
-        
-            // Markup and Data
-            ".xml" => "XML",
-            ".json" => "JSON",
-            ".yaml" or ".yml" => "YAML",
-            ".md" => "Markdown",
-            ".txt" => "Text",
-            ".plist" => "Property List",
-        
-            // Templates
-            ".pug" => "Pug Template",
-            ".jade" => "Jade Template",
-            ".ejs" => "EJS Template",
-            ".haml" => "Haml Template",
-        
-            // Query Languages
-            ".sql" => "SQL",
-            ".graphql" => "GraphQL",
-            ".gql" => "GraphQL",
-        
-            // Shell/Scripts
-            ".sh" => "Shell Script",
-            ".bash" => "Bash Script",
-            ".bat" => "Batch Script",
-            ".ps1" => "PowerShell",
-            ".pl" => "Perl",
-        
-            // Other Languages
-            ".r" => "R",
-            ".lua" => "Lua",
-            ".dockerfile" => "Dockerfile",
-            ".ex" => "Elixir",
-            ".exs" => "Elixir Script",
-            ".jl" => "Julia",
-            ".nim" => "Nim",
-            ".hs" => "Haskell",
-            ".clj" => "Clojure",
-            ".elm" => "Elm",
-            ".erl" => "Erlang",
-            ".asm" => "Assembly",
-            ".s" => "Assembly",
-            ".wasm" => "WebAssembly",
-        
-            // Configuration/Infrastructure
-            ".ini" => "INI Config",
-            ".toml" => "TOML Config",
-            ".tf" => "Terraform",
-            ".tfvars" => "Terraform Vars",
-            ".proto" => "Protocol Buffers",
-            ".config" => "Config File",
-        
-            // Default case
-            _ => "Other"
-        };
-    }
-
     private static string GenerateFileFilterFromExtensions()
     {
         // Return only the "All Files" filter as requested
@@ -969,70 +784,6 @@ public partial class MainWindow
             BtnClearFiles.IsEnabled = true;
             BtnSendQuery.IsEnabled = true;
         }
-    }
-
-    private void ProcessSelectedFiles(string[] filePaths)
-    {
-        foreach (var filePath in filePaths)
-        {
-            try
-            {
-                var fileInfo = new FileInfo(filePath);
-                var ext = fileInfo.Extension.ToLowerInvariant();
-
-                // Check file size limit only, don't filter by extension
-                var fileSizeKb = (int)(fileInfo.Length / 1024);
-                if (fileSizeKb <= _settingsManager.Settings.MaxFileSizeKb)
-                {
-                    // Get a relative path (if the file is not in the selected folder, it will use its full path)
-                    string relativePath;
-                    if (filePath.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase))
-                    {
-                        relativePath = filePath[_selectedFolder.Length..].TrimStart('\\', '/');
-                    }
-                    else
-                    {
-                        // If the file is outside the base folder, use the full path
-                        relativePath = filePath;
-                    }
-
-                    // Initialize the extension group if needed
-                    if (!_filesByExtension.TryGetValue(ext, out var value))
-                    {
-                        value = new List<SourceFile>();
-                        _filesByExtension[ext] = value;
-                    }
-
-                    // Check if this file is already added
-                    if (!value.Any(f => f.Path.Equals(filePath, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        value.Add(new SourceFile
-                        {
-                            Path = filePath,
-                            RelativePath = relativePath,
-                            Extension = ext,
-                            Content = File.ReadAllText(filePath)
-                        });
-
-                        LogOperation($"Added file: {relativePath}");
-                    }
-                    else
-                    {
-                        LogOperation($"Skipped duplicate file: {relativePath}");
-                    }
-                }
-                else
-                {
-                    LogOperation($"Skipped file due to size limit: {filePath} ({fileSizeKb} KB > {_settingsManager.Settings.MaxFileSizeKb} KB)");
-                }
-            }
-            catch (Exception ex)
-            {
-                LogOperation($"Error processing file {filePath}: {ex.Message}");
-            }
-        }
-
-        CalculateTotalTokens();
     }
 
     private void BtnClearFiles_Click(object sender, RoutedEventArgs e)
@@ -1243,7 +994,7 @@ public partial class MainWindow
                     else
                     {
                         // Process directories in parallel for better performance at shallow depths
-                        await Parallel.ForEachAsync(subDirs, parallelOptions, async (dir, ct) =>
+                        await Parallel.ForEachAsync(subDirs, parallelOptions, async (dir, _) =>
                         {
                             await ProcessDirectoryAsync(dir.FullName, depth + 1);
                         });
@@ -1259,126 +1010,6 @@ public partial class MainWindow
         {
             LogOperation($"Error in folder scan: {ex.Message}");
         }
-    }
-
-    private async Task ProcessFileInScanAsync(FileInfo file, int batchIndex)
-    {
-        var ext = file.Extension.ToLowerInvariant();
-        try
-        {
-            // Read file content asynchronously - OUTSIDE any lock
-            var content = await File.ReadAllTextAsync(file.FullName);
-
-            // Create the source file object
-            var sourceFile = new SourceFile
-            {
-                Path = file.FullName,
-                RelativePath = file.FullName.Replace(_selectedFolder, "").TrimStart('\\', '/'),
-                Extension = ext,
-                Content = content
-            };
-
-            var fileAdded = false;
-
-            // Add to collection with thread safety
-            lock (_filesByExtension)
-            {
-                if (!_filesByExtension.TryGetValue(ext, out var filesList))
-                {
-                    filesList = new List<SourceFile>();
-                    _filesByExtension[ext] = filesList;
-                }
-
-                // Skip duplicates
-                if (!filesList.Any(f => f.Path.Equals(file.FullName, StringComparison.OrdinalIgnoreCase)))
-                {
-                    filesList.Add(sourceFile);
-                    fileAdded = true;
-                }
-            }
-
-            // Only log if needed
-            if (fileAdded && batchIndex % 100 == 0) // Only log every 100 files to avoid flood
-            {
-                await Dispatcher.InvokeAsync(() =>
-                    LogOperation($"Added file: {sourceFile.RelativePath}")
-                );
-            }
-        }
-        catch (Exception ex)
-        {
-            LogOperation($"Error reading file {file.FullName}: {ex.Message}");
-        }
-    }
-
-    private async Task ProcessSubdirectoryAsync(DirectoryInfo dir, SemaphoreSlimSafe throttler)
-    {
-        try
-        {
-            await FindSourceFilesAsync(dir.FullName);
-        }
-        finally
-        {
-            throttler.Release();
-        }
-    }
-
-    private async Task ProcessFileBatchAsync(List<FileInfo> files)
-    {
-        await Task.Run(() =>
-        {
-            foreach (var file in files)
-            {
-                var ext = file.Extension.ToLowerInvariant();
-
-                string content;
-                try
-                {
-                    // Using synchronous File.ReadAllText inside Task.Run
-                    // This is a reasonable approach since we're already in a background thread
-                    content = File.ReadAllText(file.FullName);
-                }
-                catch (Exception ex)
-                {
-                    // Log error but continue processing other files
-                    Dispatcher.InvokeAsync(() =>
-                        LogOperation($"Error reading file {file.FullName}: {ex.Message}")
-                    );
-                    continue;
-                }
-
-                lock (_filesByExtension)
-                {
-                    // Initialize the extension group if needed
-                    if (!_filesByExtension.TryGetValue(ext, out var value))
-                    {
-                        value = new List<SourceFile>();
-                        _filesByExtension[ext] = value;
-                    }
-
-                    // Check if this file is already added
-                    if (!value.Any(f => f.Path.Equals(file.FullName, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        value.Add(new SourceFile
-                        {
-                            Path = file.FullName,
-                            RelativePath = file.FullName.Replace(_selectedFolder, "").TrimStart('\\', '/'),
-                            Extension = ext,
-                            Content = content
-                        });
-
-                        Dispatcher.InvokeAsync(() =>
-                            LogOperation($"Added file: {file.FullName.Replace(_selectedFolder, "").TrimStart('\\', '/')}")
-                        );
-                    }
-                    else
-                    {
-                        LogOperation(
-                            $"Skipped duplicate file: {file.FullName.Replace(_selectedFolder, "").TrimStart('\\', '/')}");
-                    }
-                }
-            }
-        });
     }
 
     private async void BtnAnalyze_Click(object sender, RoutedEventArgs e)
@@ -1626,39 +1257,6 @@ public partial class MainWindow
         EndOperationTimer("QueryProcessing");
     }
 
-    private static string GenerateMinimalPrompt(Dictionary<string, List<string>> consolidatedFiles)
-    {
-        var prompt = new StringBuilder();
-
-        // Skip the template, add a minimal instruction if files are included
-        if (consolidatedFiles.Count != 0)
-        {
-            prompt.AppendLine("Please analyze the following code files:");
-            prompt.AppendLine();
-
-            // Include files, grouped by extension
-            foreach (var ext in consolidatedFiles.Keys)
-            {
-                prompt.AppendLine(CultureInfo.InvariantCulture, $"--- {ext.ToUpperInvariant()} FILES ---");
-                prompt.AppendLine();
-
-                foreach (var fileContent in consolidatedFiles[ext])
-                {
-                    prompt.AppendLine(fileContent);
-                    prompt.AppendLine();
-                }
-            }
-        }
-        else
-        {
-            prompt.AppendLine("Please respond to the following:"); // Base instruction if no files
-            prompt.AppendLine();
-        }
-
-
-        return prompt.ToString();
-    }
-
     private Dictionary<string, List<string>> PrepareConsolidatedFiles(List<SourceFile> includedFiles)
     {
         var consolidatedFiles = new Dictionary<string, List<string>>();
@@ -1807,119 +1405,6 @@ public partial class MainWindow
             // Default case
             _ => "text"
         };
-    }
-
-    private string GenerateInitialPrompt(Dictionary<string, List<string>> consolidatedFiles)
-    {
-        var prompt = new StringBuilder();
-
-        // Get the selected prompt content from the dropdown or settings
-        var selectedPromptTemplate = CboPromptTemplate.SelectedItem as CodePrompt;
-        var promptTemplate = selectedPromptTemplate?.Content ?? _settingsManager.Settings.InitialPrompt; // Fallback
-
-        // Use the template as the basis for the prompt
-        prompt.AppendLine(promptTemplate);
-        prompt.AppendLine();
-
-        // Include files, grouped by extension, if any
-        if (consolidatedFiles.Count != 0)
-        {
-            foreach (var ext in consolidatedFiles.Keys)
-            {
-                prompt.AppendLine(CultureInfo.InvariantCulture, $"--- {ext.ToUpperInvariant()} FILES ---");
-                prompt.AppendLine();
-
-                foreach (var fileContent in consolidatedFiles[ext])
-                {
-                    prompt.AppendLine(fileContent);
-                    prompt.AppendLine();
-                }
-            }
-        }
-        else
-        {
-            prompt.AppendLine("--- NO FILES INCLUDED ---");
-            prompt.AppendLine();
-        }
-
-
-        return prompt.ToString();
-    }
-
-    private async void BtnSendFollowup_Click(object sender, RoutedEventArgs e)
-    {
-        var followupQuestion = TxtFollowupQuestion.Text;
-
-        if (string.IsNullOrWhiteSpace(followupQuestion))
-        {
-            MessageBox.Show("Please enter a follow-up question.", "Empty Question", MessageBoxButton.OK, MessageBoxImage.Warning);
-            LogOperation("Follow-up canceled: Empty question");
-            return;
-        }
-
-        var apiSelection = CboAiApi.SelectedItem?.ToString() ?? "Claude API";
-
-        // Update status and show processing indicators
-        var statusMessage = $"Sending follow-up question to {apiSelection}";
-        TxtStatus.Text = $"{statusMessage}...";
-        SetProcessingState(true, statusMessage);
-
-        LogOperation($"Sending follow-up question to {apiSelection}");
-        StartOperationTimer("FollowupQuestion");
-
-        try
-        {
-            // Create an enhanced follow-up prompt with context
-            var enhancedPrompt = GenerateContextualFollowupPrompt(followupQuestion);
-
-            // Check if we should include selected files
-            if (ChkIncludeSelectedFiles.IsChecked == true && LvFiles.SelectedItems.Count > 0)
-            {
-                // Add information about selected files to the prompt
-                enhancedPrompt = AppendSelectedFilesToPrompt(enhancedPrompt, _lastIncludedFiles);
-            }
-
-            // Add the user question to the conversation history first
-            _conversationHistory.Add(new ChatMessage { Role = "user", Content = followupQuestion });
-            LogOperation("Added follow-up question to conversation history");
-
-            // Send the enhanced prompt to selected API
-            var response = await SendToAiApi(apiSelection, enhancedPrompt);
-
-            // Add the assistant response to conversation history
-            _conversationHistory.Add(new ChatMessage { Role = "assistant", Content = response });
-            LogOperation("Added assistant response to conversation history");
-
-            // Display the response (this will also auto-save it)
-            LogOperation("Updating UI with follow-up response");
-            UpdateResponseDisplay(response, true);
-
-            // Clear the follow-up question text box
-            TxtFollowupQuestion.Text = "";
-
-            TxtStatus.Text = "Follow-up response received!";
-            EndOperationTimer("FollowupQuestion");
-            LogOperation("Follow-up question workflow completed");
-        }
-        catch (Exception ex)
-        {
-            LogOperation($"Error sending follow-up question: {ex.Message}");
-
-            // Only show the error dialog if it's not a token limit error
-            // that we've already handled
-            if (!ex.Message.StartsWith("Token limit exceeded:", StringComparison.Ordinal))
-            {
-                ErrorLogger.LogError(ex, "Sending follow-up question");
-            }
-
-            TxtStatus.Text = "Error sending follow-up question.";
-            EndOperationTimer("FollowupQuestion");
-        }
-        finally
-        {
-            // Always reset the processing state
-            SetProcessingState(false);
-        }
     }
 
     private string AppendSelectedFilesToPrompt(string originalPrompt, List<SourceFile> includedFiles)
@@ -2956,22 +2441,6 @@ public partial class MainWindow
         }
     }
 
-    private static int EstimateTokenCount(string text, string fileExtension = "")
-    {
-        // Legacy method kept for backward compatibility with code that might call it directly
-        // This now delegates to the SharpToken implementation via the instance
-        // This should not be used for new code - instead use _tokenCounterService directly
-        if (string.IsNullOrEmpty(text))
-            return 0;
-
-        // Use a simplified fallback implementation since we can't access the instance method
-        // This is just a failsafe if this static method is called directly from legacy code
-        var charsPerToken = 2.5;
-    
-        // Extremely simplified logic as this method should not be used anymore
-        return (int)Math.Ceiling(text.Length / charsPerToken);
-    }
-
     private void CalculateTotalTokens()
     {
         // Get all source files as a flat list
@@ -3080,44 +2549,6 @@ public partial class MainWindow
         }
 
         return null;
-    }
-
-    private Button? FindButtonByContent(string content)
-    {
-        // Find all buttons in the window
-        var buttons = FindVisualChildren<Button>(this);
-
-        // Look for a button with matching content
-        foreach (var button in buttons)
-        {
-            if (button.Content is string buttonContent && buttonContent == content)
-            {
-                return button;
-            }
-        }
-
-        return null;
-    }
-
-    private FrameworkElement? FindNameInWindow(string name)
-    {
-        return FindName(name) as FrameworkElement;
-    }
-
-    private IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
-    {
-        if (depObj == null) yield break;
-
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
-        {
-            var child = VisualTreeHelper.GetChild(depObj, i);
-
-            if (child is T typedChild)
-                yield return typedChild;
-
-            foreach (var childOfChild in FindVisualChildren<T>(child))
-                yield return childOfChild;
-        }
     }
 
     private void MenuStart_Click(object sender, RoutedEventArgs e)
