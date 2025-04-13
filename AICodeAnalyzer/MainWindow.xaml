@@ -313,10 +313,6 @@
                         <CheckBox x:Name="ChkIncludeSelectedFiles" Content="Include selected files"
                                   IsChecked="True" Margin="0,0,0,5"
                                   ToolTip="Include the files selected in the file list with your request" />
-
-                        <CheckBox x:Name="SendfollowUpReminder" Content="Send follow-up reminder with summary"
-                                  IsChecked="False" Margin="0,0,0,0"
-                                  ToolTip="Send follow-up reminder with summary" />
                     </StackPanel>
 
                     <!-- Text Input Area -->
