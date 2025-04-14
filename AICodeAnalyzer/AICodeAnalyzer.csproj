@@ -5,7 +5,7 @@
     <TargetFramework>net9.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
-    <ApplicationIcon>icon\icon2.ico</ApplicationIcon>
+    <ApplicationIcon>icon\icon.ico</ApplicationIcon>
     <IsPackable>false</IsPackable>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
