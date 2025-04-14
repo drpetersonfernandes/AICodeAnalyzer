@@ -218,11 +218,8 @@ public class Gemini : IAiApiProvider, IDisposable
     }
 }
 
-public class GeminiModelInfo
+public class GeminiModelInfo : ModelInfo
 {
-    public required string Id { get; set; }
-    public required string Name { get; set; }
-    public required string Description { get; set; }
-    public int ContextLength { get; set; }
+    // Keep the ApiVersion property which is specific to Gemini
     public string ApiVersion { get; set; } = "v1";
 }

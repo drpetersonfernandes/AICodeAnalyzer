@@ -124,10 +124,7 @@ public class Claude : IAiApiProvider, IDisposable
     }
 }
 
-public class ClaudeModelInfo
+public class ClaudeModelInfo : ModelInfo
 {
-    public required string Id { get; set; }
-    public required string Name { get; set; }
-    public required string Description { get; set; }
-    public int ContextLength { get; set; }
+    // No need for additional properties as ModelInfo has everything we need
 }

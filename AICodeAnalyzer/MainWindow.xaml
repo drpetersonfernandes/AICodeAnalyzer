@@ -138,6 +138,12 @@
                         <Image Source="pack://application:,,,/images/recentfiles.png" Width="16" Height="16" />
                     </MenuItem.Icon>
                     <MenuItem Header="(No recent files)" IsEnabled="False" />
+                    <Separator />
+                    <MenuItem Header="Clear Recent Files" Click="ClearRecentFiles_Click">
+                        <MenuItem.Icon>
+                            <TextBlock Text="🗑️" FontSize="14" />
+                        </MenuItem.Icon>
+                    </MenuItem>
                 </MenuItem>
                 <Separator />
                 <MenuItem Header="_Exit" Click="MenuExit_Click">
@@ -180,9 +186,9 @@
             </Grid.RowDefinitions>
 
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2.0*" />
+                <ColumnDefinition Width="1.5*" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="8.0*" />
+                <ColumnDefinition Width="8.5*" />
             </Grid.ColumnDefinitions>
 
             <!-- Project Selection Area -->
@@ -197,13 +203,13 @@
                         </Grid.ColumnDefinitions>
                         <TextBox x:Name="TxtSelectedFolder" IsReadOnly="True" Grid.Column="0" Margin="0,0,5,0" />
                         <Button x:Name="BtnSelectFolder" Content="Select Folder" Grid.Column="1"
-                                Click="BtnSelectFolder_Click" Padding="8,3" Margin="0,0,5,0" Height="25" />
+                                Click="BtnSelectFolder_Click" Padding="4,0" Margin="0,0,5,0" Height="25" />
                         <Button x:Name="BtnSelectFiles" Content="Add Files" Grid.Column="2"
-                                Click="BtnSelectFiles_Click" Padding="8,3" Margin="0,0,5,0" Height="25"
+                                Click="BtnSelectFiles_Click" Padding="4,0" Margin="0,0,5,0" Height="25"
                                 ToolTip="Add specific files to the analysis" />
                         <Button x:Name="BtnClearFiles" Content="Clear" Grid.Column="3" Click="BtnClearFiles_Click"
                                 Height="25"
-                                Padding="8,3" ToolTip="Clear all selected files" />
+                                Padding="4,0" ToolTip="Clear all selected files" />
                     </Grid>
                 </StackPanel>
             </GroupBox>
@@ -270,7 +276,7 @@
                               Margin="0,0,5,5" />
                     <Button x:Name="BtnAddKey" Grid.Row="2" Grid.Column="3" Content="Add Key"
                             VerticalAlignment="Center"
-                            Margin="0,0,5,5" Height="25" Padding="8,3" Click="PromptTemplatesEdit_Click" />
+                            Margin="0,0,5,5" Height="25" Padding="4,0" Click="PromptTemplatesEdit_Click" />
 
                     <!-- Model Description -->
                     <TextBlock x:Name="TxtModelDescription"
@@ -300,7 +306,7 @@
                                   DisplayMemberPath="Name"
                                   Margin="0,0,5,0" />
                         <Button x:Name="BtnConfigurePrompts" Content="Edit"
-                                Grid.Column="1" Padding="8,3" Height="25"
+                                Grid.Column="1" Padding="4,0" Height="25"
                                 Click="PromptTemplatesEdit_Click" />
                     </Grid>
 
@@ -406,15 +412,19 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Button x:Name="BtnShowInputQuery" Content="Show Input Query" Grid.Column="0" Height="30"
+                        <Button x:Name="BtnContinue" Content="Continue" Grid.Column="0" Height="30"
+                                Margin="0,0,2,0" Click="BtnContinue_Click" IsEnabled="False"
+                                ToolTip="Send 'Continue' to the AI to generate more content" />
+                        <Button x:Name="BtnShowInputQuery" Content="Show Input Query" Grid.Column="1" Height="30"
                                 Margin="0,0,2,0" Click="BtnShowInputQuery_Click" IsEnabled="False"
                                 ToolTip="Show the exact query and file summary sent to the AI" />
-                        <Button x:Name="BtnSaveResponse" Content="Save Response" Grid.Column="1" Height="30"
+                        <Button x:Name="BtnSaveResponse" Content="Save Response" Grid.Column="2" Height="30"
                                 Margin="0,0,2,0" Click="BtnSaveResponse_Click" IsEnabled="False" />
-                        <Button x:Name="BtnSaveEdits" Content="Apply Edits" Grid.Column="2" Height="30"
+                        <Button x:Name="BtnSaveEdits" Content="Apply Edits" Grid.Column="3" Height="30"
                                 Margin="0,0,2,0" Click="SaveEdits_Click" IsEnabled="False" />
-                        <Button x:Name="BtnToggleMarkdown" Content="Show Raw Text" Grid.Column="3" Height="30"
+                        <Button x:Name="BtnToggleMarkdown" Content="Show Raw Text" Grid.Column="4" Height="30"
                                 Margin="2,0,0,0" Click="ToggleMarkdownView_Click" IsEnabled="False" />
                     </Grid>
 

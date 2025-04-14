@@ -109,9 +109,7 @@ public class Grok : IAiApiProvider, IDisposable
     }
 }
 
-public class GrokModelInfo
+public class GrokModelInfo : ModelInfo
 {
-    public required string Id { get; set; }
-    public required string Name { get; set; }
-    public required string Description { get; set; }
+    // No additional properties needed
 }

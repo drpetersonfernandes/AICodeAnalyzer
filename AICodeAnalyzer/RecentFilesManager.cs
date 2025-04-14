@@ -2,102 +2,139 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Xml;
-using System.Xml.Serialization;
+using System.Text.Json;
 
 namespace AICodeAnalyzer;
 
-[Serializable]
-public class RecentFilesData
-{
-    public List<string> FilePaths { get; set; } = new();
-}
-
+/// <summary>
+/// Manages a list of recently opened files with persistence between sessions.
+/// </summary>
 public class RecentFilesManager
 {
-    private const string RecentFilesFileName = "recentfiles.xml";
     private readonly string _recentFilesPath;
-    private readonly RecentFilesData _recentFiles;
-    private const int MaxRecentFiles = 10; // Maximum number of recent files to remember
+    private readonly int _maxRecentFiles;
+    private List<string> _recentFiles = new();
+    private readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
 
-    public RecentFilesManager()
+    /// <summary>
+    /// Initializes a new instance of the RecentFilesManager class.
+    /// </summary>
+    /// <param name="maxRecentFiles">Maximum number of recent files to track</param>
+    /// <param name="storageFileName">Optional custom filename for storage</param>
+    public RecentFilesManager(int maxRecentFiles = 10, string storageFileName = "recent_files.json")
     {
-        _recentFilesPath = Path.Combine(AppContext.BaseDirectory, RecentFilesFileName);
-        _recentFiles = LoadRecentFiles();
+        _maxRecentFiles = maxRecentFiles;
+        _recentFilesPath = Path.Combine(AppContext.BaseDirectory, storageFileName);
+        LoadRecentFiles();
     }
 
+    /// <summary>
+    /// Gets the list of recent files that still exist on disk.
+    /// </summary>
+    /// <returns>A read-only list of file paths</returns>
     public IReadOnlyList<string> GetRecentFiles()
     {
-        // Return the list of recent files, filtering out any that no longer exist
-        return _recentFiles.FilePaths
+        // Return a copy of the list as read-only, filtering out files that no longer exist
+        return _recentFiles
             .Where(File.Exists)
             .ToList()
             .AsReadOnly();
     }
 
+    /// <summary>
+    /// Adds a file to the recent files list, moving it to the top if it already exists.
+    /// </summary>
+    /// <param name="filePath">The path of the file to add</param>
     public void AddRecentFile(string filePath)
     {
-        // Get the absolute path
-        filePath = Path.GetFullPath(filePath);
-
-        // Remove the file if it already exists in the list
-        _recentFiles.FilePaths.Remove(filePath);
-
-        // Add the file to the beginning of the list
-        _recentFiles.FilePaths.Insert(0, filePath);
-
-        // Trim the list if it exceeds the maximum count
-        while (_recentFiles.FilePaths.Count > MaxRecentFiles)
-        {
-            _recentFiles.FilePaths.RemoveAt(_recentFiles.FilePaths.Count - 1);
-        }
-
-        // Save the updated list
-        SaveRecentFiles();
-    }
-
-    public void ClearRecentFiles()
-    {
-        _recentFiles.FilePaths.Clear();
-        SaveRecentFiles();
-    }
-
-    private RecentFilesData LoadRecentFiles()
-    {
-        if (!File.Exists(_recentFilesPath))
-            return new RecentFilesData();
+        if (string.IsNullOrEmpty(filePath))
+            return;
 
         try
         {
-            var settings = new XmlReaderSettings
+            // Make sure the path exists and is absolute
+            if (!Path.IsPathRooted(filePath))
             {
-                DtdProcessing = DtdProcessing.Prohibit,
-                XmlResolver = null
-            };
+                filePath = Path.GetFullPath(filePath);
+            }
 
-            using var reader = XmlReader.Create(_recentFilesPath, settings);
-            var serializer = new XmlSerializer(typeof(RecentFilesData));
-            var result = serializer.Deserialize(reader) as RecentFilesData;
-            return result ?? new RecentFilesData();
+            // Check if file exists
+            if (!File.Exists(filePath))
+                return;
+
+            // Remove the file if it already exists in the list (to prevent duplicates)
+            _recentFiles.RemoveAll(f => f.Equals(filePath, StringComparison.OrdinalIgnoreCase));
+
+            // Add the file to the start of the list
+            _recentFiles.Insert(0, filePath);
+
+            // Trim the list if it exceeds the maximum number of recent files
+            if (_recentFiles.Count > _maxRecentFiles)
+            {
+                _recentFiles = _recentFiles.Take(_maxRecentFiles).ToList();
+            }
+
+            // Save the updated list
+            SaveRecentFiles();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // If there's any error, return a new empty list
-            return new RecentFilesData();
+            // Log error but continue - adding to recent files is non-critical
+            ErrorLogger.LogError(ex, $"Error adding file to recent files: {filePath}");
         }
     }
 
+    /// <summary>
+    /// Clears all recent files from the list and persisted storage.
+    /// </summary>
+    public void ClearRecentFiles()
+    {
+        _recentFiles.Clear();
+        SaveRecentFiles();
+    }
+
+    /// <summary>
+    /// Loads recent files from storage.
+    /// </summary>
+    private void LoadRecentFiles()
+    {
+        try
+        {
+            if (File.Exists(_recentFilesPath))
+            {
+                var json = File.ReadAllText(_recentFilesPath);
+                var loadedFiles = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+
+                // Filter out any files that no longer exist
+                _recentFiles = loadedFiles
+                    .Where(File.Exists)
+                    .Take(_maxRecentFiles)
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            // If there's an error loading the recent files, start with an empty list
+            _recentFiles = new List<string>();
+            ErrorLogger.LogError(ex, "Loading recent files");
+        }
+    }
+
+    /// <summary>
+    /// Saves recent files to storage.
+    /// </summary>
     private void SaveRecentFiles()
     {
         try
         {
-            using var writer = new StreamWriter(_recentFilesPath);
-            var serializer = new XmlSerializer(typeof(RecentFilesData));
-            serializer.Serialize(writer, _recentFiles);
+            var options = _jsonOptions;
+            var json = JsonSerializer.Serialize(_recentFiles, options);
+            File.WriteAllText(_recentFilesPath, json);
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, "Error saving recent files");
+            // Log error but continue - recent files functionality is non-critical
+            ErrorLogger.LogError(ex, "Saving recent files");
         }
     }
 }

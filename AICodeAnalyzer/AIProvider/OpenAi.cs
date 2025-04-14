@@ -198,11 +198,7 @@ public class OpenAi : IAiApiProvider, IDisposable
     }
 }
 
-public class OpenAiModelInfo
+public class OpenAiModelInfo : ModelInfo
 {
-    public required string Id { get; set; }
-    public required string Name { get; set; }
-    public required string Description { get; set; }
-    public int ContextLength { get; set; }
-    public string Category { get; set; } = string.Empty;
+    // No additional properties needed
 }

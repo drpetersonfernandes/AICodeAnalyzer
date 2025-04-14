@@ -77,4 +77,21 @@ public partial class App
         Console.WriteLine($"INFORMATION: {message}");
         Debug.WriteLine($"INFORMATION: {message}");
     }
+
+    public async Task UpdateFileAssociationAsync(bool register)
+    {
+        if (_fileAssociationManager == null)
+        {
+            _fileAssociationManager = new FileAssociationManager(LogInformation, LogError);
+        }
+
+        if (register)
+        {
+            await Task.Run(() => _fileAssociationManager.RegisterApplication());
+        }
+        else
+        {
+            await Task.Run(() => _fileAssociationManager.UnregisterApplication());
+        }
+    }
 }
