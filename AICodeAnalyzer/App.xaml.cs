@@ -31,14 +31,13 @@ public partial class App
             }
 
             // Check for command-line arguments (file path)
-            if (e.Args.Length > 0)
-            {
-                var filePath = e.Args[0];
-                // Store the file path for later use in MainWindow
-                Properties["StartupFilePath"] = filePath;
+            if (e.Args.Length <= 0) return;
 
-                // The MainWindow will handle loading the file asynchronously when it initializes
-            }
+            var filePath = e.Args[0];
+            // Store the file path for later use in MainWindow
+            Properties["StartupFilePath"] = filePath;
+
+            // The MainWindow will handle loading the file asynchronously when it initializes
         }
         catch (Exception ex)
         {

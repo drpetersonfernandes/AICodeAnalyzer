@@ -97,13 +97,12 @@ public class TokenCalculationResult
             sb.AppendLine();
         }
 
-        if (ModelCompatibility.Count > 0)
+        if (ModelCompatibility.Count <= 0) return sb.ToString();
+
+        sb.AppendLine("Model Compatibility:");
+        foreach (var model in ModelCompatibility)
         {
-            sb.AppendLine("Model Compatibility:");
-            foreach (var model in ModelCompatibility)
-            {
-                sb.AppendLine(CultureInfo.InvariantCulture, $"- {model.Key}: {model.Value}");
-            }
+            sb.AppendLine(CultureInfo.InvariantCulture, $"- {model.Key}: {model.Value}");
         }
 
         return sb.ToString();

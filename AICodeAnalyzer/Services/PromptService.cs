@@ -70,12 +70,11 @@ public class PromptService(LoggingService loggingService, SettingsManager settin
         }
 
         // Add additional instructions if provided
-        if (!string.IsNullOrEmpty(additionalInstructions))
-        {
-            promptBuilder.AppendLine("--- Additional Instructions/Question ---");
-            promptBuilder.AppendLine(additionalInstructions);
-            _loggingService.LogOperation("Added additional instructions to the prompt");
-        }
+        if (string.IsNullOrEmpty(additionalInstructions)) return promptBuilder.ToString();
+
+        promptBuilder.AppendLine("--- Additional Instructions/Question ---");
+        promptBuilder.AppendLine(additionalInstructions);
+        _loggingService.LogOperation("Added additional instructions to the prompt");
 
         return promptBuilder.ToString();
     }

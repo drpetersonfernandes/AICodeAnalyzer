@@ -18,33 +18,35 @@ public class Grok : IAiApiProvider, IDisposable
 
     public List<GrokModelInfo> GetAvailableModels()
     {
-        return new List<GrokModelInfo>
-        {
-            new()
+        return
+        [
+            new GrokModelInfo
             {
                 Name = "Grok 3",
                 Id = "grok-3-beta",
                 Description = "131K context - $3/M input tokens - $15/M output tokens."
             },
-            new()
+
+            new GrokModelInfo
             {
                 Name = "Grok 3 Mini",
                 Id = "grok-3-mini-beta",
                 Description = "131K context - $0,3/M input tokens - $0,5/M output tokens."
             },
-            new()
+
+            new GrokModelInfo
             {
                 Name = "Grok 2",
                 Id = "grok-2-1212",
                 Description = "131K context - $2/M input tokens - $10/M output tokens."
             }
-        };
+        ];
     }
 
-    public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
+    public Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
     {
         // Call the overloaded method with the default model
-        return await SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
+        return SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
     }
 
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)

@@ -739,48 +739,44 @@ public partial class MainWindow
         foreach (var item in ListOfFiles.SelectedItems)
         {
             // Check if the item is a string representing a file path/name
-            if (item is string displayString)
+            if (item is not string displayString) continue;
+            // Basic check to filter out headers or summary lines
+            if (displayString.StartsWith("=====", StringComparison.Ordinal) || displayString.Contains(" files") ||
+                displayString.Contains(" - ")) continue;
+            // Clean the display string (remove potential prefixes like '+' or '')
+            var cleanFileName = displayString.TrimStart(' ', '+');
+
+            // Find the matching SourceFile object across all extensions
+            SourceFile? matchingFile = null;
+            foreach (var extensionFiles in _fileService.FilesByExtension.Values)
             {
-                // Basic check to filter out headers or summary lines
-                if (!displayString.StartsWith("=====", StringComparison.Ordinal) && !displayString.Contains(" files") &&
-                    !displayString.Contains(" - "))
+                // Match against the file name part of the RelativePath
+                matchingFile = extensionFiles.FirstOrDefault(f =>
+                    Path.GetFileName(f.RelativePath).Equals(cleanFileName, StringComparison.OrdinalIgnoreCase));
+
+                if (matchingFile != null)
                 {
-                    // Clean the display string (remove potential prefixes like '+' or '')
-                    var cleanFileName = displayString.TrimStart(' ', '+');
-
-                    // Find the matching SourceFile object across all extensions
-                    SourceFile? matchingFile = null;
-                    foreach (var extensionFiles in _fileService.FilesByExtension.Values)
-                    {
-                        // Match against the file name part of the RelativePath
-                        matchingFile = extensionFiles.FirstOrDefault(f =>
-                            Path.GetFileName(f.RelativePath).Equals(cleanFileName, StringComparison.OrdinalIgnoreCase));
-
-                        if (matchingFile != null)
-                        {
-                            break; // Found the file, exit inner loop
-                        }
-                    }
-
-                    // If a matching file was found
-                    if (matchingFile != null)
-                    {
-                        fileCount++;
-                        selectedFileNames.Add(matchingFile.RelativePath); // Add a relative path to the summary list
-                        includedFiles.Add(matchingFile); // Add the SourceFile object to the list
-
-                        // Append file content in a code block with language identification
-                        selectedFilesContent.AppendLine(CultureInfo.InvariantCulture, $"File: {matchingFile.RelativePath}");
-                        selectedFilesContent.AppendLine(CultureInfo.InvariantCulture, $"```{FileService.GetLanguageForExtension(matchingFile.Extension)}");
-                        selectedFilesContent.AppendLine(matchingFile.Content);
-                        selectedFilesContent.AppendLine("```");
-                        selectedFilesContent.AppendLine();
-                    }
-                    else
-                    {
-                        _loggingService.LogOperation($"Warning: Could not find source file data for selected item: '{cleanFileName}'");
-                    }
+                    break; // Found the file, exit inner loop
                 }
+            }
+
+            // If a matching file was found
+            if (matchingFile != null)
+            {
+                fileCount++;
+                selectedFileNames.Add(matchingFile.RelativePath); // Add a relative path to the summary list
+                includedFiles.Add(matchingFile); // Add the SourceFile object to the list
+
+                // Append file content in a code block with language identification
+                selectedFilesContent.AppendLine(CultureInfo.InvariantCulture, $"File: {matchingFile.RelativePath}");
+                selectedFilesContent.AppendLine(CultureInfo.InvariantCulture, $"```{FileService.GetLanguageForExtension(matchingFile.Extension)}");
+                selectedFilesContent.AppendLine(matchingFile.Content);
+                selectedFilesContent.AppendLine("```");
+                selectedFilesContent.AppendLine();
+            }
+            else
+            {
+                _loggingService.LogOperation($"Warning: Could not find source file data for selected item: '{cleanFileName}'");
             }
         }
 
@@ -812,20 +808,19 @@ public partial class MainWindow
 
     private void AiProvider_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (AiProvider.SelectedItem != null)
+        if (AiProvider.SelectedItem == null) return;
+
+        var apiSelection = AiProvider.SelectedItem.ToString() ?? string.Empty;
+        UpdateProviderKeys(apiSelection);
+        PopulateModelDropdown(apiSelection);
+
+        // Clear the model description initially
+        TxtModelDescription.Text = string.Empty;
+
+        // Add an instruction to select a model
+        if (AiModel.IsEnabled)
         {
-            var apiSelection = AiProvider.SelectedItem.ToString() ?? string.Empty;
-            UpdateProviderKeys(apiSelection);
-            PopulateModelDropdown(apiSelection);
-
-            // Clear the model description initially
-            TxtModelDescription.Text = string.Empty;
-
-            // Add an instruction to select a model
-            if (AiModel.IsEnabled)
-            {
-                TxtModelDescription.Text = "Please select a model from the dropdown above.";
-            }
+            TxtModelDescription.Text = "Please select a model from the dropdown above.";
         }
     }
 
@@ -900,12 +895,11 @@ public partial class MainWindow
 
     private void PromptTemplates_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (PromptTemplates.SelectedItem is CodePrompt selectedPrompt)
-        {
-            _settingsManager.Settings.SelectedPromptName = selectedPrompt.Name;
-            _settingsManager.SaveSettings();
-            _loggingService.LogOperation($"Selected prompt template: {selectedPrompt.Name}");
-        }
+        if (PromptTemplates.SelectedItem is not CodePrompt selectedPrompt) return;
+
+        _settingsManager.Settings.SelectedPromptName = selectedPrompt.Name;
+        _settingsManager.SaveSettings();
+        _loggingService.LogOperation($"Selected prompt template: {selectedPrompt.Name}");
     }
 
     private void UpdateResponseDisplay()
@@ -1101,52 +1095,55 @@ public partial class MainWindow
     private void TxtResponse_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         // Check if Ctrl key is pressed for zooming
-        if (Keyboard.Modifiers == ModifierKeys.Control)
-        {
-            if (e.Delta > 0) // Wheel scrolled up (Zoom In)
-            {
-                _markdownService.ZoomIn();
-            }
-            else if (e.Delta < 0) // Wheel scrolled down (Zoom Out)
-            {
-                _markdownService.ZoomOut();
-            }
+        if (Keyboard.Modifiers != ModifierKeys.Control) return;
 
-            e.Handled = true; // Prevent default scroll behavior when zooming
+        switch (e.Delta)
+        {
+            // Wheel scrolled up (Zoom In)
+            case > 0:
+                _markdownService.ZoomIn();
+                break;
+            // Wheel scrolled down (Zoom Out)
+            case < 0:
+                _markdownService.ZoomOut();
+                break;
         }
+
+        e.Handled = true; // Prevent default scroll behavior when zooming
     }
 
     private void MarkdownScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         // Check if Ctrl key is pressed for zooming
-        if (Keyboard.Modifiers == ModifierKeys.Control)
-        {
-            if (e.Delta > 0) // Wheel scrolled up (Zoom In)
-            {
-                _markdownService.ZoomIn();
-            }
-            else if (e.Delta < 0) // Wheel scrolled down (Zoom Out)
-            {
-                _markdownService.ZoomOut();
-            }
+        if (Keyboard.Modifiers != ModifierKeys.Control) return;
 
-            e.Handled = true; // Prevent default scroll behavior when zooming
+        switch (e.Delta)
+        {
+            // Wheel scrolled up (Zoom In)
+            case > 0:
+                _markdownService.ZoomIn();
+                break;
+            // Wheel scrolled down (Zoom Out)
+            case < 0:
+                _markdownService.ZoomOut();
+                break;
         }
+
+        e.Handled = true; // Prevent default scroll behavior when zooming
     }
 
     private async void RecentFileMenuItem_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            if (sender is MenuItem menuItem && menuItem.Tag is string filePath)
-            {
-                await LoadMarkdownFileAsync(filePath);
+            if (sender is not MenuItem { Tag: string filePath }) return;
 
-                // Ensure the input query button is disabled after loading
-                BtnShowInputQuery.IsEnabled = false;
-                _responseService.ToggleInputQueryView(); // Reset to false
-                BtnShowInputQuery.Content = "Show Input Query";
-            }
+            await LoadMarkdownFileAsync(filePath);
+
+            // Ensure the input query button is disabled after loading
+            BtnShowInputQuery.IsEnabled = false;
+            _responseService.ToggleInputQueryView(); // Reset to false
+            BtnShowInputQuery.Content = "Show Input Query";
         }
         catch (Exception ex)
         {
@@ -1212,12 +1209,10 @@ public partial class MainWindow
 
             var result = configWindow.ShowDialog();
 
-            if (result == true)
-            {
-                // Settings were saved, update any necessary UI
-                _loggingService.LogOperation("Settings updated");
-                LoadPromptTemplates();
-            }
+            if (result != true) return;
+            // Settings were saved, update any necessary UI
+            _loggingService.LogOperation("Settings updated");
+            LoadPromptTemplates();
         }
         catch (Exception ex)
         {
@@ -1237,43 +1232,42 @@ public partial class MainWindow
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
 
-            if (result == MessageBoxResult.Yes)
-            {
-                _loggingService.LogOperation("Restarting application...");
+            if (result != MessageBoxResult.Yes) return;
 
-                // Clear response data
-                _responseService.ClearHistory();
+            _loggingService.LogOperation("Restarting application...");
 
-                // Reset zoom level
-                _markdownService.ResetZoom();
+            // Clear response data
+            _responseService.ClearHistory();
 
-                // Clear file list
-                _fileService.ClearFiles();
+            // Reset zoom level
+            _markdownService.ResetZoom();
 
-                // Reset UI elements state
-                BtnSendQuery.IsEnabled = true;
-                TxtFollowupQuestion.IsEnabled = true;
-                BtnSaveResponse.IsEnabled = false;
-                BtnToggleMarkdown.IsEnabled = false;
-                BtnShowInputQuery.IsEnabled = false;
-                BtnShowInputQuery.Content = "Show Input Query";
-                BtnSaveEdits.IsEnabled = false;
+            // Clear file list
+            _fileService.ClearFiles();
 
-                // Reset checkboxes to default state
-                IncludePromptTemplate.IsChecked = true;
-                IncludeSelectedFilesChecker.IsChecked = true;
+            // Reset UI elements state
+            BtnSendQuery.IsEnabled = true;
+            TxtFollowupQuestion.IsEnabled = true;
+            BtnSaveResponse.IsEnabled = false;
+            BtnToggleMarkdown.IsEnabled = false;
+            BtnShowInputQuery.IsEnabled = false;
+            BtnShowInputQuery.Content = "Show Input Query";
+            BtnSaveEdits.IsEnabled = false;
 
-                // Reset AI provider
-                AiProvider.SelectedIndex = -1;
-                AiModel.SelectedIndex = -1;
-                AiProviderKeys.SelectedIndex = -1;
-                TxtModelDescription.Text = string.Empty;
+            // Reset checkboxes to default state
+            IncludePromptTemplate.IsChecked = true;
+            IncludeSelectedFilesChecker.IsChecked = true;
 
-                // Reset status
-                _uiStateManager.SetStatusMessage("Ready");
+            // Reset AI provider
+            AiProvider.SelectedIndex = -1;
+            AiModel.SelectedIndex = -1;
+            AiProviderKeys.SelectedIndex = -1;
+            TxtModelDescription.Text = string.Empty;
 
-                _loggingService.LogOperation("Application reset complete");
-            }
+            // Reset status
+            _uiStateManager.SetStatusMessage("Ready");
+
+            _loggingService.LogOperation("Application reset complete");
         }
         catch (Exception ex)
         {

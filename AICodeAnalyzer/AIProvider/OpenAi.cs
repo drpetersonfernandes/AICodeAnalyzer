@@ -29,10 +29,9 @@ public class OpenAi : IAiApiProvider, IDisposable
 
     public List<OpenAiModelInfo> GetAvailableModels()
     {
-        return new List<OpenAiModelInfo>
-        {
-            // GPT-4.5 models
-            new()
+        return
+        [
+            new OpenAiModelInfo
             {
                 Id = Models.Gpt45Preview,
                 Name = "GPT-4.5 Preview",
@@ -42,7 +41,8 @@ public class OpenAi : IAiApiProvider, IDisposable
             },
 
             // GPT-4o models
-            new()
+
+            new OpenAiModelInfo
             {
                 Id = Models.Gpt4O,
                 Name = "GPT-4o",
@@ -52,7 +52,8 @@ public class OpenAi : IAiApiProvider, IDisposable
             },
 
             // GPT-4o Mini models
-            new()
+
+            new OpenAiModelInfo
             {
                 Id = Models.Gpt4OMini,
                 Name = "GPT-4o Mini",
@@ -62,7 +63,8 @@ public class OpenAi : IAiApiProvider, IDisposable
             },
 
             // O1 models
-            new()
+
+            new OpenAiModelInfo
             {
                 Id = Models.O1,
                 Name = "o1",
@@ -72,7 +74,8 @@ public class OpenAi : IAiApiProvider, IDisposable
             },
 
             // O1 Pro models
-            new()
+
+            new OpenAiModelInfo
             {
                 Id = Models.O1Pro,
                 Name = "o1 Pro",
@@ -82,7 +85,8 @@ public class OpenAi : IAiApiProvider, IDisposable
             },
 
             // O3 Mini models
-            new()
+
+            new OpenAiModelInfo
             {
                 Id = Models.O3Mini,
                 Name = "o3 Mini",
@@ -92,7 +96,8 @@ public class OpenAi : IAiApiProvider, IDisposable
             },
 
             // O1 Mini models
-            new()
+
+            new OpenAiModelInfo
             {
                 Id = Models.O1Mini,
                 Name = "o1 Mini",
@@ -100,7 +105,7 @@ public class OpenAi : IAiApiProvider, IDisposable
                 ContextLength = 131000,
                 Category = "o1 Mini Models"
             }
-        };
+        ];
     }
 
     public Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)

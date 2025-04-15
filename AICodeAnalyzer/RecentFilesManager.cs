@@ -100,17 +100,16 @@ public class RecentFilesManager
     {
         try
         {
-            if (File.Exists(_recentFilesPath))
-            {
-                var json = File.ReadAllText(_recentFilesPath);
-                var loadedFiles = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+            if (!File.Exists(_recentFilesPath)) return;
 
-                // Filter out any files that no longer exist
-                _recentFiles = loadedFiles
-                    .Where(File.Exists)
-                    .Take(_maxRecentFiles)
-                    .ToList();
-            }
+            var json = File.ReadAllText(_recentFilesPath);
+            var loadedFiles = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+
+            // Filter out any files that no longer exist
+            _recentFiles = loadedFiles
+                .Where(File.Exists)
+                .Take(_maxRecentFiles)
+                .ToList();
         }
         catch (Exception ex)
         {
@@ -127,8 +126,7 @@ public class RecentFilesManager
     {
         try
         {
-            var options = _jsonOptions;
-            var json = JsonSerializer.Serialize(_recentFiles, options);
+            var json = JsonSerializer.Serialize(_recentFiles, _jsonOptions);
             File.WriteAllText(_recentFilesPath, json);
         }
         catch (Exception ex)

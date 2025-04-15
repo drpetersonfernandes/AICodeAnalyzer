@@ -26,9 +26,9 @@ public class Gemini : IAiApiProvider, IDisposable
 
     public List<GeminiModelInfo> GetAvailableModels()
     {
-        return new List<GeminiModelInfo>
-        {
-            new()
+        return
+        [
+            new GeminiModelInfo
             {
                 Id = Models.Gemini25ProExp,
                 Name = "Gemini 2.5 Pro Experimental",
@@ -36,7 +36,8 @@ public class Gemini : IAiApiProvider, IDisposable
                 ContextLength = 1000000,
                 ApiVersion = "v1beta"
             },
-            new()
+
+            new GeminiModelInfo
             {
                 Id = Models.Gemini20Flash,
                 Name = "Gemini 2.0 Flash",
@@ -44,7 +45,8 @@ public class Gemini : IAiApiProvider, IDisposable
                 ContextLength = 1000000,
                 ApiVersion = "v1beta"
             },
-            new()
+
+            new GeminiModelInfo
             {
                 Id = Models.Gemini20FlashLite,
                 Name = "Gemini 2.0 Flash-Lite",
@@ -52,7 +54,8 @@ public class Gemini : IAiApiProvider, IDisposable
                 ContextLength = 1000000,
                 ApiVersion = "v1beta"
             },
-            new()
+
+            new GeminiModelInfo
             {
                 Id = Models.Gemini15Flash,
                 Name = "Gemini 1.5 Flash",
@@ -60,7 +63,8 @@ public class Gemini : IAiApiProvider, IDisposable
                 ContextLength = 1000000,
                 ApiVersion = "v1"
             },
-            new()
+
+            new GeminiModelInfo
             {
                 Id = Models.Gemini15Pro,
                 Name = "Gemini 1.5 Pro",
@@ -68,7 +72,7 @@ public class Gemini : IAiApiProvider, IDisposable
                 ContextLength = 2000000,
                 ApiVersion = "v1"
             }
-        };
+        ];
     }
 
     private string GetApiVersionForModel(string modelId)
@@ -91,13 +95,11 @@ public class Gemini : IAiApiProvider, IDisposable
     {
         try
         {
-            var model = modelId;
-
             // Get the appropriate API version for this model
-            var apiVersion = GetApiVersionForModel(model);
+            var apiVersion = GetApiVersionForModel(modelId);
 
             // Build the API URL with the correct version
-            var apiUrl = $"https://generativelanguage.googleapis.com/{apiVersion}/models/{model}:generateContent?key={apiKey}";
+            var apiUrl = $"https://generativelanguage.googleapis.com/{apiVersion}/models/{modelId}:generateContent?key={apiKey}";
 
             HttpClient.DefaultRequestHeaders.Clear();
 
@@ -128,7 +130,7 @@ public class Gemini : IAiApiProvider, IDisposable
             });
 
             // Get the appropriate output token limit based on model
-            var maxOutputTokens = GetMaxTokensForModel(model);
+            var maxOutputTokens = GetMaxTokensForModel(modelId);
 
             var requestData = new
             {
@@ -168,9 +170,9 @@ public class Gemini : IAiApiProvider, IDisposable
                 }
 
                 // If the model was not found or the other error, try falling back to the default model
-                if (response.StatusCode == System.Net.HttpStatusCode.NotFound && model != DefaultModel)
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound && modelId != DefaultModel)
                 {
-                    Console.WriteLine($"Model {model} not found, falling back to {DefaultModel}");
+                    Console.WriteLine($"Model {modelId} not found, falling back to {DefaultModel}");
                     return await SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
                 }
 
@@ -188,14 +190,11 @@ public class Gemini : IAiApiProvider, IDisposable
         catch (Exception ex)
         {
             // If we get a model not found error, try the default model
-            if ((ex.Message.Contains("NOT_FOUND") || ex.Message.Contains("not found"))
-                && modelId != DefaultModel)
-            {
-                Console.WriteLine($"Error with model {modelId}, falling back to {DefaultModel}: {ex.Message}");
-                return await SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
-            }
+            if ((!ex.Message.Contains("NOT_FOUND") && !ex.Message.Contains("not found"))
+                || modelId == DefaultModel) throw;
 
-            throw;
+            Console.WriteLine($"Error with model {modelId}, falling back to {DefaultModel}: {ex.Message}");
+            return await SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
         }
     }
 

@@ -31,11 +31,10 @@ public class UiStateManager
 
     public void SetStatusMessage(string message)
     {
-        if (!_isProcessing)
-        {
-            _statusTextBlock.Text = message;
-            _loggingService.LogOperation($"Status: {message}");
-        }
+        if (_isProcessing) return;
+
+        _statusTextBlock.Text = message;
+        _loggingService.LogOperation($"Status: {message}");
     }
 
     public void SetProcessingState(bool isProcessing, string statusMessage = "")

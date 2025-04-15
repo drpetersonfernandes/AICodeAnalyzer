@@ -16,9 +16,9 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
     private readonly SettingsManager _settingsManager = settingsManager;
     private readonly LoggingService _loggingService = loggingService;
     private readonly Dictionary<string, List<SourceFile>> _filesByExtension = new();
-    private string _selectedFolder = string.Empty;
 
-    public string SelectedFolder => _selectedFolder;
+    public string SelectedFolder { get; private set; } = string.Empty;
+
     public IReadOnlyDictionary<string, List<SourceFile>> FilesByExtension => _filesByExtension;
 
     // Initialize the event with an empty delegate to avoid null checks
@@ -34,28 +34,24 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
                 Title = "Select Project Folder"
             };
 
-            if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
-            {
-                // Update selected folder
-                _selectedFolder = dialog.FileName;
-                _loggingService.LogOperation($"Starting folder scan: {_selectedFolder}");
-                _loggingService.StartOperationTimer("FolderScan");
+            if (dialog.ShowDialog() != CommonFileDialogResult.Ok) return false;
+            // Update selected folder
+            SelectedFolder = dialog.FileName;
+            _loggingService.LogOperation($"Starting folder scan: {SelectedFolder}");
+            _loggingService.StartOperationTimer("FolderScan");
 
-                // Clear collections
-                _filesByExtension.Clear();
+            // Clear collections
+            _filesByExtension.Clear();
 
-                // Scan files
-                await FindSourceFilesAsync(_selectedFolder);
+            // Scan files
+            await FindSourceFilesAsync(SelectedFolder);
 
-                _loggingService.EndOperationTimer("FolderScan");
+            _loggingService.EndOperationTimer("FolderScan");
 
-                // Notify that files have changed
-                OnFilesChanged();
+            // Notify that files have changed
+            OnFilesChanged();
 
-                return true;
-            }
-
-            return false;
+            return true;
         }
         catch (Exception ex)
         {
@@ -76,33 +72,29 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
                 Filter = "All Files (*.*)|*.*"
             };
 
-            if (dialog.ShowDialog() == true)
+            if (dialog.ShowDialog() != true) return false;
+            // Initialize the file collection if this is the first selection
+            if (string.IsNullOrEmpty(SelectedFolder))
             {
-                // Initialize the file collection if this is the first selection
-                if (string.IsNullOrEmpty(_selectedFolder))
-                {
-                    // Use the directory of the first selected file as the base folder
-                    _selectedFolder = Path.GetDirectoryName(dialog.FileNames[0]) ?? string.Empty;
-                    _loggingService.LogOperation($"Base folder set to: {_selectedFolder}");
-                }
-
-                _loggingService.LogOperation($"Processing {dialog.FileNames.Length} selected files");
-                _loggingService.StartOperationTimer("ProcessSelectedFiles");
-
-                await ProcessSelectedFilesAsync(dialog.FileNames);
-
-                var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
-                _loggingService.LogOperation($"Total files after selection: {totalFiles}");
-
-                _loggingService.EndOperationTimer("ProcessSelectedFiles");
-
-                // Notify that files have changed
-                OnFilesChanged();
-
-                return true;
+                // Use the directory of the first selected file as the base folder
+                SelectedFolder = Path.GetDirectoryName(dialog.FileNames[0]) ?? string.Empty;
+                _loggingService.LogOperation($"Base folder set to: {SelectedFolder}");
             }
 
-            return false;
+            _loggingService.LogOperation($"Processing {dialog.FileNames.Length} selected files");
+            _loggingService.StartOperationTimer("ProcessSelectedFiles");
+
+            await ProcessSelectedFilesAsync(dialog.FileNames);
+
+            var totalFiles = _filesByExtension.Values.Sum(list => list.Count);
+            _loggingService.LogOperation($"Total files after selection: {totalFiles}");
+
+            _loggingService.EndOperationTimer("ProcessSelectedFiles");
+
+            // Notify that files have changed
+            OnFilesChanged();
+
+            return true;
         }
         catch (Exception ex)
         {
@@ -118,7 +110,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         {
             // Clear the file collections
             _filesByExtension.Clear();
-            _selectedFolder = string.Empty;
+            SelectedFolder = string.Empty;
 
             _loggingService.LogOperation("File selection cleared");
 
@@ -198,12 +190,12 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
             };
 
             // If the user has selected a project folder, suggest that as the initial directory
-            if (!string.IsNullOrEmpty(_selectedFolder) && Directory.Exists(_selectedFolder))
+            if (!string.IsNullOrEmpty(SelectedFolder) && Directory.Exists(SelectedFolder))
             {
-                saveFileDialog.InitialDirectory = _selectedFolder;
+                saveFileDialog.InitialDirectory = SelectedFolder;
 
                 // Suggest a filename based on the project folder name and timestamp
-                var folderName = new DirectoryInfo(_selectedFolder).Name;
+                var folderName = new DirectoryInfo(SelectedFolder).Name;
                 var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", System.Globalization.CultureInfo.InvariantCulture);
                 saveFileDialog.FileName = $"{folderName}_analysis_{timestamp}.md";
             }
@@ -218,20 +210,17 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
             var dialogResult = saveFileDialog.ShowDialog();
 
             // If the user clicked OK, save the file
-            if (dialogResult == true)
-            {
-                // Save on background thread
-                await Task.Run(() => File.WriteAllText(saveFileDialog.FileName, responseText));
+            if (dialogResult != true) return currentFilePath;
+            // Save on background thread
+            await Task.Run(() => File.WriteAllText(saveFileDialog.FileName, responseText));
 
-                _loggingService.LogOperation($"Saved response to: {saveFileDialog.FileName}");
-                MessageBox.Show($"Response saved to {saveFileDialog.FileName}", "Save Successful", MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+            _loggingService.LogOperation($"Saved response to: {saveFileDialog.FileName}");
+            MessageBox.Show($"Response saved to {saveFileDialog.FileName}", "Save Successful", MessageBoxButton.OK,
+                MessageBoxImage.Information);
 
-                return saveFileDialog.FileName;
-            }
+            return saveFileDialog.FileName;
 
             // Return the original file path if save was canceled
-            return currentFilePath;
         }
         catch (Exception ex)
         {
@@ -257,9 +246,9 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
 
             // Generate a filename based on project name (if available) and timestamp
             var projectName = "unknown";
-            if (!string.IsNullOrEmpty(_selectedFolder))
+            if (!string.IsNullOrEmpty(SelectedFolder))
             {
-                projectName = new DirectoryInfo(_selectedFolder).Name;
+                projectName = new DirectoryInfo(SelectedFolder).Name;
 
                 // Sanitize the project name to remove invalid characters
                 projectName = string.Join("_", projectName.Split(Path.GetInvalidFileNameChars()));
@@ -409,9 +398,9 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
 
                             // Calculate the relative path once
                             string relativePath;
-                            if (file.FullName.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase))
+                            if (file.FullName.StartsWith(SelectedFolder, StringComparison.OrdinalIgnoreCase))
                             {
-                                relativePath = file.FullName[_selectedFolder.Length..].TrimStart('\\', '/');
+                                relativePath = file.FullName[SelectedFolder.Length..].TrimStart('\\', '/');
                             }
                             else
                             {
@@ -529,9 +518,9 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
             {
                 // Get a relative path
                 string relativePath;
-                if (filePath.StartsWith(_selectedFolder, StringComparison.OrdinalIgnoreCase))
+                if (filePath.StartsWith(SelectedFolder, StringComparison.OrdinalIgnoreCase))
                 {
-                    relativePath = filePath.Substring(_selectedFolder.Length).TrimStart('\\', '/');
+                    relativePath = filePath.Substring(SelectedFolder.Length).TrimStart('\\', '/');
                 }
                 else
                 {

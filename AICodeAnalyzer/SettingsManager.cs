@@ -110,7 +110,8 @@ public class SettingsManager
         Settings.CodePrompts.AddRange(uniquePrompts.Values);
 
         // Ensure selected prompt still exists
-        if (!string.IsNullOrEmpty(Settings.SelectedPromptName) && Settings.CodePrompts.All(p => p.Name != Settings.SelectedPromptName))
+        if (string.IsNullOrEmpty(Settings.SelectedPromptName) || Settings.CodePrompts.Any(p => p.Name == Settings.SelectedPromptName)) return;
+
         {
             // If selected prompt was removed, select the Default prompt or the first available
             var defaultPrompt = Settings.CodePrompts.FirstOrDefault(p => p.Name == "Analyze Source Code");
@@ -149,12 +150,10 @@ public class SettingsManager
     private static void MigrateSettingsIfNeeded(ApplicationSettings settings)
     {
         // For older versions that don't have CodePrompts or only have InitialPrompt
-        if (settings.CodePrompts.Count == 0 && !string.IsNullOrEmpty(settings.InitialPrompt))
-        {
-            // Add the existing InitialPrompt as a "Default" template
-            settings.CodePrompts.Add(new CodePrompt("Analyze Source Code", settings.InitialPrompt));
-            settings.SelectedPromptName = "Analyze Source Code";
-        }
+        if (settings.CodePrompts.Count != 0 || string.IsNullOrEmpty(settings.InitialPrompt)) return;
+        // Add the existing InitialPrompt as a "Default" template
+        settings.CodePrompts.Add(new CodePrompt("Analyze Source Code", settings.InitialPrompt));
+        settings.SelectedPromptName = "Analyze Source Code";
 
         // Add more migration logic here if needed for future versions
     }

@@ -35,23 +35,24 @@ public class DeepSeek : IAiApiProvider, IDisposable
 
     public List<DeepSeekModelInfo> GetAvailableModels()
     {
-        return new List<DeepSeekModelInfo>
-        {
-            new()
+        return
+        [
+            new DeepSeekModelInfo
             {
                 Id = Models.DeepSeekChat,
                 Name = "DeepSeek Chat (V3)",
                 Description = "64K context - $0,27/M input tokens - $1,1/M output tokens.",
                 ContextLength = 64000
             },
-            new()
+
+            new DeepSeekModelInfo
             {
                 Id = Models.DeepSeekReasoner,
                 Name = "DeepSeek Reasoner (R1)",
                 Description = "64K context - $0,55/M input tokens - $2,19/M output tokens.",
                 ContextLength = 64000
             }
-        };
+        ];
     }
 
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)

@@ -38,26 +38,22 @@ public class MarkdownService(
 
         // Fix for responses that start with ```Markdown by removing that line
         // This prevents the entire content from being treated as a code block
-        if (markdownContent.StartsWith("```markdown", StringComparison.Ordinal) ||
-            markdownContent.StartsWith("```Markdown", StringComparison.Ordinal))
+        if (!markdownContent.StartsWith("```markdown", StringComparison.Ordinal) &&
+            !markdownContent.StartsWith("```Markdown", StringComparison.Ordinal)) return markdownContent;
+        // Find the first line break after the ```Markdown
+        var lineBreakIndex = markdownContent.IndexOf('\n');
+        if (lineBreakIndex <= 0) return markdownContent;
+        // Remove the ```markdown line
+        markdownContent = markdownContent.Substring(lineBreakIndex + 1);
+
+        // Look for the closing ``` and remove it as well
+        var closingBackticksIndex = markdownContent.LastIndexOf("```", StringComparison.Ordinal);
+        if (closingBackticksIndex >= 0)
         {
-            // Find the first line break after the ```Markdown
-            var lineBreakIndex = markdownContent.IndexOf('\n');
-            if (lineBreakIndex > 0)
-            {
-                // Remove the ```markdown line
-                markdownContent = markdownContent.Substring(lineBreakIndex + 1);
-
-                // Look for the closing ``` and remove it as well
-                var closingBackticksIndex = markdownContent.LastIndexOf("```", StringComparison.Ordinal);
-                if (closingBackticksIndex >= 0)
-                {
-                    markdownContent = markdownContent.Substring(0, closingBackticksIndex).TrimEnd();
-                }
-
-                _loggingService.LogOperation("Preprocessed markdown response to fix formatting issues");
-            }
+            markdownContent = markdownContent.Substring(0, closingBackticksIndex).TrimEnd();
         }
+
+        _loggingService.LogOperation("Preprocessed markdown response to fix formatting issues");
 
         return markdownContent;
     }
@@ -153,16 +149,14 @@ public class MarkdownService(
         try
         {
             // If we can access the internal FlowDocument, set its properties
-            if (_markdownViewer.Document != null)
-            {
-                // Calculate 90% of the available width
-                var containerWidth = _markdownScrollViewer.ActualWidth;
-                var contentWidth = Math.Max(800, containerWidth * 0.9); // Use at least 800 px or 90% of container
+            if (_markdownViewer.Document == null) return;
+            // Calculate 90% of the available width
+            var containerWidth = _markdownScrollViewer.ActualWidth;
+            var contentWidth = Math.Max(800, containerWidth * 0.9); // Use at least 800 px or 90% of container
 
-                _markdownViewer.Document.PageWidth = contentWidth;
-                _markdownViewer.Document.PagePadding = new Thickness(0);
-                _markdownViewer.Document.TextAlignment = TextAlignment.Left;
-            }
+            _markdownViewer.Document.PageWidth = contentWidth;
+            _markdownViewer.Document.PagePadding = new Thickness(0);
+            _markdownViewer.Document.TextAlignment = TextAlignment.Left;
         }
         catch (Exception ex)
         {

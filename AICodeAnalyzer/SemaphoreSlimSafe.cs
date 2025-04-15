@@ -27,14 +27,13 @@ public class SemaphoreSlimSafe(int initialCount) : IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!_disposed)
-        {
-            if (disposing)
-            {
-                _semaphore.Dispose();
-            }
+        if (_disposed) return;
 
-            _disposed = true;
+        if (disposing)
+        {
+            _semaphore.Dispose();
         }
+
+        _disposed = true;
     }
 }

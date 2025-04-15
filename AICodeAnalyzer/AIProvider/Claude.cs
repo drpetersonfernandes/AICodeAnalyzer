@@ -31,10 +31,9 @@ public class Claude : IAiApiProvider, IDisposable
 
     public List<ClaudeModelInfo> GetAvailableModels()
     {
-        return new List<ClaudeModelInfo>
-        {
-            // Claude 3.7
-            new()
+        return
+        [
+            new ClaudeModelInfo
             {
                 Id = Models.Claude37Sonnet,
                 Name = "Claude 3.7 Sonnet",
@@ -43,14 +42,16 @@ public class Claude : IAiApiProvider, IDisposable
             },
 
             // Claude 3.5
-            new()
+
+            new ClaudeModelInfo
             {
                 Id = Models.Claude35Sonnet,
                 Name = "Claude 3.5 Sonnet",
                 Description = "200K context - $3/M input tokens - $15/M output tokens.",
                 ContextLength = 200000
             },
-            new()
+
+            new ClaudeModelInfo
             {
                 Id = Models.Claude35Haiku,
                 Name = "Claude 3.5 Haiku",
@@ -59,14 +60,15 @@ public class Claude : IAiApiProvider, IDisposable
             },
 
             // Claude 3
-            new()
+
+            new ClaudeModelInfo
             {
                 Id = Models.Claude3Opus,
                 Name = "Claude 3 Opus",
                 Description = "200K context - $15/M input tokens - $75/M output tokens.",
                 ContextLength = 200000
             }
-        };
+        ];
     }
 
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
@@ -114,7 +116,7 @@ public class Claude : IAiApiProvider, IDisposable
         using var doc = JsonDocument.Parse(responseJson);
 
         return doc.RootElement.GetProperty("content").EnumerateArray()
-            .First(x => x.GetProperty("type").GetString() == "text")
+            .First(static x => x.GetProperty("type").GetString() == "text")
             .GetProperty("text").GetString() ?? "No response";
     }
 

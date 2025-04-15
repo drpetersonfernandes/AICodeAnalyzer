@@ -30,7 +30,7 @@ public partial class ConfigurationWindow
         _workingSettings = new ApplicationSettings
         {
             MaxFileSizeKb = _settingsManager.Settings.MaxFileSizeKb,
-            SourceFileExtensions = new List<string>(_settingsManager.Settings.SourceFileExtensions),
+            SourceFileExtensions = [.._settingsManager.Settings.SourceFileExtensions],
             SelectedPromptName = _settingsManager.Settings.SelectedPromptName
         };
 
@@ -128,13 +128,13 @@ public partial class ConfigurationWindow
                 // Find the actual item in the ComboBox that matches the prompt
                 for (var i = 0; i < CboPromptTemplates.Items.Count; i++)
                 {
-                    if (CboPromptTemplates.Items[i] is CodePrompt item && item.Name == selectedPrompt.Name)
-                    {
-                        CboPromptTemplates.SelectedIndex = i;
-                        _currentPrompt = item;
-                        TxtInitialPrompt.Text = item.Content;
-                        break;
-                    }
+                    if (CboPromptTemplates.Items[i] is not CodePrompt item || item.Name != selectedPrompt.Name)
+                        continue;
+
+                    CboPromptTemplates.SelectedIndex = i;
+                    _currentPrompt = item;
+                    TxtInitialPrompt.Text = item.Content;
+                    break;
                 }
             }
             else if (CboPromptTemplates.Items.Count > 0)
@@ -167,9 +167,7 @@ public partial class ConfigurationWindow
     {
         try
         {
-            var fileAssociationManager = new FileAssociationManager(
-                message => System.Diagnostics.Debug.WriteLine($"INFO: {message}"),
-                message => System.Diagnostics.Debug.WriteLine($"ERROR: {message}")
+            var fileAssociationManager = new FileAssociationManager(static message => System.Diagnostics.Debug.WriteLine($"INFO: {message}"), static message => System.Diagnostics.Debug.WriteLine($"ERROR: {message}")
             );
 
             return fileAssociationManager.IsApplicationRegistered();
@@ -209,11 +207,10 @@ public partial class ConfigurationWindow
 
     private void SliderMaxFileSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (TxtMaxFileSize != null) // Check for null in case the event fires during initialization
-        {
-            UpdateFileSizeDisplay();
-            _workingSettings.MaxFileSizeKb = (int)SliderMaxFileSize.Value;
-        }
+        if (TxtMaxFileSize == null) return; // Check for null in case the event fires during initialization
+
+        UpdateFileSizeDisplay();
+        _workingSettings.MaxFileSizeKb = (int)SliderMaxFileSize.Value;
     }
 
     private void BtnAddExtension_Click(object sender, RoutedEventArgs e)
@@ -234,48 +231,45 @@ public partial class ConfigurationWindow
         var extension = TxtNewExtension.Text.Trim();
 
         // Validate and format the extension
-        if (!string.IsNullOrWhiteSpace(extension))
+        if (string.IsNullOrWhiteSpace(extension)) return;
+        // Ensure it starts with a dot
+        if (!extension.StartsWith('.'))
         {
-            // Ensure it starts with a dot
-            if (!extension.StartsWith('.'))
-            {
-                extension = "." + extension;
-            }
+            extension = "." + extension;
+        }
 
-            // Convert to lowercase for consistency
-            extension = extension.ToLowerInvariant();
+        // Convert to lowercase for consistency
+        extension = extension.ToLowerInvariant();
 
-            // Check if it already exists
-            if (!_workingSettings.SourceFileExtensions.Contains(extension))
-            {
-                _workingSettings.SourceFileExtensions.Add(extension);
-                _workingSettings.SourceFileExtensions.Sort(); // Keep the list sorted
+        // Check if it already exists
+        if (!_workingSettings.SourceFileExtensions.Contains(extension))
+        {
+            _workingSettings.SourceFileExtensions.Add(extension);
+            _workingSettings.SourceFileExtensions.Sort(); // Keep the list sorted
 
-                // Refresh the list
-                LbExtensions.ItemsSource = null;
-                LbExtensions.ItemsSource = _workingSettings.SourceFileExtensions;
+            // Refresh the list
+            LbExtensions.ItemsSource = null;
+            LbExtensions.ItemsSource = _workingSettings.SourceFileExtensions;
 
-                // Clear the input
-                TxtNewExtension.Text = string.Empty;
-            }
-            else
-            {
-                MessageBox.Show($"The extension '{extension}' already exists in the list.",
-                    "Duplicate Extension", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
+            // Clear the input
+            TxtNewExtension.Text = string.Empty;
+        }
+        else
+        {
+            MessageBox.Show($"The extension '{extension}' already exists in the list.",
+                "Duplicate Extension", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 
     private void BtnRemoveExtension_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button button && button.DataContext is string extension)
-        {
-            _workingSettings.SourceFileExtensions.Remove(extension);
+        if (sender is not Button { DataContext: string extension }) return;
 
-            // Refresh the list
-            LbExtensions.ItemsSource = null;
-            LbExtensions.ItemsSource = _workingSettings.SourceFileExtensions;
-        }
+        _workingSettings.SourceFileExtensions.Remove(extension);
+
+        // Refresh the list
+        LbExtensions.ItemsSource = null;
+        LbExtensions.ItemsSource = _workingSettings.SourceFileExtensions;
     }
 
     private void UpdatePromptButtons()
@@ -304,15 +298,14 @@ public partial class ConfigurationWindow
 
     private void CboPromptTemplates_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (CboPromptTemplates.SelectedItem is CodePrompt selectedPrompt)
-        {
-            _currentPrompt = selectedPrompt;
-            _workingSettings.SelectedPromptName = selectedPrompt.Name;
-            TxtInitialPrompt.Text = selectedPrompt.Content;
+        if (CboPromptTemplates.SelectedItem is not CodePrompt selectedPrompt) return;
 
-            // Update button states
-            UpdatePromptButtons();
-        }
+        _currentPrompt = selectedPrompt;
+        _workingSettings.SelectedPromptName = selectedPrompt.Name;
+        TxtInitialPrompt.Text = selectedPrompt.Content;
+
+        // Update button states
+        UpdatePromptButtons();
     }
 
     private void BtnNewPrompt_Click(object sender, RoutedEventArgs e)
@@ -320,26 +313,24 @@ public partial class ConfigurationWindow
         // Show dialog to enter new prompt name
         var promptName = ShowPromptNameDialog("New Prompt Template", "Enter name for the new prompt template:");
 
-        if (!string.IsNullOrEmpty(promptName))
+        if (string.IsNullOrEmpty(promptName)) return;
+        // Check if name already exists
+        if (_workingSettings.CodePrompts.Any(p => p.Name == promptName))
         {
-            // Check if name already exists
-            if (_workingSettings.CodePrompts.Any(p => p.Name == promptName))
-            {
-                MessageBox.Show($"A prompt template named '{promptName}' already exists.",
-                    "Duplicate Name", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            // Create new prompt with empty content
-            var newPrompt = new CodePrompt(promptName, "");
-            _workingSettings.CodePrompts.Add(newPrompt);
-
-            // Refresh combobox
-            RefreshPromptsComboBox();
-
-            // Select the new prompt
-            CboPromptTemplates.SelectedItem = newPrompt;
+            MessageBox.Show($"A prompt template named '{promptName}' already exists.",
+                "Duplicate Name", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
         }
+
+        // Create new prompt with empty content
+        var newPrompt = new CodePrompt(promptName, "");
+        _workingSettings.CodePrompts.Add(newPrompt);
+
+        // Refresh combobox
+        RefreshPromptsComboBox();
+
+        // Select the new prompt
+        CboPromptTemplates.SelectedItem = newPrompt;
     }
 
     private void BtnRenamePrompt_Click(object sender, RoutedEventArgs e)
@@ -351,31 +342,29 @@ public partial class ConfigurationWindow
         var newName = ShowPromptNameDialog("Rename Prompt Template",
             "Enter new name for this prompt template:", _currentPrompt.Name);
 
-        if (!string.IsNullOrEmpty(newName) && newName != _currentPrompt.Name)
+        if (string.IsNullOrEmpty(newName) || newName == _currentPrompt.Name) return;
+        // Check if name already exists
+        if (_workingSettings.CodePrompts.Any(p => p.Name == newName))
         {
-            // Check if name already exists
-            if (_workingSettings.CodePrompts.Any(p => p.Name == newName))
-            {
-                MessageBox.Show($"A prompt template named '{newName}' already exists.",
-                    "Duplicate Name", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            // Rename the prompt
-            _currentPrompt.Name = newName;
-
-            // Update selected prompt name if needed
-            if (_workingSettings.SelectedPromptName == _currentPrompt.Name)
-            {
-                _workingSettings.SelectedPromptName = newName;
-            }
-
-            // Refresh combobox
-            RefreshPromptsComboBox();
-
-            // Reselect the renamed prompt
-            CboPromptTemplates.SelectedItem = _currentPrompt;
+            MessageBox.Show($"A prompt template named '{newName}' already exists.",
+                "Duplicate Name", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
         }
+
+        // Rename the prompt
+        _currentPrompt.Name = newName;
+
+        // Update selected prompt name if needed
+        if (_workingSettings.SelectedPromptName == _currentPrompt.Name)
+        {
+            _workingSettings.SelectedPromptName = newName;
+        }
+
+        // Refresh combobox
+        RefreshPromptsComboBox();
+
+        // Reselect the renamed prompt
+        CboPromptTemplates.SelectedItem = _currentPrompt;
     }
 
     private void BtnDeletePrompt_Click(object sender, RoutedEventArgs e)
@@ -387,29 +376,28 @@ public partial class ConfigurationWindow
         var result = MessageBox.Show($"Are you sure you want to delete the prompt template '{_currentPrompt.Name}'?",
             "Delete Prompt Template", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
-        if (result == MessageBoxResult.Yes)
+        if (result != MessageBoxResult.Yes) return;
+        // If we're deleting the currently selected prompt, select the Default or first available
+        var needToUpdateSelected = _workingSettings.SelectedPromptName == _currentPrompt.Name;
+
+        // Remove the prompt
+        _workingSettings.CodePrompts.Remove(_currentPrompt);
+
+        // Update selected prompt if needed
+        if (needToUpdateSelected)
         {
-            // If we're deleting the currently selected prompt, select the Default or first available
-            var needToUpdateSelected = _workingSettings.SelectedPromptName == _currentPrompt.Name;
+            var defaultPrompt = _workingSettings.CodePrompts.FirstOrDefault(static p => p.Name == "Analyze Source Code");
+            _workingSettings.SelectedPromptName = defaultPrompt?.Name ?? _workingSettings.CodePrompts.FirstOrDefault()?.Name;
+        }
 
-            // Remove the prompt
-            _workingSettings.CodePrompts.Remove(_currentPrompt);
+        // Refresh combobox and select appropriate item
+        RefreshPromptsComboBox();
 
-            // Update selected prompt if needed
-            if (needToUpdateSelected)
-            {
-                var defaultPrompt = _workingSettings.CodePrompts.FirstOrDefault(p => p.Name == "Analyze Source Code");
-                _workingSettings.SelectedPromptName = defaultPrompt?.Name ?? _workingSettings.CodePrompts.FirstOrDefault()?.Name;
-            }
+        if (!needToUpdateSelected) return;
 
-            // Refresh combobox and select appropriate item
-            RefreshPromptsComboBox();
-
-            if (needToUpdateSelected)
-            {
-                var newSelected = _workingSettings.CodePrompts.FirstOrDefault(p => p.Name == _workingSettings.SelectedPromptName);
-                CboPromptTemplates.SelectedItem = newSelected;
-            }
+        {
+            var newSelected = _workingSettings.CodePrompts.FirstOrDefault(p => p.Name == _workingSettings.SelectedPromptName);
+            CboPromptTemplates.SelectedItem = newSelected;
         }
     }
 
@@ -443,12 +431,11 @@ public partial class ConfigurationWindow
         {
             for (var i = 0; i < CboPromptTemplates.Items.Count; i++)
             {
-                if (CboPromptTemplates.Items[i] is CodePrompt item && item.Name == selectedName)
-                {
-                    CboPromptTemplates.SelectedIndex = i;
-                    _currentPrompt = item;
-                    break;
-                }
+                if (CboPromptTemplates.Items[i] is not CodePrompt item || item.Name != selectedName) continue;
+
+                CboPromptTemplates.SelectedIndex = i;
+                _currentPrompt = item;
+                break;
             }
         }
         else if (CboPromptTemplates.Items.Count > 0)
@@ -535,18 +522,17 @@ public partial class ConfigurationWindow
         var result = MessageBox.Show("Are you sure you want to reset all settings to default values?",
             "Reset Settings", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
-        if (result == MessageBoxResult.Yes)
-        {
-            _workingSettings = new ApplicationSettings(); // Create fresh defaults
-            LoadSettingsToUi();
-        }
+        if (result != MessageBoxResult.Yes) return;
+
+        _workingSettings = new ApplicationSettings(); // Create fresh defaults
+        LoadSettingsToUi();
     }
 
     private void BtnSave_Click(object sender, RoutedEventArgs e)
     {
         // Apply changes to the actual settings
         _settingsManager.Settings.MaxFileSizeKb = _workingSettings.MaxFileSizeKb;
-        _settingsManager.Settings.SourceFileExtensions = new List<string>(_workingSettings.SourceFileExtensions);
+        _settingsManager.Settings.SourceFileExtensions = [.._workingSettings.SourceFileExtensions];
 
         // Update prompts
         _settingsManager.Settings.CodePrompts.Clear();
@@ -597,7 +583,7 @@ public partial class ConfigurationWindow
     {
         // Populate provider dropdown
         CboApiProviders.Items.Clear();
-        foreach (var provider in _apiProviderFactory.AllProviders.OrderBy(p => p.Name))
+        foreach (var provider in _apiProviderFactory.AllProviders.OrderBy(static p => p.Name))
         {
             CboApiProviders.Items.Add(provider.Name);
         }
@@ -719,29 +705,26 @@ public partial class ConfigurationWindow
 // Handle removing a key
     private void BtnRemoveKey_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button button && button.DataContext is ApiKeyItem keyItem && !string.IsNullOrEmpty(keyItem.ActualKey))
-        {
-            // Ask for confirmation
-            var result = MessageBox.Show(
-                "Are you sure you want to remove this API key?",
-                "Confirm Removal",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+        if (sender is not Button { DataContext: ApiKeyItem keyItem } ||
+            string.IsNullOrEmpty(keyItem.ActualKey)) return;
+        // Ask for confirmation
+        var result = MessageBox.Show(
+            "Are you sure you want to remove this API key?",
+            "Confirm Removal",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
 
-            if (result == MessageBoxResult.Yes)
-            {
-                // Remove the key using our new method
-                if (_apiKeyManager.RemoveKey(_currentProvider, keyItem.ActualKey))
-                {
-                    // Refresh UI
-                    LoadAllProviderKeys();
-                    CboApiProviders_SelectionChanged(null, null);
-                }
-                else
-                {
-                    MessageBox.Show("Failed to remove the API key.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
+        if (result != MessageBoxResult.Yes) return;
+        // Remove the key using our new method
+        if (_apiKeyManager.RemoveKey(_currentProvider, keyItem.ActualKey))
+        {
+            // Refresh UI
+            LoadAllProviderKeys();
+            CboApiProviders_SelectionChanged(null, null);
+        }
+        else
+        {
+            MessageBox.Show("Failed to remove the API key.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }
