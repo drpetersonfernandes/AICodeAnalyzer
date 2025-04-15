@@ -186,9 +186,9 @@
             </Grid.RowDefinitions>
 
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.5*" />
+                <ColumnDefinition Width="2*" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="8.5*" />
+                <ColumnDefinition Width="8*" />
             </Grid.ColumnDefinitions>
 
             <!-- Project Selection Area -->
@@ -324,7 +324,7 @@
                     <!-- Text Input Area -->
                     <TextBox x:Name="TxtFollowupQuestion"
                              VerticalAlignment="Stretch"
-                             MinHeight="100"
+                             Height="100"
                              TextWrapping="Wrap"
                              AcceptsReturn="True"
                              VerticalScrollBarVisibility="Auto"
