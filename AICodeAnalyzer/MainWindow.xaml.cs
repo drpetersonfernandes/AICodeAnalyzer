@@ -587,7 +587,8 @@ public partial class MainWindow
                     else
                     {
                         _loggingService.LogOperation("Not using prompt template");
-                        prompt = "Please analyze the following code files:\n\n";
+                        // prompt = "Please analyze the following code files:\n\n";
+                        prompt = "";
                     }
 
                     // Now determine which files to include
@@ -1253,6 +1254,7 @@ public partial class MainWindow
             BtnShowInputQuery.IsEnabled = false;
             BtnShowInputQuery.Content = "Show Input Query";
             BtnSaveEdits.IsEnabled = false;
+            BtnContinue.IsEnabled = false;
 
             // Reset checkboxes to default state
             IncludePromptTemplate.IsChecked = true;

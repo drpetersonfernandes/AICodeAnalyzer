@@ -29,7 +29,7 @@ public class PromptService(LoggingService loggingService, SettingsManager settin
         }
         else
         {
-            promptBuilder.AppendLine("Please analyze the following code files:");
+            // promptBuilder.AppendLine("Please analyze the following code files:");
             promptBuilder.AppendLine();
             _loggingService.LogOperation("Not using prompt template");
         }
