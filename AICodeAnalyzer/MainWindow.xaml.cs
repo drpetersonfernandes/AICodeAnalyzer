@@ -832,7 +832,7 @@ public partial class MainWindow
         var savedKeys = _aiProviderService.GetKeysForProvider(apiProvider);
         foreach (var key in savedKeys)
         {
-            AiProviderKeys.Items.Add(_aiProviderService.MaskKey(key));
+            AiProviderKeys.Items.Add(AiProviderService.MaskKey(key));
         }
 
         AiProviderKeys.SelectedIndex = 0;
@@ -847,7 +847,7 @@ public partial class MainWindow
 
         try
         {
-            if (_aiProviderService.SupportsModelSelection(providerName))
+            if (AiProviderService.SupportsModelSelection(providerName))
             {
                 var models = _aiProviderService.GetModelsForProvider(providerName);
 

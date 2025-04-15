@@ -14,17 +14,19 @@ public class OpenAi : IAiApiProvider, IDisposable
     private static readonly HttpClient HttpClient = new();
 
     public string Name => "ChatGPT API";
-    public string DefaultModel => "gpt-4o";
+    private string DefaultModel => "gpt-4o";
 
     private static class Models
     {
-        public const string Gpt45Preview = "gpt-4.5-preview";
+        public const string Gpt41 = "gpt-4.1";
+        public const string Gpt41Mini = "gpt-4.1-mini";
+        public const string Gpt41Nano = "gpt-4.1-nano";
         public const string Gpt4O = "gpt-4o";
         public const string Gpt4OMini = "gpt-4o-mini";
         public const string O1 = "o1";
+        public const string O1Mini = "o1-mini";
         public const string O1Pro = "o1-pro";
         public const string O3Mini = "o3-mini";
-        public const string O1Mini = "o1-mini";
     }
 
     public List<OpenAiModelInfo> GetAvailableModels()
@@ -33,77 +35,74 @@ public class OpenAi : IAiApiProvider, IDisposable
         [
             new OpenAiModelInfo
             {
-                Id = Models.Gpt45Preview,
-                Name = "GPT-4.5 Preview",
-                Description = "128K context - $75/M input tokens - $150/M output tokens.",
-                ContextLength = 128000,
-                Category = "GPT-4.5 Models"
+                Id = Models.Gpt41,
+                Name = "GPT-4.1",
+                Description = "1M context - $2/M input tokens - $8/M output tokens.",
+                ContextLength = 1000000
             },
 
-            // GPT-4o models
+            new OpenAiModelInfo
+            {
+                Id = Models.Gpt41Mini,
+                Name = "GPT-4.1 Mini",
+                Description = "1M context - $0,4/M input tokens - $1,6/M output tokens.",
+                ContextLength = 1000000
+            },
+
+            new OpenAiModelInfo
+            {
+                Id = Models.Gpt41Nano,
+                Name = "GPT-4.1 Nano",
+                Description = "1M context - $0,1/M input tokens - $0,4/M output tokens.",
+                ContextLength = 1000000
+            },
 
             new OpenAiModelInfo
             {
                 Id = Models.Gpt4O,
                 Name = "GPT-4o",
                 Description = "128K context - $2,5/M input tokens - $10/M output tokens.",
-                ContextLength = 128000,
-                Category = "GPT-4o Models"
+                ContextLength = 128000
             },
-
-            // GPT-4o Mini models
 
             new OpenAiModelInfo
             {
                 Id = Models.Gpt4OMini,
                 Name = "GPT-4o Mini",
                 Description = "128K context - $0,15/M input tokens - $0,6/M output tokens.",
-                ContextLength = 128000,
-                Category = "GPT-4o Mini Models"
+                ContextLength = 128000
             },
-
-            // O1 models
 
             new OpenAiModelInfo
             {
                 Id = Models.O1,
                 Name = "o1",
                 Description = "200K context - $15/M input tokens - $60/M output tokens.",
-                ContextLength = 200000,
-                Category = "o1 Models"
+                ContextLength = 200000
             },
-
-            // O1 Pro models
-
-            new OpenAiModelInfo
-            {
-                Id = Models.O1Pro,
-                Name = "o1 Pro",
-                Description = "200K context - $150/M input tokens - $600/M output tokens.",
-                ContextLength = 200000,
-                Category = "o1 Pro Models"
-            },
-
-            // O3 Mini models
-
-            new OpenAiModelInfo
-            {
-                Id = Models.O3Mini,
-                Name = "o3 Mini",
-                Description = "200K context - $1,1/M input tokens - $4,4/M output tokens.",
-                ContextLength = 200000,
-                Category = "o3 Models"
-            },
-
-            // O1 Mini models
 
             new OpenAiModelInfo
             {
                 Id = Models.O1Mini,
                 Name = "o1 Mini",
                 Description = "131K context - $3/M input tokens - $12/M output tokens.",
-                ContextLength = 131000,
-                Category = "o1 Mini Models"
+                ContextLength = 131000
+            },
+
+            new OpenAiModelInfo
+            {
+                Id = Models.O1Pro,
+                Name = "o1 Pro",
+                Description = "200K context - $150/M input tokens - $600/M output tokens.",
+                ContextLength = 200000
+            },
+
+            new OpenAiModelInfo
+            {
+                Id = Models.O3Mini,
+                Name = "o3 Mini",
+                Description = "200K context - $1,1/M input tokens - $4,4/M output tokens.",
+                ContextLength = 200000
             }
         ];
     }

@@ -23,7 +23,7 @@ public class AiProviderService(LoggingService loggingService)
         return _keyManager.GetKeysForProvider(providerName);
     }
 
-    public string MaskKey(string key)
+    public static string MaskKey(string key)
     {
         if (string.IsNullOrEmpty(key) || key.Length < 8)
             return "*****";
@@ -68,7 +68,7 @@ public class AiProviderService(LoggingService loggingService)
         }
     }
 
-    public bool SupportsModelSelection(string providerName)
+    public static bool SupportsModelSelection(string providerName)
     {
         return providerName is "DeepSeek API" or "Claude API" or "Grok API" or "Gemini API" or "ChatGPT API";
     }
