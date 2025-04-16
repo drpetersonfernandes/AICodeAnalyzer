@@ -1255,6 +1255,8 @@ public partial class MainWindow
             BtnShowInputQuery.Content = "Show Input Query";
             BtnSaveEdits.IsEnabled = false;
             BtnContinue.IsEnabled = false;
+            TxtFollowupQuestion.Clear();
+            ListOfFiles.Items.Clear();
 
             // Reset checkboxes to default state
             IncludePromptTemplate.IsChecked = true;
