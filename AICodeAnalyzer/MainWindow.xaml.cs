@@ -541,7 +541,14 @@ public partial class MainWindow
 
             // Get query text and API selection
             var queryText = TxtFollowupQuestion.Text.Trim();
-            var apiSelection = AiProvider.SelectedItem?.ToString() ?? "Google API"; // Default to Google
+            var apiSelection = AiProvider.SelectedItem?.ToString();
+
+            if (string.IsNullOrEmpty(apiSelection))
+            {
+                MessageBox.Show("Please select an AI provider.", "Missing AI Provider", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _loggingService.LogOperation("Analysis canceled: No AI provider selected");
+                return;
+            }
 
             // Setup processing UI
             _uiStateManager.SetStatusMessage($"Processing with {apiSelection}...");
@@ -753,7 +760,7 @@ public partial class MainWindow
 
                 // Append file content in a code block with language identification
                 selectedFilesContent.AppendLine(CultureInfo.InvariantCulture, $"File: {matchingFile.RelativePath}");
-                selectedFilesContent.AppendLine(CultureInfo.InvariantCulture, $"```{FileService.GetLanguageForExtension(matchingFile.Extension)}");
+                selectedFilesContent.AppendLine(CultureInfo.InvariantCulture, $"```{GetCodeLanguage.GetLanguageForExtension(matchingFile.Extension)}");
                 selectedFilesContent.AppendLine(matchingFile.Content);
                 selectedFilesContent.AppendLine("```");
                 selectedFilesContent.AppendLine();

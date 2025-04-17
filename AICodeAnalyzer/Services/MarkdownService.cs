@@ -167,7 +167,7 @@ public class MarkdownService
         UpdateZoomDisplay();
     }
 
-    public void ResetZoom()
+    private void ResetZoom()
     {
         _currentZoomLevel = DefaultZoomLevel;
 
@@ -180,7 +180,7 @@ public class MarkdownService
         UpdateZoomDisplay();
     }
 
-    public void UpdateMarkdownPageWidth()
+    private void UpdateMarkdownPageWidth()
     {
         try
         {
