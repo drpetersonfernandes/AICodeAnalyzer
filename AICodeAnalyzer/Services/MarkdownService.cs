@@ -246,7 +246,7 @@ public class MarkdownService
 
         // Update the TextBlock display
         _zoomLevelDisplay.Text = $"{_currentZoomLevel:F0}%";
-        _loggingService.LogOperation($"Zoom updated to {_currentZoomLevel:F0}%");
+        // _loggingService.LogOperation($"Zoom updated to {_currentZoomLevel:F0}%");
 
         // Re-calculate page width after zoom changes might affect layout
         if (_isMarkdownViewActive)

@@ -11,7 +11,7 @@ namespace AICodeAnalyzer.AIProvider;
 
 public class OpenAi : IAiApiProvider, IDisposable
 {
-    private static readonly HttpClient HttpClient = new();
+    private readonly HttpClient _httpClient = new();
 
     public string Name => "ChatGPT API";
     private string DefaultModel => "gpt-4o";
@@ -118,8 +118,8 @@ public class OpenAi : IAiApiProvider, IDisposable
         var model = modelId;
         const string apiUrl = "https://api.openai.com/v1/chat/completions";
 
-        HttpClient.DefaultRequestHeaders.Clear();
-        HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        _httpClient.DefaultRequestHeaders.Clear();
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         // Properly format the message history for OpenAI API
         var messages = new List<object>();
@@ -156,7 +156,7 @@ public class OpenAi : IAiApiProvider, IDisposable
             Encoding.UTF8,
             "application/json");
 
-        var response = await HttpClient.PostAsync(apiUrl, content);
+        var response = await _httpClient.PostAsync(apiUrl, content);
 
         JsonDocument? doc;
         if (!response.IsSuccessStatusCode)
@@ -198,6 +198,7 @@ public class OpenAi : IAiApiProvider, IDisposable
 
     public void Dispose()
     {
+        _httpClient?.Dispose();
         GC.SuppressFinalize(this);
     }
 }

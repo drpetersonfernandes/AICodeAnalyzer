@@ -711,17 +711,12 @@ public partial class MainWindow
     {
         _loggingService.LogOperation($"Error processing query: {ex.Message}");
 
-        // Don't show ErrorLogger dialog for token limits or self-thrown exceptions
-        if (!ex.Message.StartsWith("Token limit exceeded:", StringComparison.Ordinal) && ex is not ApplicationException)
-        {
-            ErrorLogger.LogError(ex, "Processing query");
-        }
-
-        _uiStateManager.SetStatusMessage("Error processing query.");
-        _loggingService.EndOperationTimer("QueryProcessing");
-
         // Disable Continue Button in case of an error
         BtnContinue.IsEnabled = false;
+
+        // Update status message, don't log again
+        _uiStateManager.SetStatusMessage("Error processing query.");
+        _loggingService.EndOperationTimer("QueryProcessing");
     }
 
     private string AppendSelectedFilesToPrompt(string originalPrompt, List<SourceFile> includedFiles)
@@ -935,6 +930,10 @@ public partial class MainWindow
             BtnSaveEdits.IsEnabled = !string.IsNullOrEmpty(responseText);
             BtnShowInputQuery.IsEnabled = true; // Make sure the button is enabled when showing the AI response
         }
+
+        // Scroll to top
+        MarkdownScrollViewer.ScrollToVerticalOffset(0);
+        TxtResponse.ScrollToHome();
     }
 
     private void UpdateNavigationControls()
@@ -1358,7 +1357,15 @@ public partial class MainWindow
 
             // Get query text and API selection
             const string queryText = "continue";
-            var apiSelection = AiProvider.SelectedItem?.ToString() ?? "Gemini API"; // Default to Gemini
+            var apiSelection = AiProvider.SelectedItem?.ToString();
+
+            if (apiSelection == null)
+            {
+                MessageBox.Show("Please enter an AI provider.", "Missing AI Provider", MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                _loggingService.LogOperation("Analysis canceled: No AI provider selected");
+                return;
+            }
 
             // Setup processing UI
             _uiStateManager.SetStatusMessage($"Processing with {apiSelection} (Continue)...");
@@ -1380,7 +1387,7 @@ public partial class MainWindow
                     modelId = selectedModel.ModelId;
                 }
 
-                // Add to conversation history and store prompt
+                // Add a conversation history with the list of files previously sent
                 _responseService.AddToConversation(queryText, "user");
 
                 // Send to AI API and get response
@@ -1391,7 +1398,7 @@ public partial class MainWindow
                 _responseService.AddToConversation(response, "assistant");
 
                 // Append the new response to the existing one
-                _responseService.UpdateCurrentResponse(_responseService.CurrentResponseText + "\n" + response);
+                _responseService.UpdateCurrentResponse(response, true);
 
                 _uiStateManager.SetStatusMessage("Query processed successfully!");
                 _loggingService.EndOperationTimer("ContinueProcessing");

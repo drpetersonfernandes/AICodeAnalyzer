@@ -11,10 +11,10 @@ namespace AICodeAnalyzer.AIProvider;
 
 public class Grok : IAiApiProvider, IDisposable
 {
-    private static readonly HttpClient HttpClient = new();
+    private readonly HttpClient _httpClient = new();
 
     public string Name => "Grok API";
-    public string DefaultModel => "grok-3-beta";
+    private string DefaultModel => "grok-3-beta";
 
     public List<GrokModelInfo> GetAvailableModels()
     {
@@ -54,8 +54,8 @@ public class Grok : IAiApiProvider, IDisposable
         var model = modelId;
         const string apiUrl = "https://api.x.ai/v1/chat/completions";
 
-        HttpClient.DefaultRequestHeaders.Clear();
-        HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        _httpClient.DefaultRequestHeaders.Clear();
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         // Properly format the message history for Grok API
         var messages = new List<object>();
@@ -89,7 +89,7 @@ public class Grok : IAiApiProvider, IDisposable
             Encoding.UTF8,
             "application/json");
 
-        var response = await HttpClient.PostAsync(apiUrl, content);
+        var response = await _httpClient.PostAsync(apiUrl, content);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -107,6 +107,7 @@ public class Grok : IAiApiProvider, IDisposable
 
     public void Dispose()
     {
+        _httpClient?.Dispose();
         GC.SuppressFinalize(this);
     }
 }

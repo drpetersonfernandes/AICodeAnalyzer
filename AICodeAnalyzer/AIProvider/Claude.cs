@@ -11,7 +11,7 @@ namespace AICodeAnalyzer.AIProvider;
 
 public class Claude : IAiApiProvider, IDisposable
 {
-    private static readonly HttpClient HttpClient = new();
+    private readonly HttpClient _httpClient = new();
 
     public string Name => "Claude API";
     private static string DefaultModel => "claude-3-7-sonnet-20250219";
@@ -76,9 +76,9 @@ public class Claude : IAiApiProvider, IDisposable
         var model = modelId;
         const string apiUrl = "https://api.anthropic.com/v1/messages";
 
-        HttpClient.DefaultRequestHeaders.Clear();
-        HttpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
-        HttpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+        _httpClient.DefaultRequestHeaders.Clear();
+        _httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
+        _httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
 
         // Properly format the message history for Claude API
         var messages = new List<object>();
@@ -104,7 +104,7 @@ public class Claude : IAiApiProvider, IDisposable
             Encoding.UTF8,
             "application/json");
 
-        var response = await HttpClient.PostAsync(apiUrl, content);
+        var response = await _httpClient.PostAsync(apiUrl, content);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -122,6 +122,7 @@ public class Claude : IAiApiProvider, IDisposable
 
     public void Dispose()
     {
+        _httpClient?.Dispose();
         GC.SuppressFinalize(this);
     }
 }

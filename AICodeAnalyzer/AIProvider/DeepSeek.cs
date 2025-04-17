@@ -11,13 +11,7 @@ namespace AICodeAnalyzer.AIProvider;
 
 public class DeepSeek : IAiApiProvider, IDisposable
 {
-    private static readonly HttpClient HttpClient = new();
-
-    public DeepSeek()
-    {
-        // Increase the timeout to something more reasonable, e.g., 300 seconds (5 minutes)
-        HttpClient.Timeout = TimeSpan.FromSeconds(300);
-    }
+    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(300) };
 
     public string Name => "DeepSeek API";
     public string DefaultModel => "deepseek-chat";
@@ -60,8 +54,8 @@ public class DeepSeek : IAiApiProvider, IDisposable
         var model = modelId;
         const string apiUrl = "https://api.deepseek.com/v1/chat/completions";
 
-        HttpClient.DefaultRequestHeaders.Clear();
-        HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        _httpClient.DefaultRequestHeaders.Clear();
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         // Properly format the message history for DeepSeek API
         var messages = new List<object>();
@@ -163,7 +157,7 @@ public class DeepSeek : IAiApiProvider, IDisposable
 
         try
         {
-            var response = await HttpClient.PostAsync(apiUrl, content);
+            var response = await _httpClient.PostAsync(apiUrl, content);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -214,6 +208,7 @@ public class DeepSeek : IAiApiProvider, IDisposable
 
     public void Dispose()
     {
+        _httpClient?.Dispose();
         GC.SuppressFinalize(this);
     }
 }

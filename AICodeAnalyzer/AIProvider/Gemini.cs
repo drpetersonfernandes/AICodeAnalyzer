@@ -10,10 +10,10 @@ namespace AICodeAnalyzer.AIProvider;
 
 public class Gemini : IAiApiProvider, IDisposable
 {
-    private static readonly HttpClient HttpClient = new();
+    private readonly HttpClient _httpClient = new();
 
     public string Name => "Gemini API";
-    public string DefaultModel => "gemini-2.0-flash";
+    private string DefaultModel => "gemini-2.0-flash";
 
     private static class Models
     {
@@ -101,7 +101,7 @@ public class Gemini : IAiApiProvider, IDisposable
             // Build the API URL with the correct version
             var apiUrl = $"https://generativelanguage.googleapis.com/{apiVersion}/models/{modelId}:generateContent?key={apiKey}";
 
-            HttpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Clear();
 
             // Build message content based on conversation history
             var contents = new List<object>();
@@ -147,7 +147,7 @@ public class Gemini : IAiApiProvider, IDisposable
                 Encoding.UTF8,
                 "application/json");
 
-            var response = await HttpClient.PostAsync(apiUrl, content);
+            var response = await _httpClient.PostAsync(apiUrl, content);
 
             JsonDocument? doc;
             if (!response.IsSuccessStatusCode)
@@ -213,6 +213,7 @@ public class Gemini : IAiApiProvider, IDisposable
 
     public void Dispose()
     {
+        _httpClient?.Dispose();
         GC.SuppressFinalize(this);
     }
 }
