@@ -41,19 +41,19 @@ public class AiProviderService(LoggingService loggingService)
                     var deepSeekProvider = (DeepSeek)_apiProviderFactory.GetProvider(providerName);
                     return deepSeekProvider.GetAvailableModels().Cast<ModelInfo>().ToList();
 
-                case "Claude API":
-                    var claudeProvider = (Claude)_apiProviderFactory.GetProvider(providerName);
+                case "Anthropic API":
+                    var claudeProvider = (Anthropic)_apiProviderFactory.GetProvider(providerName);
                     return claudeProvider.GetAvailableModels().Cast<ModelInfo>().ToList();
 
-                case "Grok API":
-                    var grokProvider = (Grok)_apiProviderFactory.GetProvider(providerName);
+                case "xAI API":
+                    var grokProvider = (XAi)_apiProviderFactory.GetProvider(providerName);
                     return grokProvider.GetAvailableModels().Cast<ModelInfo>().ToList();
 
-                case "Gemini API":
-                    var geminiProvider = (Gemini)_apiProviderFactory.GetProvider(providerName);
+                case "Google API":
+                    var geminiProvider = (Google)_apiProviderFactory.GetProvider(providerName);
                     return geminiProvider.GetAvailableModels().Cast<ModelInfo>().ToList();
 
-                case "ChatGPT API":
+                case "OpenAI API":
                     var openAiProvider = (OpenAi)_apiProviderFactory.GetProvider(providerName);
                     return openAiProvider.GetAvailableModels().Cast<ModelInfo>().ToList();
 
@@ -70,7 +70,7 @@ public class AiProviderService(LoggingService loggingService)
 
     public static bool SupportsModelSelection(string providerName)
     {
-        return providerName is "DeepSeek API" or "Claude API" or "Grok API" or "Gemini API" or "ChatGPT API";
+        return providerName is "DeepSeek API" or "Anthropic API" or "xAI API" or "Google API" or "OpenAI API";
     }
 
     public async Task<string> SendPromptAsync(
@@ -107,15 +107,15 @@ public class AiProviderService(LoggingService loggingService)
             {
                 response = await deepSeekProvider.SendPromptWithModelAsync(key, prompt, conversationHistory, modelId);
             }
-            else if (provider is Claude claudeProvider && modelId != null)
+            else if (provider is Anthropic claudeProvider && modelId != null)
             {
                 response = await claudeProvider.SendPromptWithModelAsync(key, prompt, conversationHistory, modelId);
             }
-            else if (provider is Grok grokProvider && modelId != null)
+            else if (provider is XAi grokProvider && modelId != null)
             {
                 response = await grokProvider.SendPromptWithModelAsync(key, prompt, conversationHistory, modelId);
             }
-            else if (provider is Gemini geminiProvider && modelId != null)
+            else if (provider is Google geminiProvider && modelId != null)
             {
                 response = await geminiProvider.SendPromptWithModelAsync(key, prompt, conversationHistory, modelId);
             }

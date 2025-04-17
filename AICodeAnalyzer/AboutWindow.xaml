@@ -31,7 +31,7 @@
                 Easily review code quality, identify bugs, detect security vulnerabilities, 
                 and get improvement suggestions for your projects.
                 <LineBreak/><LineBreak/>
-                Supports multiple AI providers including Claude, ChatGPT, DeepSeek, Grok, and Gemini.
+                Supports multiple AI providers including Anthropic, OpenAI, DeepSeek, xAI, and Google.
             </TextBlock>
             
             <TextBlock Margin="0,5,0,0">

@@ -13,7 +13,7 @@ public class OpenAi : IAiApiProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
-    public string Name => "ChatGPT API";
+    public string Name => "OpenAI API";
     private string DefaultModel => "gpt-4o";
 
     private static class Models

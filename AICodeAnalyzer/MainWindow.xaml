@@ -203,12 +203,12 @@
                         </Grid.ColumnDefinitions>
                         <TextBox x:Name="TxtSelectedFolder" IsReadOnly="True" Grid.Column="0" Margin="0,0,5,0" />
                         <Button x:Name="BtnSelectFolder" Content="Select Folder" Grid.Column="1"
-                                Click="BtnSelectFolder_Click" Padding="4,0" Margin="0,0,5,0" Height="25" />
-                        <Button x:Name="BtnSelectFiles" Content="Add Files" Grid.Column="2"
-                                Click="BtnSelectFiles_Click" Padding="4,0" Margin="0,0,5,0" Height="25"
+                                Click="BtnSelectFolder_Click" Padding="4,0" Margin="0,0,5,0" Height="27" />
+                        <Button x:Name="BtnSelectFiles" Content="Select Files" Grid.Column="2"
+                                Click="BtnSelectFiles_Click" Padding="4,0" Margin="0,0,5,0" Height="27"
                                 ToolTip="Add specific files to the analysis" />
                         <Button x:Name="BtnClearFiles" Content="Clear" Grid.Column="3" Click="BtnClearFiles_Click"
-                                Height="25"
+                                Height="27"
                                 Padding="4,0" ToolTip="Clear all selected files" />
                     </Grid>
                 </StackPanel>
@@ -240,7 +240,7 @@
             </GroupBox>
 
             <!-- API Selection Area -->
-            <GroupBox Grid.Row="2" Grid.Column="0" Header="AI API Selection" Margin="0,0,5,0" Padding="0">
+            <GroupBox Grid.Row="2" Grid.Column="0" Header="AI Selection" Margin="0,0,5,0" Padding="0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -256,33 +256,27 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- AI API ComboBox -->
-                    <ComboBox x:Name="AiProvider" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,5,5,5"
+                    <Label Content="Provider:" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,5,5,5" />
+                    <ComboBox x:Name="AiProvider" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,5,5,5"
                               SelectionChanged="AiProvider_SelectionChanged" />
 
                     <!-- Model Selection -->
-                    <Label Content="Model:" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,5,0" />
-                    <ComboBox x:Name="AiModel"
-                              Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
-                              IsEnabled="False"
-                              Margin="0,0,5,5"
-                              HorizontalAlignment="Stretch"
-                              VerticalAlignment="Center"
+                    <Label Content="Model:" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,5,5" />
+                    <ComboBox x:Name="AiModel" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,5,5" IsEnabled="False"
                               SelectionChanged="AiModel_SelectionChanged" />
 
                     <!-- API Key Section -->
-                    <TextBlock Text="API Key:" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,5,5" />
-                    <ComboBox x:Name="AiProviderKeys" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
-                              HorizontalAlignment="Stretch"
-                              Margin="0,0,5,5" />
-                    <Button x:Name="BtnAddKey" Grid.Row="2" Grid.Column="3" Content="Add Key"
-                            VerticalAlignment="Center"
-                            Margin="0,0,5,5" Height="25" Padding="4,0" Click="PromptTemplatesEdit_Click" />
+                    <!-- API Key Section -->
+                    <Label Content="Key:" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,5,5" />
+                    <ComboBox x:Name="AiProviderKeys" Grid.Row="2" Grid.Column="1" Margin="0,0,5,5" />
+                    <Button x:Name="BtnAddKey" Grid.Row="2" Grid.Column="2" Content="Add Key" Margin="0,0,5,5" Height="27" Padding="4,0"
+                            Click="PromptTemplatesEdit_Click" />
 
                     <!-- Model Description -->
                     <TextBlock x:Name="TxtModelDescription"
                                Grid.Row="3"
                                Grid.Column="0"
-                               Grid.ColumnSpan="4"
+                               Grid.ColumnSpan="3"
                                TextWrapping="Wrap"
                                Margin="5,5,5,5"
                                FontStyle="Italic"
@@ -306,7 +300,7 @@
                                   DisplayMemberPath="Name"
                                   Margin="0,0,5,0" />
                         <Button x:Name="BtnConfigurePrompts" Content="Edit"
-                                Grid.Column="1" Padding="4,0" Height="25"
+                                Grid.Column="1" Padding="4,0" Height="27"
                                 Click="PromptTemplatesEdit_Click" />
                     </Grid>
 

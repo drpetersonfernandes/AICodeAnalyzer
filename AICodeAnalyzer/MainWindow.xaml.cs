@@ -521,7 +521,8 @@ public partial class MainWindow
     {
         try
         {
-            // Ask for confirmation
+            ListOfFiles.Items.Clear();
+
             var result = MessageBox.Show(
                 "Are you sure you want to clear all currently selected files?",
                 "Clear Files", MessageBoxButton.YesNo, MessageBoxImage.Question);
@@ -553,7 +554,7 @@ public partial class MainWindow
 
             // Get query text and API selection
             var queryText = TxtFollowupQuestion.Text.Trim();
-            var apiSelection = AiProvider.SelectedItem?.ToString() ?? "Gemini API"; // Default to Gemini
+            var apiSelection = AiProvider.SelectedItem?.ToString() ?? "Google API"; // Default to Google
 
             // Setup processing UI
             _uiStateManager.SetStatusMessage($"Processing with {apiSelection}...");

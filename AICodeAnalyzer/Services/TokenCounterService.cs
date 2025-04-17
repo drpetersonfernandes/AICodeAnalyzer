@@ -22,8 +22,8 @@ public class TokenCounterService
     {
         { "gpt-4", 0.25 }, // GPT-4 series
         { "gpt-3.5", 0.25 }, // GPT-3.5 series
-        { "claude", 0.26 }, // Claude models
-        { "gemini", 0.24 }, // Gemini models
+        { "claude", 0.26 }, // Anthropic models
+        { "gemini", 0.24 }, // Google models
         { "deepseek", 0.25 }, // DeepSeek models
         { "default", 0.25 } // Default fallback ratio
     };

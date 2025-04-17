@@ -19,11 +19,11 @@ public class ApiProviderFactory
     public ApiProviderFactory()
     {
         // Register all available providers
-        RegisterProvider(new Claude());
+        RegisterProvider(new Anthropic());
         RegisterProvider(new OpenAi());
         RegisterProvider(new DeepSeek());
-        RegisterProvider(new Grok());
-        RegisterProvider(new Gemini());
+        RegisterProvider(new XAi());
+        RegisterProvider(new Google());
     }
 
     /// <summary>

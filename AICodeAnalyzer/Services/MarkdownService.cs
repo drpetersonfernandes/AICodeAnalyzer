@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using Markdig;
 using Markdig.Wpf;
+using Markdown.ColorCode;
 
 namespace AICodeAnalyzer.Services;
 
@@ -41,8 +42,11 @@ public class MarkdownService
         _zoomLevelDisplay = zoomLevelDisplay;
         _textBoxDefaultFontSize = rawTextBox.FontSize;
 
-        // Use default pipeline without modification
-        var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+        var pipeline = new MarkdownPipelineBuilder()
+            .UseAdvancedExtensions()
+            .UseColorCode()
+            .Build();
+
         _markdownViewer.Pipeline = pipeline;
 
         UpdateZoomDisplay();

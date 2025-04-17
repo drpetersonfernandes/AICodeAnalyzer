@@ -8,11 +8,11 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class Gemini : IAiApiProvider, IDisposable
+public class Google : IAiApiProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
-    public string Name => "Gemini API";
+    public string Name => "Google API";
     private string DefaultModel => "gemini-2.0-flash";
 
     private static class Models
@@ -111,7 +111,7 @@ public class Gemini : IAiApiProvider, IDisposable
             {
                 foreach (var msg in conversationHistory)
                 {
-                    // Map "assistant" role to "model" for Gemini API
+                    // Map "assistant" role to "model" for Google API
                     var role = msg.Role == "assistant" ? "model" : msg.Role;
 
                     contents.Add(new
@@ -220,6 +220,6 @@ public class Gemini : IAiApiProvider, IDisposable
 
 public class GeminiModelInfo : ModelInfo
 {
-    // Keep the ApiVersion property which is specific to Gemini
+    // Keep the ApiVersion property which is specific to Google
     public string ApiVersion { get; set; } = "v1";
 }

@@ -9,11 +9,11 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class Grok : IAiApiProvider, IDisposable
+public class XAi : IAiApiProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
-    public string Name => "Grok API";
+    public string Name => "xAI API";
     private string DefaultModel => "grok-3-beta";
 
     public List<GrokModelInfo> GetAvailableModels()
@@ -57,7 +57,7 @@ public class Grok : IAiApiProvider, IDisposable
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
-        // Properly format the message history for Grok API
+        // Properly format the message history for xAI API
         var messages = new List<object>();
 
         // First add a system message if this is the first message

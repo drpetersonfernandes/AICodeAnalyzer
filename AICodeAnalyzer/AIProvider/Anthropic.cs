@@ -9,11 +9,11 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class Claude : IAiApiProvider, IDisposable
+public class Anthropic : IAiApiProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
-    public string Name => "Claude API";
+    public string Name => "Anthropic API";
     private static string DefaultModel => "claude-3-7-sonnet-20250219";
 
     public Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
@@ -80,7 +80,7 @@ public class Claude : IAiApiProvider, IDisposable
         _httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
         _httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
 
-        // Properly format the message history for Claude API
+        // Properly format the message history for Anthropic API
         var messages = new List<object>();
 
         // Add each message from history with the proper format
