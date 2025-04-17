@@ -48,6 +48,16 @@ public partial class MainWindow
     {
         InitializeComponent();
 
+        HtmlViewer.NavigationCompleted += (s, e) =>
+        {
+            // On navigation done, hide overlay if visible
+            if (LoadingOverlay.Visibility != Visibility.Visible) return;
+
+            HideLoadingOverlay();
+            _uiStateManager?.SetProcessingState(false);
+            _uiStateManager?.SetStatusMessage("Ready");
+        };
+
         // Initialize services in the correct order (with dependencies)
         _loggingService = new LoggingService(TxtLog);
         _tokenCounterService = new TokenCounterService(_loggingService);
@@ -1095,33 +1105,41 @@ public partial class MainWindow
     {
         try
         {
-            // Show loading indicator
             _uiStateManager.SetProcessingState(true, $"Loading {Path.GetFileName(filePath)}");
+            _uiStateManager.SetStatusMessage($"Loading {Path.GetFileName(filePath)} - please wait");
+            ShowLoadingOverlay("Loading file and rendering...");
 
-            // Read the file content
+            // Read the file content asynchronously
             var fileContent = await _fileService.LoadMarkdownFileAsync(filePath);
 
             if (string.IsNullOrEmpty(fileContent))
             {
+                _uiStateManager.SetStatusMessage("No content to display");
+                HideLoadingOverlay();
                 _uiStateManager.SetProcessingState(false);
                 return;
             }
 
-            // Update UI
+            // Update response text and raise event for UI update
             _responseService.SetCurrentFilePath(filePath);
             _responseService.UpdateCurrentResponse(fileContent);
+
             TxtResponseCounter.Text = $"Viewing: {Path.GetFileName(filePath)}";
 
-            // Disable input query button when loading a file
             BtnShowInputQuery.IsEnabled = false;
 
-            // Add to recent files
             AddToRecentFiles(filePath);
 
-            _uiStateManager.SetStatusMessage($"Viewing file: {Path.GetFileName(filePath)}");
+            _uiStateManager.SetStatusMessage($"Loaded {Path.GetFileName(filePath)}");
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Error loading markdown file");
+            _uiStateManager.SetStatusMessage("Error loading file.");
         }
         finally
         {
+            HideLoadingOverlay();
             _uiStateManager.SetProcessingState(false);
         }
     }
@@ -1443,5 +1461,22 @@ public partial class MainWindow
             ErrorLogger.LogError(ex, "Zoom Reset failed");
             MessageBox.Show("Failed to reset zoom.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void ShowLoadingOverlay(string? message = null)
+    {
+        LoadingOverlay.Visibility = Visibility.Visible;
+
+        if (LoadingOverlay.Children[0] is not StackPanel panel) return;
+
+        if (panel.Children.OfType<TextBlock>().FirstOrDefault() is { } txt)
+        {
+            txt.Text = message ?? "Loading, please wait...";
+        }
+    }
+
+    private void HideLoadingOverlay()
+    {
+        LoadingOverlay.Visibility = Visibility.Collapsed;
     }
 }

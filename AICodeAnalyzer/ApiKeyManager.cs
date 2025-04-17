@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Windows;
-using MessagePack; // Added MessagePack namespace
+using MessagePack;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace AICodeAnalyzer;
 
@@ -69,17 +71,90 @@ public class ApiKeyManager
 
         try
         {
-            // Read the binary data from file
             var bytes = File.ReadAllBytes(_keysFilePath);
+            var storage = MessagePackSerializer.Deserialize<ApiKeyStorage>(bytes);
 
-            // Deserialize with MessagePack
-            var result = MessagePackSerializer.Deserialize<ApiKeyStorage>(bytes);
-            return result;
+            var keysChanged = false;
+
+            foreach (var provider in storage.Providers)
+            {
+                var decryptedKeys = new List<string>();
+                var keysToRemove = new List<string>();
+
+                foreach (var key in provider.Keys)
+                {
+                    // Attempt to decrypt the key
+                    var decryptedKey = DecryptKey(key);
+
+                    if (string.IsNullOrEmpty(decryptedKey))
+                    {
+                        // Could NOT decrypt -> probably unencrypted key or corrupted, so discard it
+                        keysChanged = true;
+                        keysToRemove.Add(key);
+                    }
+                    else
+                    {
+                        decryptedKeys.Add(decryptedKey);
+                    }
+                }
+
+                // Remove unencrypted keys from the provider
+                foreach (var badKey in keysToRemove)
+                {
+                    provider.Keys.Remove(badKey);
+                }
+
+                // Replace with decrypted keys (only valid encrypted keys)
+                provider.Keys = decryptedKeys;
+            }
+
+            if (keysChanged)
+            {
+                // Save cleaned up keys back to disk
+                SaveKeysEncrypted(storage);
+            }
+
+            return storage;
         }
         catch (Exception)
         {
-            // If there's any error, return a new storage
             return new ApiKeyStorage();
+        }
+    }
+
+    private void SaveKeysEncrypted(ApiKeyStorage storage)
+    {
+        try
+        {
+            var encryptedStorage = new ApiKeyStorage();
+
+            foreach (var provider in storage.Providers)
+            {
+                var encryptedProvider = new ApiProvider
+                {
+                    Name = provider.Name
+                };
+
+                foreach (var key in provider.Keys)
+                {
+                    var encryptedKey = EncryptKey(key);
+                    if (!string.IsNullOrEmpty(encryptedKey))
+                    {
+                        encryptedProvider.Keys.Add(encryptedKey);
+                    }
+                }
+
+                encryptedStorage.Providers.Add(encryptedProvider);
+            }
+
+            var bytes = MessagePackSerializer.Serialize(encryptedStorage);
+            File.WriteAllBytes(_keysFilePath, bytes);
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Error saving encrypted API keys");
+            MessageBox.Show("Failed to securely save API keys. See error log for details.",
+                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -87,16 +162,66 @@ public class ApiKeyManager
     {
         try
         {
-            // Serialize with MessagePack
-            var bytes = MessagePackSerializer.Serialize(KeyStorage);
+            // Encrypt keys before serialization
+            var encryptedStorage = new ApiKeyStorage();
 
-            // Write the binary data to file
+            foreach (var provider in KeyStorage.Providers)
+            {
+                var encryptedProvider = new ApiProvider
+                {
+                    Name = provider.Name
+                };
+
+                foreach (var key in provider.Keys)
+                {
+                    var encryptedKey = EncryptKey(key);
+                    if (!string.IsNullOrEmpty(encryptedKey))
+                    {
+                        encryptedProvider.Keys.Add(encryptedKey);
+                    }
+                }
+
+                encryptedStorage.Providers.Add(encryptedProvider);
+            }
+
+            var bytes = MessagePackSerializer.Serialize(encryptedStorage);
             File.WriteAllBytes(_keysFilePath, bytes);
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, "Error saving API keys");
-            MessageBox.Show("Failed to save API keys. See error log for details.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            ErrorLogger.LogError(ex, "Error saving encrypted API keys");
+            MessageBox.Show("Failed to save API keys securely. See error log for details.",
+                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // Encrypt a plaintext key as base64
+    private static string EncryptKey(string plainText)
+    {
+        if (string.IsNullOrEmpty(plainText))
+            return string.Empty;
+
+        var plainBytes = Encoding.UTF8.GetBytes(plainText);
+        var encryptedBytes = ProtectedData.Protect(plainBytes, null, DataProtectionScope.CurrentUser);
+        return Convert.ToBase64String(encryptedBytes);
+    }
+
+    // Decrypt base64-encrypted key string back to plaintext
+    private static string DecryptKey(string encryptedBase64)
+    {
+        if (string.IsNullOrEmpty(encryptedBase64))
+            return string.Empty;
+
+        try
+        {
+            var encryptedBytes = Convert.FromBase64String(encryptedBase64);
+            var decryptedBytes = ProtectedData.Unprotect(encryptedBytes, null, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(decryptedBytes);
+        }
+        catch (Exception)
+        {
+            // Log error if desired
+            return string.Empty; // Decryption failed - treat as empty
         }
     }
 }
