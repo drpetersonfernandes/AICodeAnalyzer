@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Media;
-using AICodeAnalyzer.Markdown;
 using Markdig;
-using Markdig.Renderers;
-using Markdig.Renderers.Wpf;
 using Markdig.Wpf;
 
 namespace AICodeAnalyzer.Services;
@@ -45,27 +41,11 @@ public class MarkdownService
         _zoomLevelDisplay = zoomLevelDisplay;
         _textBoxDefaultFontSize = rawTextBox.FontSize;
 
-        var pipeline = CreateCustomPipeline();
+        // Use default pipeline without modification
+        var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
         _markdownViewer.Pipeline = pipeline;
 
         UpdateZoomDisplay();
-    }
-
-    private MarkdownPipeline CreateCustomPipeline()
-    {
-        _loggingService.LogOperation("Creating custom Markdown pipeline with copy button renderer.");
-        var pipelineBuilder = new MarkdownPipelineBuilder()
-            .UseAdvancedExtensions();
-
-        // Build the pipeline first
-        var pipeline = pipelineBuilder.Build();
-
-        // Get the renderer and modify its renderers collection
-        var renderer = new WpfRenderer(new FlowDocument());
-        renderer.ObjectRenderers.RemoveAll(r => r is CodeBlockRenderer);
-        renderer.ObjectRenderers.Add(new CodeBlockRendererWithCopyButton());
-
-        return pipeline;
     }
 
     private string PreprocessMarkdown(string markdownContent)
@@ -85,19 +65,17 @@ public class MarkdownService
         var lastTripleBacktick = contentAfterFirstLine.LastIndexOf("```", StringComparison.Ordinal);
         if (lastTripleBacktick != -1)
         {
-            // Get content before the last ```
+            // Get content before last ```
             markdownContent = contentAfterFirstLine.Substring(0, lastTripleBacktick).Trim();
             _loggingService.LogOperation("Preprocessed markdown response (removed ```markdown wrapper).");
-            return markdownContent; // Return the processed content
+            return markdownContent;
         }
 
-        // If no closing ``` found, maybe just remove the first line? Or return as is?
-        // Let's just remove the first line for now if closing ``` isn't found.
+        // If no closing ``` found, just remove opening line
         markdownContent = contentAfterFirstLine.Trim();
         _loggingService.LogOperation("Preprocessed markdown response (removed opening ```markdown line, no closing ``` found).");
         return markdownContent;
     }
-
 
     public void SetContent(string rawContent, bool resetZoom = false)
     {
@@ -105,23 +83,22 @@ public class MarkdownService
         {
             var processedMarkdown = PreprocessMarkdown(rawContent);
 
-            _rawTextBox.Text = rawContent; // Keep raw text in textbox
+            _rawTextBox.Text = rawContent; // keep raw text
 
-            // Assign Markdown to the viewer; it will use the custom pipeline
+            // Assign markdown to viewer directly (no custom renderer)
             _markdownViewer.Markdown = processedMarkdown;
+
             _loggingService.LogOperation($"Rendering Markdown content ({processedMarkdown.Length} chars).");
 
             if (resetZoom)
             {
-                ResetZoom(); // Use the method to reset zoom properly
+                ResetZoom();
             }
             else
             {
-                // Apply existing zoom settings even if not resetting
                 UpdateZoomDisplay();
             }
 
-            // Update page width after content is likely rendered
             Application.Current.Dispatcher.InvokeAsync(UpdateMarkdownPageWidth, System.Windows.Threading.DispatcherPriority.Background);
         }
         catch (Exception ex)
@@ -140,27 +117,25 @@ public class MarkdownService
 
             if (_isMarkdownViewActive)
             {
-                // Switch to Markdown view
                 _rawTextBox.Visibility = Visibility.Collapsed;
                 _markdownScrollViewer.Visibility = Visibility.Visible;
 
-                // Re-render the Markdown content from the raw text box
+                // Re-render Markdown as normal, no custom renderer
                 var processedMarkdown = PreprocessMarkdown(_rawTextBox.Text);
-                _markdownViewer.Markdown = processedMarkdown; // Assign again to trigger re-render
+                _markdownViewer.Markdown = processedMarkdown;
+
                 _loggingService.LogOperation("Switched to markdown view (re-rendered).");
 
-                // Update page width after rendering
                 Application.Current.Dispatcher.InvokeAsync(UpdateMarkdownPageWidth, System.Windows.Threading.DispatcherPriority.Background);
             }
             else
             {
-                // Switch to raw text view
                 _rawTextBox.Visibility = Visibility.Visible;
                 _markdownScrollViewer.Visibility = Visibility.Collapsed;
                 _loggingService.LogOperation("Switched to raw text view (edit mode)");
             }
 
-            UpdateZoomDisplay(); // Apply zoom to the currently visible view
+            UpdateZoomDisplay();
         }
         catch (Exception ex)
         {
@@ -172,7 +147,7 @@ public class MarkdownService
             _rawTextBox.Visibility = Visibility.Visible;
             _markdownScrollViewer.Visibility = Visibility.Collapsed;
             _isMarkdownViewActive = false;
-            UpdateZoomDisplay(); // Ensure zoom applies correctly to fallback view
+            UpdateZoomDisplay();
         }
     }
 
