@@ -1,14 +1,9 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
 
 namespace AICodeAnalyzer;
 
-/// <inheritdoc />
-/// <summary>
-/// Interaction logic for App.xaml
-/// </summary>
 public partial class App
 {
     private FileAssociationManager? _fileAssociationManager;
@@ -68,13 +63,11 @@ public partial class App
     private static void LogError(string message)
     {
         Console.WriteLine($"ERROR: {message}");
-        Debug.WriteLine($"ERROR: {message}");
     }
 
     private static void LogInformation(string message)
     {
         Console.WriteLine($"INFORMATION: {message}");
-        Debug.WriteLine($"INFORMATION: {message}");
     }
 
     public async Task UpdateFileAssociationAsync(bool register)

@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using AICodeAnalyzer.Models;
 using AICodeAnalyzer.Services;
 using Microsoft.Win32;
@@ -22,13 +21,19 @@ public partial class MainWindow
     private readonly FileService _fileService;
     private readonly AiProviderService _aiProviderService;
     private readonly ResponseService _responseService;
-    private readonly MarkdownService _markdownService;
     private readonly UiStateManager _uiStateManager;
     private readonly TokenCounterService _tokenCounterService;
 
     // Additional managers
     private readonly RecentFilesManager _recentFilesManager = new();
     private readonly SettingsManager _settingsManager = new();
+
+    private readonly HtmlService _htmlService;
+    private bool _isShowingRawText;
+    private double _webViewZoomFactor = 1.0;
+    private const double ZoomStep = 0.1;
+    private const double MinZoom = 0.2;
+    private const double MaxZoom = 5.0;
 
     // State tracking
     private TokenCalculationResult _tokenCalculationResult = new();
@@ -49,13 +54,8 @@ public partial class MainWindow
         _fileService = new FileService(_settingsManager, _loggingService);
         _aiProviderService = new AiProviderService(_loggingService);
         _responseService = new ResponseService(_loggingService, _fileService);
-        _markdownService = new MarkdownService(
-            _loggingService,
-            TxtResponse,
-            MarkdownViewer,
-            MarkdownScrollViewer,
-            TxtZoomLevel);
         _uiStateManager = new UiStateManager(TxtStatus, _loggingService);
+        _htmlService = new HtmlService(_loggingService);
 
         // Setup event handlers
         SetupEventHandlers();
@@ -101,20 +101,8 @@ public partial class MainWindow
         BtnSaveResponse.Click -= BtnSaveResponse_Click;
         BtnSaveResponse.Click += BtnSaveResponse_Click;
 
-        BtnToggleMarkdown.Click -= ToggleMarkdownView_Click;
-        BtnToggleMarkdown.Click += ToggleMarkdownView_Click;
-
         BtnSaveEdits.Click -= SaveEdits_Click;
         BtnSaveEdits.Click += SaveEdits_Click;
-
-        BtnZoomIn.Click -= BtnZoomIn_Click;
-        BtnZoomIn.Click += BtnZoomIn_Click;
-
-        BtnZoomOut.Click -= BtnZoomOut_Click;
-        BtnZoomOut.Click += BtnZoomOut_Click;
-
-        BtnResetZoom.Click -= BtnResetZoom_Click;
-        BtnResetZoom.Click += BtnResetZoom_Click;
 
         AiProvider.SelectionChanged -= AiProvider_SelectionChanged;
         AiProvider.SelectionChanged += AiProvider_SelectionChanged;
@@ -152,21 +140,10 @@ public partial class MainWindow
             MenuOpenPastResponses.Click += MenuOpenPastResponses_Click;
         }
 
-        if (MenuExit != null)
-        {
-            MenuExit.Click -= MenuExit_Click;
-            MenuExit.Click += MenuExit_Click;
-        }
+        if (MenuExit == null) return;
 
-        // Scroll wheel event handlers
-        TxtResponse.PreviewMouseWheel -= TxtResponse_PreviewMouseWheel;
-        TxtResponse.PreviewMouseWheel += TxtResponse_PreviewMouseWheel;
-
-        MarkdownScrollViewer.PreviewMouseWheel -= MarkdownScrollViewer_PreviewMouseWheel;
-        MarkdownScrollViewer.PreviewMouseWheel += MarkdownScrollViewer_PreviewMouseWheel;
-
-        MarkdownScrollViewer.SizeChanged -= MarkdownScrollViewer_SizeChanged;
-        MarkdownScrollViewer.SizeChanged += MarkdownScrollViewer_SizeChanged;
+        MenuExit.Click -= MenuExit_Click;
+        MenuExit.Click += MenuExit_Click;
     }
 
     private void InitializeUi()
@@ -899,42 +876,64 @@ public partial class MainWindow
         _loggingService.LogOperation($"Selected prompt template: {selectedPrompt.Name}");
     }
 
-    private void UpdateResponseDisplay()
+    private async void UpdateResponseDisplay()
     {
-        // Get current response data
-        var responseText = _responseService.CurrentResponseText;
-        var isShowingInputQuery = _responseService.IsShowingInputQuery;
-
-        // Update UI elements based on state
-        if (isShowingInputQuery)
+        try
         {
-            // Show the input query
-            _markdownService.SetContent(_responseService.GetInputQueryMarkdown());
-            BtnShowInputQuery.Content = "Show AI Response";
+            var responseText = _responseService.CurrentResponseText;
+            var isShowingInputQuery = _responseService.IsShowingInputQuery;
 
-            // Disable navigation and editing buttons
-            BtnPreviousResponse.IsEnabled = false;
-            BtnNextResponse.IsEnabled = false;
-            BtnSaveResponse.IsEnabled = false;
-            BtnSaveEdits.IsEnabled = false;
-            BtnToggleMarkdown.IsEnabled = false;
+            // Ensure WebView2 is initialized before loading content
+            if (HtmlViewer.CoreWebView2 == null)
+            {
+                try
+                {
+                    await HtmlViewer.EnsureCoreWebView2Async();
+                }
+                catch (Exception ex)
+                {
+                    _loggingService.LogOperation($"Error initializing WebView2: {ex.Message}");
+                    ErrorLogger.LogError(ex, "WebView2 initialization");
+                    return;
+                }
+            }
+
+            if (isShowingInputQuery)
+            {
+                var inputQueryMd = _responseService.GetInputQueryMarkdown();
+                var html = _htmlService.ConvertMarkdownToHtml(inputQueryMd);
+
+                HtmlViewer.NavigateToString(html);
+                BtnShowInputQuery.Content = "Show AI Response";
+
+                BtnPreviousResponse.IsEnabled = false;
+                BtnNextResponse.IsEnabled = false;
+                BtnSaveResponse.IsEnabled = false;
+                BtnSaveEdits.IsEnabled = false;
+                BtnToggleHtml.IsEnabled = false;
+                BtnToggleHtml.IsEnabled = false;
+                _isShowingRawText = false;
+                BtnToggleHtml.Content = "Show Raw Text";
+            }
+            else
+            {
+                var html = _htmlService.ConvertMarkdownToHtml(responseText);
+                HtmlViewer.NavigateToString(html);
+                BtnShowInputQuery.Content = "Show Input Query";
+
+                BtnToggleHtml.IsEnabled = !string.IsNullOrEmpty(responseText);
+                BtnSaveResponse.IsEnabled = !string.IsNullOrEmpty(responseText);
+                BtnSaveEdits.IsEnabled = !string.IsNullOrEmpty(responseText);
+                BtnShowInputQuery.IsEnabled = true;
+                BtnToggleHtml.IsEnabled = !string.IsNullOrEmpty(responseText);
+                _isShowingRawText = false;
+                BtnToggleHtml.Content = "Show Raw Text";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            // Show the actual response content
-            _markdownService.SetContent(responseText);
-            BtnShowInputQuery.Content = "Show Input Query";
-
-            // Enable buttons
-            BtnToggleMarkdown.IsEnabled = !string.IsNullOrEmpty(responseText);
-            BtnSaveResponse.IsEnabled = !string.IsNullOrEmpty(responseText);
-            BtnSaveEdits.IsEnabled = !string.IsNullOrEmpty(responseText);
-            BtnShowInputQuery.IsEnabled = true; // Make sure the button is enabled when showing the AI response
+            ErrorLogger.LogError(ex, "Error in method UpdateResponseDisplay");
         }
-
-        // Scroll to top
-        MarkdownScrollViewer.ScrollToVerticalOffset(0);
-        TxtResponse.ScrollToHome();
     }
 
     private void UpdateNavigationControls()
@@ -989,12 +988,6 @@ public partial class MainWindow
         }
     }
 
-    private void ToggleMarkdownView_Click(object sender, RoutedEventArgs e)
-    {
-        _markdownService.ToggleView();
-        BtnToggleMarkdown.Content = _markdownService.IsMarkdownViewActive ? "Show Raw Text" : "Show Markdown";
-    }
-
     private void BtnPreviousResponse_Click(object sender, RoutedEventArgs e)
     {
         _responseService.NavigatePrevious();
@@ -1015,14 +1008,14 @@ public partial class MainWindow
             BtnShowInputQuery.Content = "Show AI Response";
             BtnSaveResponse.IsEnabled = false;
             BtnSaveEdits.IsEnabled = false;
-            BtnToggleMarkdown.IsEnabled = false;
+            BtnToggleHtml.IsEnabled = false;
         }
         else
         {
             BtnShowInputQuery.Content = "Show Input Query";
             BtnSaveResponse.IsEnabled = true;
             BtnSaveEdits.IsEnabled = true;
-            BtnToggleMarkdown.IsEnabled = true;
+            BtnToggleHtml.IsEnabled = true;
         }
     }
 
@@ -1036,12 +1029,6 @@ public partial class MainWindow
                 MessageBox.Show("Cannot save edits while viewing the input query. Please switch back to the AI response first.",
                     "Save Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
-            }
-
-            // Update the current response text with the edited content from the raw text view
-            if (!_markdownService.IsMarkdownViewActive)
-            {
-                _responseService.UpdateCurrentResponse(TxtResponse.Text);
             }
 
             // If we have a file path, automatically save changes to that file
@@ -1076,61 +1063,6 @@ public partial class MainWindow
             ErrorLogger.LogError(ex, "Saving edited markdown");
             MessageBox.Show("An error occurred while saving your edits.", "Edit Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-    }
-
-    private void BtnZoomIn_Click(object sender, RoutedEventArgs e)
-    {
-        _markdownService.ZoomIn();
-    }
-
-    private void BtnZoomOut_Click(object sender, RoutedEventArgs e)
-    {
-        _markdownService.ZoomOut();
-    }
-
-    private void BtnResetZoom_Click(object sender, RoutedEventArgs e)
-    {
-        _markdownService.ResetZoom();
-    }
-
-    private void TxtResponse_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
-    {
-        // Check if Ctrl key is pressed for zooming
-        if (Keyboard.Modifiers != ModifierKeys.Control) return;
-
-        switch (e.Delta)
-        {
-            // Wheel scrolled up (Zoom In)
-            case > 0:
-                _markdownService.ZoomIn();
-                break;
-            // Wheel scrolled down (Zoom Out)
-            case < 0:
-                _markdownService.ZoomOut();
-                break;
-        }
-
-        e.Handled = true; // Prevent default scroll behavior when zooming
-    }
-
-    private void MarkdownScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
-    {
-        // Check if Ctrl key is pressed for zooming
-        if (Keyboard.Modifiers != ModifierKeys.Control) return;
-
-        switch (e.Delta)
-        {
-            // Wheel scrolled up (Zoom In)
-            case > 0:
-                _markdownService.ZoomIn();
-                break;
-            // Wheel scrolled down (Zoom Out)
-            case < 0:
-                _markdownService.ZoomOut();
-                break;
-        }
-
-        e.Handled = true; // Prevent default scroll behavior when zooming
     }
 
     private async void RecentFileMenuItem_Click(object sender, RoutedEventArgs e)
@@ -1240,9 +1172,6 @@ public partial class MainWindow
             // Clear response data
             _responseService.ClearHistory();
 
-            // Reset zoom level
-            _markdownService.ResetZoom();
-
             // Clear file list
             _fileService.ClearFiles();
 
@@ -1250,7 +1179,7 @@ public partial class MainWindow
             BtnSendQuery.IsEnabled = true;
             TxtFollowupQuestion.IsEnabled = true;
             BtnSaveResponse.IsEnabled = false;
-            BtnToggleMarkdown.IsEnabled = false;
+            BtnToggleHtml.IsEnabled = false;
             BtnShowInputQuery.IsEnabled = false;
             BtnShowInputQuery.Content = "Show Input Query";
             BtnSaveEdits.IsEnabled = false;
@@ -1337,12 +1266,6 @@ public partial class MainWindow
         OpenConfigurationWindow();
     }
 
-    private void MarkdownScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        // When the ScrollViewer size changes, update the page width
-        _markdownService.UpdateMarkdownPageWidth();
-    }
-
     private async void BtnContinue_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -1416,6 +1339,109 @@ public partial class MainWindow
         catch (Exception ex)
         {
             ErrorLogger.LogError(ex, "Error processing 'Continue' query");
+        }
+    }
+
+    private async void BtnToggleHtml_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_isShowingRawText)
+            {
+                // Switch to HTML view
+                _isShowingRawText = false;
+                BtnToggleHtml.Content = "Show Raw Text";
+
+                var responseText = _responseService.CurrentResponseText;
+                if (string.IsNullOrEmpty(responseText))
+                {
+                    return;
+                }
+
+                // Ensure WebView2 is initialized before navigating
+                if (HtmlViewer.CoreWebView2 == null)
+                {
+                    await HtmlViewer.EnsureCoreWebView2Async();
+                }
+
+                var html = _htmlService.ConvertMarkdownToHtml(responseText);
+                HtmlViewer.NavigateToString(html);
+            }
+            else
+            {
+                // Switch to raw markdown view
+                _isShowingRawText = true;
+                BtnToggleHtml.Content = "Show HTML";
+
+                var responseText = _responseService.CurrentResponseText;
+                if (string.IsNullOrEmpty(responseText))
+                {
+                    return;
+                }
+
+                // Display raw markdown in the WebView2
+                var escapedText = System.Net.WebUtility.HtmlEncode(responseText).Replace("\n", "<br>").Replace("  ", "&nbsp;&nbsp;");
+                var rawHtml = $"<pre style=\"font-family: Consolas, monospace; font-size: 14px; white-space: pre-wrap;\">{escapedText}</pre>";
+
+                // Ensure WebView2 is initialized before navigating
+                if (HtmlViewer.CoreWebView2 == null)
+                {
+                    await HtmlViewer.EnsureCoreWebView2Async();
+                }
+
+                HtmlViewer.NavigateToString(rawHtml);
+            }
+        }
+        catch (Exception ex)
+        {
+            _loggingService.LogOperation($"Error toggling raw/HTML view: {ex.Message}");
+            ErrorLogger.LogError(ex, "Toggling raw/HTML view");
+            MessageBox.Show("An error occurred while toggling the view.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void BtnZoomIn_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _webViewZoomFactor = Math.Min(_webViewZoomFactor + ZoomStep, MaxZoom);
+            HtmlViewer.ZoomFactor = _webViewZoomFactor;
+            _loggingService.LogOperation($"Zoomed In to {_webViewZoomFactor:P0}");
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Zoom In failed");
+            MessageBox.Show("Failed to zoom in.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void BtnZoomOut_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _webViewZoomFactor = Math.Max(_webViewZoomFactor - ZoomStep, MinZoom);
+            HtmlViewer.ZoomFactor = _webViewZoomFactor;
+            _loggingService.LogOperation($"Zoomed Out to {_webViewZoomFactor:P0}");
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Zoom Out failed");
+            MessageBox.Show("Failed to zoom out.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void BtnResetZoom_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _webViewZoomFactor = 1.0;
+            HtmlViewer.ZoomFactor = _webViewZoomFactor;
+            _loggingService.LogOperation("Zoom Reset to 100%");
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Zoom Reset failed");
+            MessageBox.Show("Failed to reset zoom.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }
