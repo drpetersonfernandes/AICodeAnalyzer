@@ -178,13 +178,6 @@ public partial class MainWindow
         }
 
         _isShowingRawText = false; // Ensure the state is correct
-
-        // Check if a startup file path was passed
-        if (Application.Current.Properties["StartupFilePath"] is string filePath)
-        {
-            // Load the file asynchronously, but don't await here since we're in the constructor
-            Dispatcher.InvokeAsync(async () => { await LoadMarkdownFileAsync(filePath); });
-        }
     }
 
     private void PopulateAiProviders()
@@ -497,14 +490,7 @@ public partial class MainWindow
         try
         {
             ListOfFiles.Items.Clear();
-
-            var result = MessageBox.Show("Are you sure you want to clear all currently selected files?",
-                "Clear Files", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                _fileService.ClearFiles();
-            }
+            _fileService.ClearFiles();
         }
         catch (Exception ex)
         {
@@ -933,7 +919,7 @@ public partial class MainWindow
                 BtnShowInputQuery.Content = "Show Input Query";
                 BtnSaveResponse.IsEnabled = !string.IsNullOrEmpty(responseText);
                 BtnSaveEdits.IsEnabled = !string.IsNullOrEmpty(responseText);
-                BtnShowInputQuery.IsEnabled = true; // Always allow toggling back to input query if it exists
+                BtnShowInputQuery.IsEnabled = true; // Always allow toggling back to the input query if it exists
 
                 if (_isShowingRawText)
                 {
@@ -1226,7 +1212,7 @@ public partial class MainWindow
     }
 
     // Modified method signature to return Task instead of Task<string>
-    private async Task LoadMarkdownFileAsync(string filePath)
+    public async Task LoadMarkdownFileAsync(string filePath)
     {
         try
         {
@@ -1606,6 +1592,49 @@ public partial class MainWindow
         {
             ErrorLogger.LogError(ex, "Zoom Reset failed");
             MessageBox.Show("Failed to reset zoom.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// Handles command-line arguments received from another application instance.
+    /// </summary>
+    /// <param name="args">The command-line arguments.</param>
+    public async void HandleCommandLineArguments(string[] args)
+    {
+        try
+        {
+            // Bring the window to the foreground
+            // Check if it's minimized, if so, restore it first
+            if (WindowState == WindowState.Minimized)
+            {
+                WindowState = WindowState.Normal;
+            }
+
+            Activate();
+            Topmost = true; // Bring to front
+            Topmost = false; // Remove Topmost property
+
+            _loggingService.LogOperation($"Received arguments from another instance: {string.Join(" ", args)}");
+
+            // Process the arguments (e.g., open a file)
+            if (args.Length <= 0) return;
+
+            var filePath = args[0];
+            if (File.Exists(filePath))
+            {
+                // Clear current files and load the new one
+                _fileService.ClearFiles(); // Clear previous context
+                await LoadMarkdownFileAsync(filePath);
+            }
+            else
+            {
+                _loggingService.LogOperation($"Received file path does not exist: {filePath}");
+                _uiStateManager.SetStatusMessage($"Received file path does not exist: {Path.GetFileName(filePath)}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Error handling command line arguments from another instance.");
         }
     }
 }

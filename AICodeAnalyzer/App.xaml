@@ -1,9 +1,8 @@
 ﻿<Application x:Class="AICodeAnalyzer.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             StartupUri="MainWindow.xaml">
+>
     <Application.Resources>
-        <!-- Background brush for code blocks -->
-        <SolidColorBrush x:Key="CodeBlockBackgroundBrush" Color="#F5F5F5"/> <!-- Light gray background -->
+        <SolidColorBrush x:Key="CodeBlockBackgroundBrush" Color="#F5F5F5"/>
     </Application.Resources>
 </Application>

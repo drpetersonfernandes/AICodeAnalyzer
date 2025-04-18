@@ -245,8 +245,7 @@
                                 Click="BtnSelectFiles_Click" Padding="4,0" Margin="0,0,5,0" Height="27"
                                 ToolTip="Add specific files to the analysis" />
                         <Button x:Name="BtnClearFiles" Content="Clear" Grid.Column="3" Click="BtnClearFiles_Click"
-                                Height="27"
-                                Padding="4,0" ToolTip="Clear all selected files" />
+                                Height="27" Padding="4,0" ToolTip="Clear all selected files" />
                     </Grid>
                 </StackPanel>
             </GroupBox>

@@ -555,14 +555,14 @@ public class HtmlService(LoggingService loggingService)
 			var htmlContent = Markdig.Markdown.ToHtml(markdown, _pipeline);
 			var fullHtml = HtmlTemplate.Replace("{{Content}}", htmlContent);
             _loggingService.LogOperation($"Converted markdown to HTML ({markdown.Length} chars)");
-			
+
             return fullHtml;
 		}
 		catch (Exception ex)
 		{
 			_loggingService.LogOperation($"Error converting markdown to HTML: {ex.Message}");
 			ErrorLogger.LogError(ex, "Markdown to HTML conversion");
-			
+
 			return $"<pre style=\"color:red;\">Error converting markdown to HTML: {ex.Message}</pre>";
         }
     }
