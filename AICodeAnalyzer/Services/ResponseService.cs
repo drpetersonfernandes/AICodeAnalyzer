@@ -35,6 +35,11 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
         _currentFilePath = path;
     }
 
+    /// <summary>
+    /// Updates the current response text and optionally triggers auto-save and file path update.
+    /// </summary>
+    /// <param name="responseText">The new response text.</param>
+    /// <param name="isNewResponse">True if this is a newly generated AI response, false otherwise (e.g., loading from file, applying edits).</param>
     public void UpdateCurrentResponse(string responseText, bool isNewResponse = false)
     {
         _currentResponseText = responseText;
@@ -45,11 +50,8 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
             // For a new response, set the index to the last response
             _currentResponseIndex = ConversationHistory.Count(m => m.Role == "assistant") - 1;
 
-            // Clear the current file path when generating a new response
-            _currentFilePath = string.Empty;
-
-            // Auto-save the response
-            _fileService.AutoSaveResponse(responseText, _currentResponseIndex);
+            // Auto-save the response and store the path
+            _currentFilePath = _fileService.AutoSaveResponse(responseText, _currentResponseIndex);
         }
 
         OnResponseUpdated();
@@ -114,6 +116,10 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
         // Update the current response text
         _currentResponseText = response;
         _previousMarkdownContent = response;
+
+        // When navigating, clear the current file path as we are viewing history, not a loaded file
+        _currentFilePath = string.Empty;
+
 
         OnResponseUpdated();
         OnNavigationChanged();
@@ -202,6 +208,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
     {
         _isShowingInputQuery = !_isShowingInputQuery;
         OnResponseUpdated();
+        OnNavigationChanged();
     }
 
     // Event invokers

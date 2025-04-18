@@ -150,6 +150,12 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         return consolidatedFiles;
     }
 
+    /// <summary>
+    /// Saves the response text to a file, prompting the user for location.
+    /// </summary>
+    /// <param name="responseText">The text content to save.</param>
+    /// <param name="currentFilePath">The path of the currently viewed file, if any.</param>
+    /// <returns>The path where the file was saved, or the original currentFilePath if canceled.</returns>
     public async Task<string> SaveResponseAsync(string responseText, string currentFilePath)
     {
         try
@@ -175,6 +181,9 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
                             MessageBoxButton.OK, MessageBoxImage.Information);
 
                         return currentFilePath;
+                    case MessageBoxResult.No:
+                        // Proceed to Save As...
+                        break;
                     default:
                         // User canceled the operation
                         return currentFilePath;
@@ -233,7 +242,13 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         }
     }
 
-    public void AutoSaveResponse(string responseText, int responseIndex)
+    /// <summary>
+    /// Auto-saves the response text to a file in the AiOutput directory.
+    /// </summary>
+    /// <param name="responseText">The text content to save.</param>
+    /// <param name="responseIndex">The index of the response in the conversation history (1-based).</param>
+    /// <returns>The full path of the saved file.</returns>
+    public string AutoSaveResponse(string responseText, int responseIndex)
     {
         try
         {
@@ -261,13 +276,27 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
 
             File.WriteAllText(filePath, responseText);
             _loggingService.LogOperation($"Auto-saved response #{responseIndex + 1} to {filename}");
+
+            return filePath; // Return the path of the saved file
         }
         catch (Exception ex)
         {
             // Log error but don't interrupt the user experience
             _loggingService.LogOperation($"Error auto-saving response: {ex.Message}");
+            return string.Empty; // Return empty string on failure
         }
     }
+
+    /// <summary>
+    /// Overwrites an existing file with new content asynchronously.
+    /// </summary>
+    /// <param name="filePath">The path of the file to overwrite.</param>
+    /// <param name="content">The new content for the file.</param>
+    public async Task OverwriteResponseAsync(string filePath, string content)
+    {
+        await Task.Run(() => File.WriteAllText(filePath, content));
+    }
+
 
     public async Task<string> LoadMarkdownFileAsync(string filePath)
     {

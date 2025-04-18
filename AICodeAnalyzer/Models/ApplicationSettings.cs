@@ -44,7 +44,7 @@ public class ApplicationSettings
         }
     }
 
-    public List<CodePrompt> CodePrompts { get; set; } = new();
+    public List<CodePrompt> CodePrompts { get; set; } = [];
 
     public string? SelectedPromptName { get; set; }
 

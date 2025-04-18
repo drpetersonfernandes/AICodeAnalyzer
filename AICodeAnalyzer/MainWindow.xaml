@@ -303,7 +303,6 @@
                               SelectionChanged="AiModel_SelectionChanged" />
 
                     <!-- API Key Section -->
-                    <!-- API Key Section -->
                     <Label Content="Key:" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,5,5" />
                     <ComboBox x:Name="AiProviderKeys" Grid.Row="2" Grid.Column="1" Margin="0,0,5,5" />
                     <Button x:Name="BtnAddKey" Grid.Row="2" Grid.Column="2" Content="Add Key" Margin="0,0,5,5" Height="27" Padding="4,0"
@@ -323,7 +322,7 @@
                 </Grid>
             </GroupBox>
 
-            <!-- Merged AI Query GroupBox (combines Initial Prompt and Follow-up) -->
+            <!-- AI Query GroupBox -->
             <GroupBox Grid.Row="3" Grid.Column="0" Grid.RowSpan="2" Header="AI Query" Margin="0,0,5,0" Padding="0">
                 <StackPanel Margin="5">
                     <!-- Prompt Template Selection -->
@@ -344,7 +343,7 @@
                     <!-- Option Checkboxes -->
                     <StackPanel Margin="0,0,0,10">
                         <CheckBox x:Name="IncludePromptTemplate" Content="Include initial prompt template"
-                                  IsChecked="True" Margin="0,0,0,5"
+                                  IsChecked="False" Margin="0,0,0,5"
                                   ToolTip="When checked, the initial prompt template will be included in your request" />
 
                         <CheckBox x:Name="IncludeSelectedFilesChecker" Content="Include selected files"
@@ -487,17 +486,18 @@
                     <Grid>
                         <!-- WebView2 HTML Viewer -->
                         <wv2:WebView2 x:Name="HtmlViewer" Visibility="Visible" />
-
-                        <!-- Loading Overlay (initially hidden) -->
-                        <Grid x:Name="LoadingOverlay" Background="#80000000" Visibility="Collapsed" 
-                              HorizontalAlignment="Stretch" VerticalAlignment="Stretch" 
-                              IsHitTestVisible="True">
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" >
-                                <ProgressBar IsIndeterminate="True" Width="120" Height="20" />
-                                <TextBlock Text="Loading, please wait..." Foreground="White" FontWeight="Bold" 
-                                           FontSize="14" Margin="10,10,10,0" HorizontalAlignment="Center" />
-                            </StackPanel>
-                        </Grid>
+                        
+                        <!-- Raw Text Editor (initially hidden) -->
+                        <TextBox x:Name="RawResponseTextBox"
+                                 Visibility="Collapsed"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 HorizontalScrollBarVisibility="Auto"
+                                 FontFamily="Consolas"
+                                 FontSize="12"
+                                 Background="{StaticResource CodeBlockBackgroundBrush}"
+                                 Padding="5" />
                     </Grid>
                 </DockPanel>
             </GroupBox>
