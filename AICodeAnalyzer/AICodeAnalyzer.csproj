@@ -39,27 +39,30 @@
     <Resource Include="images\settings.png" />
     <None Remove="images\logo.png" />
     <Resource Include="images\logo.png" />
-    <None Remove="Resources\prism.css" />
-    <Resource Include="Resources\prism.css">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <None Remove="Resources\prism.js" />
-    <Resource Include="Resources\prism.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <None Remove="Resources\prism-csharp.min.js" />
-    <Resource Include="Resources\prism-csharp.min.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <None Remove="Resources\prism-python.min.js" />
-    <Resource Include="Resources\prism-python.min.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
   </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="Markdown\Markdown.cs" />
     <Compile Remove="Markdown\SyntaxHighlightingExtensions.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Assets\Prism\prism.js" />
+    <Content Include="Assets\Prism\prism.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Remove="Assets\Prism\prism-csharp.min.js" />
+    <Content Include="Assets\Prism\prism-csharp.min.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Remove="Assets\Prism\prism-python.min.js" />
+    <Content Include="Assets\Prism\prism-python.min.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Remove="Assets\Prism\prism-tomorrow.css" />
+    <Content Include="Assets\Prism\prism-tomorrow.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

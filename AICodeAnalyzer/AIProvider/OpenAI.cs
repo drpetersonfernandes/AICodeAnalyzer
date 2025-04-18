@@ -141,7 +141,6 @@ public class OpenAi : IAiApiProvider, IDisposable
         {
             model,
             messages
-            // max_tokens = maxTokens
         };
 
         var content = new StringContent(
@@ -181,13 +180,6 @@ public class OpenAi : IAiApiProvider, IDisposable
             .GetProperty("message")
             .GetProperty("content").GetString() ?? "No response";
     }
-
-    // private static int GetMaxTokensForModel()
-    // {
-    //     // Most OpenAI models support up to 4096 output tokens
-    //     // This could be adjusted for specific models if needed
-    //     return 4096;
-    // }
 
     public void Dispose()
     {

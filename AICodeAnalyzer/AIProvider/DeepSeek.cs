@@ -14,12 +14,6 @@ public class DeepSeek : IAiApiProvider, IDisposable
     private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(300) };
 
     public string Name => "DeepSeek API";
-    public string DefaultModel => "deepseek-chat";
-
-    public Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
-    {
-        throw new NotImplementedException();
-    }
 
     private static class Models
     {
@@ -140,14 +134,10 @@ public class DeepSeek : IAiApiProvider, IDisposable
             messages.Add(new { role = "user", content = prompt });
         }
 
-        // Determine max tokens based on model
-        var maxTokens = GetMaxTokensForModel(model);
-
         var requestData = new
         {
             model,
-            messages,
-            max_tokens = maxTokens
+            messages
         };
 
         var content = new StringContent(
@@ -193,16 +183,6 @@ public class DeepSeek : IAiApiProvider, IDisposable
         {
             Models.DeepSeekReasoner => "You are a helpful assistant specializing in code review and analysis.",
             _ => "You are a helpful assistant specializing in code review and analysis." // Default for deepseek-chat and others
-        };
-    }
-
-    private static int GetMaxTokensForModel(string model)
-    {
-        return model switch
-        {
-            Models.DeepSeekChat => 8192, // 8K for DeepSeek-V3
-            Models.DeepSeekReasoner => 8192, // 8K for DeepSeek-R1
-            _ => 4096 // 4K for DeepSeek-Coder and others
         };
     }
 

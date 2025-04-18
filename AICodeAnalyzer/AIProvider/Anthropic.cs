@@ -14,12 +14,6 @@ public class Anthropic : IAiApiProvider, IDisposable
     private readonly HttpClient _httpClient = new();
 
     public string Name => "Anthropic API";
-    private static string DefaultModel => "claude-3-7-sonnet-20250219";
-
-    public Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
-    {
-        return SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
-    }
 
     private static class Models
     {
@@ -41,8 +35,6 @@ public class Anthropic : IAiApiProvider, IDisposable
                 ContextLength = 200000
             },
 
-            // Claude 3.5
-
             new ClaudeModelInfo
             {
                 Id = Models.Claude35Sonnet,
@@ -58,8 +50,6 @@ public class Anthropic : IAiApiProvider, IDisposable
                 Description = "200K context - $0,8/M input tokens - $4/M output tokens.",
                 ContextLength = 200000
             },
-
-            // Claude 3
 
             new ClaudeModelInfo
             {
@@ -95,8 +85,8 @@ public class Anthropic : IAiApiProvider, IDisposable
         var requestData = new
         {
             model,
-            messages,
-            max_tokens = 4096
+            messages
+            // max_tokens = 4096
         };
 
         var content = new StringContent(

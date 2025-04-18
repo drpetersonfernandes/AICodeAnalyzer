@@ -14,7 +14,6 @@ public class XAi : IAiApiProvider, IDisposable
     private readonly HttpClient _httpClient = new();
 
     public string Name => "xAI API";
-    private string DefaultModel => "grok-3-beta";
 
     public List<GrokModelInfo> GetAvailableModels()
     {
@@ -41,12 +40,6 @@ public class XAi : IAiApiProvider, IDisposable
                 Description = "131K context - $2/M input tokens - $10/M output tokens."
             }
         ];
-    }
-
-    public Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
-    {
-        // Call the overloaded method with the default model
-        return SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
     }
 
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
@@ -80,8 +73,7 @@ public class XAi : IAiApiProvider, IDisposable
         var requestData = new
         {
             model,
-            messages,
-            max_tokens = 4096
+            messages
         };
 
         var content = new StringContent(

@@ -13,7 +13,6 @@ public class Google : IAiApiProvider, IDisposable
     private readonly HttpClient _httpClient = new();
 
     public string Name => "Google API";
-    private string DefaultModel => "gemini-2.0-flash";
 
     private static class Models
     {
@@ -73,12 +72,6 @@ public class Google : IAiApiProvider, IDisposable
 
         // Return the API version or default to v1
         return model?.ApiVersion ?? "v1";
-    }
-
-    public Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
-    {
-        // Call the overloaded method with the default model
-        return SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
     }
 
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
@@ -155,13 +148,6 @@ public class Google : IAiApiProvider, IDisposable
                     userFriendlyError = errorText;
                 }
 
-                // If the model was not found or the other error, try falling back to the default model
-                if (response.StatusCode == System.Net.HttpStatusCode.NotFound && modelId != DefaultModel)
-                {
-                    Console.WriteLine($"Model {modelId} not found, falling back to {DefaultModel}");
-                    return await SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
-                }
-
                 throw new Exception($"API error ({response.StatusCode}): {userFriendlyError}");
             }
 
@@ -175,12 +161,8 @@ public class Google : IAiApiProvider, IDisposable
         }
         catch (Exception ex)
         {
-            // If we get a model not found error, try the default model
-            if ((!ex.Message.Contains("NOT_FOUND") && !ex.Message.Contains("not found"))
-                || modelId == DefaultModel) throw;
-
-            Console.WriteLine($"Error with model {modelId}, falling back to {DefaultModel}: {ex.Message}");
-            return await SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
+            Console.WriteLine($"Error with model {modelId}: {ex.Message}");
+            return "There was an error with your request.";
         }
     }
 
