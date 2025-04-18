@@ -281,7 +281,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
                 return string.Empty;
             }
 
-            // Read the file on background thread
+            // Read the file on a background thread
             var fileContent = await Task.Run(() => File.ReadAllText(filePath));
             _loggingService.LogOperation($"Loaded markdown file: {filePath}");
 

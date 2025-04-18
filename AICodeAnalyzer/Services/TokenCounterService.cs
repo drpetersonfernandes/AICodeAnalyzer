@@ -6,9 +6,6 @@ using SharpToken;
 
 namespace AICodeAnalyzer.Services;
 
-/// <summary>
-/// Service class to calculate token usage for LLM requests
-/// </summary>
 public class TokenCounterService
 {
     // Dictionary of encoding instances, keyed by model name
@@ -49,7 +46,7 @@ public class TokenCounterService
     public TokenCounterService(LoggingService loggingService)
     {
         _loggingService = loggingService;
-        // Initialize default encoder (try-catch in case SharpToken isn't available)
+        // Initialize the default encoder (try-catch in case SharpToken isn't available)
         try
         {
             _encodings[DefaultEncodingName] = GptEncoding.GetEncoding(DefaultEncodingName);
@@ -181,7 +178,7 @@ public class TokenCounterService
         if (file == null || string.IsNullOrEmpty(file.Content))
             return 0;
 
-        var fileHeaderLanguage = GetLanguageForExtension(file.Extension);
+        var fileHeaderLanguage = GetCodeLanguage.GetLanguageForExtension(file.Extension);
         var fileHeader = $"File: {file.RelativePath}\n```{fileHeaderLanguage}\n";
         const string fileFooter = "\n```\n";
 
@@ -285,7 +282,7 @@ public class TokenCounterService
     /// </summary>
     private int EstimateTokenCount(int characterCount)
     {
-        // Use default ratio (0.25 tokens per character is a reasonable approximation)
+        // Use a default ratio (0.25 tokens per character is a reasonable approximation)
         return (int)Math.Ceiling(characterCount * _tokenRatios["default"]);
     }
 
@@ -323,133 +320,5 @@ public class TokenCounterService
             var percentage = Math.Min(100, (double)result.TotalTokens / limit * 100);
             result.ModelCompatibility[modelName] = $"{status} ({percentage:F1}% - {result.TotalTokens:N0}/{limit:N0})";
         }
-    }
-
-    /// <summary>
-    /// Gets the language identifier for a file extension to be used in markdown code blocks
-    /// </summary>
-    private static string GetLanguageForExtension(string ext)
-    {
-        return ext switch
-        {
-            // C# and .NET
-            ".cs" => "csharp",
-            ".vb" => "vb",
-            ".fs" => "fsharp",
-            ".xaml" => "xml",
-            ".csproj" => "xml",
-            ".vbproj" => "xml",
-            ".fsproj" => "xml",
-            ".nuspec" => "xml",
-            ".aspx" => "aspx",
-            ".asp" => "asp",
-            ".cshtml" => "cshtml",
-            ".axaml" => "xml",
-
-            // Web languages
-            ".html" => "html",
-            ".htm" => "html",
-            ".css" => "css",
-            ".js" => "javascript",
-            ".jsx" => "jsx",
-            ".ts" => "typescript",
-            ".tsx" => "tsx",
-            ".vue" => "vue",
-            ".svelte" => "svelte",
-            ".scss" => "scss",
-            ".sass" => "sass",
-            ".less" => "less",
-            ".mjs" => "javascript",
-            ".cjs" => "javascript",
-
-            // JVM languages
-            ".java" => "java",
-            ".kt" => "kotlin",
-            ".scala" => "scala",
-            ".groovy" => "groovy",
-
-            // Python
-            ".py" => "python",
-
-            // Ruby
-            ".rb" => "ruby",
-            ".erb" => "erb",
-
-            // PHP
-            ".php" => "php",
-
-            // C/C++
-            ".c" => "c",
-            ".cpp" => "cpp",
-            ".h" => "cpp", // C/C++ headers typically get cpp highlighting
-
-            // Go
-            ".go" => "go",
-
-            // Rust
-            ".rs" => "rust",
-
-            // Swift/Objective-C
-            ".swift" => "swift",
-            ".m" => "objectivec",
-            ".mm" => "objectivec",
-
-            // Dart/Flutter
-            ".dart" => "dart",
-
-            // Markup and Data
-            ".xml" => "xml",
-            ".json" => "json",
-            ".yaml" => "yaml",
-            ".yml" => "yaml",
-            ".md" => "markdown",
-            ".txt" => "text",
-            ".plist" => "xml",
-
-            // Templates
-            ".pug" => "pug",
-            ".jade" => "jade",
-            ".ejs" => "ejs",
-            ".haml" => "haml",
-
-            // Query Languages
-            ".sql" => "sql",
-            ".graphql" => "graphql",
-            ".gql" => "graphql",
-
-            // Shell/Scripts
-            ".sh" => "bash",
-            ".bash" => "bash",
-            ".bat" => "batch",
-            ".ps1" => "powershell",
-            ".pl" => "perl",
-
-            // Other Languages
-            ".r" => "r",
-            ".lua" => "lua",
-            ".dockerfile" => "dockerfile",
-            ".ex" => "elixir",
-            ".exs" => "elixir",
-            ".jl" => "julia",
-            ".nim" => "nim",
-            ".hs" => "haskell",
-            ".clj" => "clojure",
-            ".elm" => "elm",
-            ".erl" => "erlang",
-            ".asm" => "asm",
-            ".s" => "asm",
-            ".wasm" => "wasm",
-
-            // Configuration/Infrastructure
-            ".ini" => "ini",
-            ".toml" => "toml",
-            ".tf" => "hcl",
-            ".tfvars" => "hcl",
-            ".proto" => "proto",
-            ".config" => "xml",
-
-            // Default case
-            _ => "text"
-        };
     }
 }

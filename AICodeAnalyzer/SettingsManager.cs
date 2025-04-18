@@ -21,14 +21,10 @@ public class SettingsManager
         _settingsFilePath = Path.Combine(AppContext.BaseDirectory, SettingsFileName);
         Settings = LoadSettings();
 
-        // Clean up duplicates and ensure default prompt exists
         CleanupDuplicatePrompts();
         EnsureDefaultPrompt();
     }
 
-    /// <summary>
-    /// Loads settings from the XML file or creates new settings if file doesn't exist
-    /// </summary>
     private ApplicationSettings LoadSettings()
     {
         if (!File.Exists(_settingsFilePath))
@@ -64,9 +60,6 @@ public class SettingsManager
         }
     }
 
-    /// <summary>
-    /// Saves the current settings to the XML file
-    /// </summary>
     public void SaveSettings()
     {
         try
@@ -89,15 +82,12 @@ public class SettingsManager
         }
     }
 
-    /// <summary>
-    /// Removes duplicate prompts with the same name, keeping only the first occurrence
-    /// </summary>
     private void CleanupDuplicatePrompts()
     {
         if (Settings.CodePrompts.Count <= 1)
             return;
 
-        // Create a dictionary to store first occurrences of each prompt name
+        // Create a dictionary to store the first occurrence of each prompt name
         var uniquePrompts = new Dictionary<string, CodePrompt>();
 
         foreach (var prompt in Settings.CodePrompts)
@@ -105,26 +95,23 @@ public class SettingsManager
             uniquePrompts.TryAdd(prompt.Name, prompt);
         }
 
-        // Replace the prompts list with the unique prompts
+        // Replace the prompt list with the unique prompts
         Settings.CodePrompts.Clear();
         Settings.CodePrompts.AddRange(uniquePrompts.Values);
 
-        // Ensure selected prompt still exists
+        // Ensure the selected prompt still exists
         if (string.IsNullOrEmpty(Settings.SelectedPromptName) || Settings.CodePrompts.Any(p => p.Name == Settings.SelectedPromptName)) return;
 
         {
-            // If selected prompt was removed, select the Default prompt or the first available
+            // If the selected prompt was removed, select the Default prompt or the first available
             var defaultPrompt = Settings.CodePrompts.FirstOrDefault(p => p.Name == "Analyze Source Code");
             Settings.SelectedPromptName = defaultPrompt?.Name ?? Settings.CodePrompts.FirstOrDefault()?.Name;
         }
     }
 
-    /// <summary>
-    /// Ensures that at least the default prompt exists in the settings
-    /// </summary>
     private void EnsureDefaultPrompt()
     {
-        // Check if default prompt already exists
+        // Check if the default prompt already exists
         var defaultPrompt = Settings.CodePrompts.FirstOrDefault(p => p.Name == "Analyze Source Code");
 
         if (defaultPrompt == null)
@@ -144,13 +131,11 @@ public class SettingsManager
         }
     }
 
-    /// <summary>
-    /// Handles migrating settings from older versions to the new format
-    /// </summary>
     private static void MigrateSettingsIfNeeded(ApplicationSettings settings)
     {
         // For older versions that don't have CodePrompts or only have InitialPrompt
         if (settings.CodePrompts.Count != 0 || string.IsNullOrEmpty(settings.InitialPrompt)) return;
+
         // Add the existing InitialPrompt as a "Default" template
         settings.CodePrompts.Add(new CodePrompt("Analyze Source Code", settings.InitialPrompt));
         settings.SelectedPromptName = "Analyze Source Code";

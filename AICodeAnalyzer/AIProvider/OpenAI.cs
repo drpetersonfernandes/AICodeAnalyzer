@@ -14,7 +14,6 @@ public class OpenAi : IAiApiProvider, IDisposable
     private readonly HttpClient _httpClient = new();
 
     public string Name => "OpenAI API";
-    private string DefaultModel => "gpt-4o";
 
     private static class Models
     {
@@ -107,12 +106,6 @@ public class OpenAi : IAiApiProvider, IDisposable
         ];
     }
 
-    public Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory)
-    {
-        // Call the overloaded method with the default model
-        return SendPromptWithModelAsync(apiKey, prompt, conversationHistory, DefaultModel);
-    }
-
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
     {
         var model = modelId;
@@ -141,14 +134,14 @@ public class OpenAi : IAiApiProvider, IDisposable
         // Add the current prompt
         messages.Add(new { role = "user", content = prompt });
 
-        // Set max tokens based on the model
-        var maxTokens = GetMaxTokensForModel();
+        // // Set max tokens based on the model
+        // var maxTokens = GetMaxTokensForModel();
 
         var requestData = new
         {
             model,
-            messages,
-            max_tokens = maxTokens
+            messages
+            // max_tokens = maxTokens
         };
 
         var content = new StringContent(
@@ -189,12 +182,12 @@ public class OpenAi : IAiApiProvider, IDisposable
             .GetProperty("content").GetString() ?? "No response";
     }
 
-    private static int GetMaxTokensForModel()
-    {
-        // Most OpenAI models support up to 4096 output tokens
-        // This could be adjusted for specific models if needed
-        return 4096;
-    }
+    // private static int GetMaxTokensForModel()
+    // {
+    //     // Most OpenAI models support up to 4096 output tokens
+    //     // This could be adjusted for specific models if needed
+    //     return 4096;
+    // }
 
     public void Dispose()
     {

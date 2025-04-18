@@ -163,7 +163,7 @@ public partial class MainWindow
         LoadPromptTemplates();
         UpdateRecentFilesMenu();
 
-        // Set initial UI state
+        // Set the initial UI state
         TxtFollowupQuestion.IsEnabled = true;
         IncludeSelectedFilesChecker.IsEnabled = true;
         UpdateNavigationControls();
@@ -260,7 +260,7 @@ public partial class MainWindow
             }
         }
 
-        // Add mode indicator (folder scan or manual selection)
+        // Add a mode indicator (folder scan or manual selection)
         ListOfFiles.Items.Add(new ListViewItem
         {
             Content = $"===== Files Summary ({_fileService.FilesByExtension.Values.Sum(v => v.Count)} total) =====",
@@ -301,7 +301,7 @@ public partial class MainWindow
         // Then list files by folder
         foreach (var folderPath in filesByFolder.Keys.OrderBy(f => f))
         {
-            // Add folder as a header
+            // Add a folder as a header
             ListOfFiles.Items.Add(new ListViewItem
             {
                 Content = folderPath,
@@ -421,7 +421,7 @@ public partial class MainWindow
                 MenuRecentFiles.Items.Add(menuItem);
             }
 
-            // Add separator and "Clear Recent Files" option
+            // Add a separator and "Clear Recent Files" option
             MenuRecentFiles.Items.Add(new Separator());
 
             var clearMenuItem = new MenuItem
@@ -530,7 +530,7 @@ public partial class MainWindow
     {
         try
         {
-            // Check for API key
+            // Check for the API key
             if (AiProviderKeys.SelectedIndex <= 0)
             {
                 MessageBox.Show("Please enter an API key.", "Missing API Key", MessageBoxButton.OK,
@@ -955,7 +955,7 @@ public partial class MainWindow
 
     private void UpdateNavigationControls()
     {
-        // Update navigation buttons based on current position
+        // Update navigation buttons based on the current position
         BtnPreviousResponse.IsEnabled = _responseService.CanNavigatePrevious();
         BtnNextResponse.IsEnabled = _responseService.CanNavigateNext();
 
@@ -1295,7 +1295,7 @@ public partial class MainWindow
     {
         try
         {
-            // Check for API key
+            // Check for the API key
             if (AiProviderKeys.SelectedIndex <= 0)
             {
                 MessageBox.Show("Please enter an API key.", "Missing API Key", MessageBoxButton.OK,
@@ -1324,12 +1324,12 @@ public partial class MainWindow
 
             try
             {
-                // Get selected API key
+                // Get the selected API key
                 var savedKeys = _aiProviderService.GetKeysForProvider(apiSelection);
                 var keyIndex = AiProviderKeys.SelectedIndex - 1;
                 var apiKey = keyIndex >= 0 && keyIndex < savedKeys.Count ? savedKeys[keyIndex] : string.Empty;
 
-                // Get selected model if applicable
+                // Get the selected model if applicable
                 string? modelId = null;
                 if (AiModel.IsEnabled && AiModel.SelectedItem is ModelDropdownItem selectedModel)
                 {

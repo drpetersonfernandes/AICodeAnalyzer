@@ -17,11 +17,10 @@ public class Google : IAiApiProvider, IDisposable
 
     private static class Models
     {
-        public const string Gemini25ProExp = "gemini-2.5-pro-exp-03-25";
+        public const string Gemini25FlashPreview = "gemini-2.5-flash-preview-04-17";
+        public const string Gemini25ProPreview = "gemini-2.5-pro-preview-03-25";
         public const string Gemini20Flash = "gemini-2.0-flash";
         public const string Gemini20FlashLite = "gemini-2.0-flash-lite";
-        public const string Gemini15Flash = "gemini-1.5-flash";
-        public const string Gemini15Pro = "gemini-1.5-pro";
     }
 
     public List<GeminiModelInfo> GetAvailableModels()
@@ -30,9 +29,18 @@ public class Google : IAiApiProvider, IDisposable
         [
             new GeminiModelInfo
             {
-                Id = Models.Gemini25ProExp,
-                Name = "Gemini 2.5 Pro Experimental",
-                Description = "1M context - $TBA/M input tokens - $TBA/M output tokens.",
+                Id = Models.Gemini25FlashPreview,
+                Name = "Gemini 2.5 Flash Preview",
+                Description = "1M context - $0.15/M input tokens - $3.5/M output tokens.",
+                ContextLength = 1000000,
+                ApiVersion = "v1beta"
+            },
+
+            new GeminiModelInfo
+            {
+                Id = Models.Gemini25ProPreview,
+                Name = "Gemini 2.5 Pro Preview",
+                Description = "1M context - $2.5/M input tokens - $15.0/M output tokens.",
                 ContextLength = 1000000,
                 ApiVersion = "v1beta"
             },
@@ -41,7 +49,7 @@ public class Google : IAiApiProvider, IDisposable
             {
                 Id = Models.Gemini20Flash,
                 Name = "Gemini 2.0 Flash",
-                Description = "1M context - $0,1/M input tokens - $0,4/M output tokens.",
+                Description = "1M context - $0.1/M input tokens - $0.4/M output tokens.",
                 ContextLength = 1000000,
                 ApiVersion = "v1beta"
             },
@@ -50,27 +58,9 @@ public class Google : IAiApiProvider, IDisposable
             {
                 Id = Models.Gemini20FlashLite,
                 Name = "Gemini 2.0 Flash-Lite",
-                Description = "1M context - $0,075/M input tokens - $0,3/M output tokens.",
+                Description = "1M context - $0.075/M input tokens - $0.3/M output tokens.",
                 ContextLength = 1000000,
                 ApiVersion = "v1beta"
-            },
-
-            new GeminiModelInfo
-            {
-                Id = Models.Gemini15Flash,
-                Name = "Gemini 1.5 Flash",
-                Description = "1M context - $0,075/M input tokens - $0,3/M output tokens.",
-                ContextLength = 1000000,
-                ApiVersion = "v1"
-            },
-
-            new GeminiModelInfo
-            {
-                Id = Models.Gemini15Pro,
-                Name = "Gemini 1.5 Pro",
-                Description = "2M context - $2,5/M input tokens - $10/M output tokens.",
-                ContextLength = 2000000,
-                ApiVersion = "v1"
             }
         ];
     }
@@ -129,16 +119,12 @@ public class Google : IAiApiProvider, IDisposable
                 parts = new[] { new { text = prompt } }
             });
 
-            // Get the appropriate output token limit based on model
-            var maxOutputTokens = GetMaxTokensForModel(modelId);
-
             var requestData = new
             {
                 contents = contents.ToArray(),
                 generationConfig = new
                 {
-                    maxOutputTokens,
-                    temperature = 0.7
+                    temperature = 0.3
                 }
             };
 
@@ -198,19 +184,6 @@ public class Google : IAiApiProvider, IDisposable
         }
     }
 
-    private static int GetMaxTokensForModel(string model)
-    {
-        return model switch
-        {
-            Models.Gemini25ProExp => 8192,
-            Models.Gemini20Flash => 8192,
-            Models.Gemini20FlashLite => 8192,
-            Models.Gemini15Flash => 8192,
-            Models.Gemini15Pro => 8192,
-            _ => 4096 // Default for gemini-pro and others
-        };
-    }
-
     public void Dispose()
     {
         _httpClient?.Dispose();
@@ -220,6 +193,5 @@ public class Google : IAiApiProvider, IDisposable
 
 public class GeminiModelInfo : ModelInfo
 {
-    // Keep the ApiVersion property which is specific to Google
-    public string ApiVersion { get; set; } = "v1";
+    public string ApiVersion { get; set; } = "v1beta";
 }

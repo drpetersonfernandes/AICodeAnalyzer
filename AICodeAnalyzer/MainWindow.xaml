@@ -410,7 +410,8 @@
                                     Content="◀" FontSize="14" Width="30" Height="30"
                                     ToolTip="View Previous Response"
                                     Click="BtnPreviousResponse_Click"
-                                    IsEnabled="False" Margin="0,0,5,0" />
+                                    IsEnabled="False" Margin="0,0,5,0"
+                                    Style="{StaticResource ZoomButtonStyle}" />
 
                             <TextBlock x:Name="TxtResponseCounter"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -420,9 +421,10 @@
                                     Content="▶" FontSize="14" Width="30" Height="30"
                                     ToolTip="View Next Response"
                                     Click="BtnNextResponse_Click"
-                                    IsEnabled="False" Margin="5,0,0,0" />
+                                    IsEnabled="False" Margin="5,0,0,0"
+                                    Style="{StaticResource ZoomButtonStyle}" />
                         </StackPanel>
-                        
+
                         <!-- Zoom Controls -->
                         <StackPanel Orientation="Horizontal"
                                     Grid.Column="3"
@@ -444,8 +446,9 @@
                                     Content="↻"
                                     Click="BtnResetZoom_Click"
                                     Style="{StaticResource ZoomButtonStyle}"
-                                    ToolTip="Reset Zoom to 100%" />
-
+                                    ToolTip="Reset Zoom to 100%"
+                                    Margin="5,0,0,0"/>
+                            
                             <Button x:Name="BtnZoomIn"
                                     Width="32" Height="32"
                                     FontSize="18"
@@ -453,7 +456,9 @@
                                     Click="BtnZoomIn_Click"
                                     Style="{StaticResource ZoomButtonStyle}"
                                     ToolTip="Zoom In the Response" />
+
                         </StackPanel>
+
                     </Grid>
                     
                     <!-- Bottom Control Bar (Save/Toggle) -->

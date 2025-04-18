@@ -125,7 +125,7 @@ public class AiProviderService(LoggingService loggingService)
             }
             else
             {
-                response = await provider.SendPromptWithModelAsync(key, prompt, conversationHistory);
+                response = "Please select the AI Model";
             }
 
             // Log response received
