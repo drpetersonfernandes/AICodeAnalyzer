@@ -46,23 +46,4 @@
     <Compile Remove="Markdown\SyntaxHighlightingExtensions.cs" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Remove="Assets\Prism\prism.js" />
-    <Content Include="Assets\Prism\prism.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <None Remove="Assets\Prism\prism-csharp.min.js" />
-    <Content Include="Assets\Prism\prism-csharp.min.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <None Remove="Assets\Prism\prism-python.min.js" />
-    <Content Include="Assets\Prism\prism-python.min.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <None Remove="Assets\Prism\prism-tomorrow.css" />
-    <Content Include="Assets\Prism\prism-tomorrow.css">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
 </Project>
