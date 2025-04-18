@@ -17,12 +17,12 @@ public class TokenCounterService
     // Default token ratios for different models (tokens per character) - used as fallback
     private readonly Dictionary<string, double> _tokenRatios = new()
     {
-        { "gpt-4", 0.25 }, // GPT-4 series
-        { "gpt-3.5", 0.25 }, // GPT-3.5 series
-        { "claude", 0.26 }, // Anthropic models
-        { "gemini", 0.24 }, // Google models
-        { "deepseek", 0.25 }, // DeepSeek models
-        { "default", 0.25 } // Default fallback ratio
+        // { "gpt-4", 0.25 }, // GPT-4 series
+        // { "gpt-3.5", 0.25 }, // GPT-3.5 series
+        // { "claude", 0.26 }, // Anthropic models
+        // { "gemini", 0.24 }, // Google models
+        // { "deepseek", 0.25 }, // DeepSeek models
+        { "default", 0.26 } // Default fallback ratio
     };
 
     // Token limits for common models
@@ -40,9 +40,6 @@ public class TokenCounterService
 
     private readonly LoggingService _loggingService;
 
-    /// <summary>
-    /// Initializes a new instance of the TokenCounterService class
-    /// </summary>
     public TokenCounterService(LoggingService loggingService)
     {
         _loggingService = loggingService;
@@ -54,18 +51,12 @@ public class TokenCounterService
         catch (Exception ex)
         {
             _loggingService.LogOperation($"Failed to initialize default encoding {DefaultEncodingName}: {ex.Message}");
+
             // Fallback to estimation if SharpToken is unavailable
             // No action needed here as we'll use the fallback method
         }
     }
 
-    /// <summary>
-    /// Calculates total tokens for a list of source files and a prompt template
-    /// </summary>
-    /// <param name="sourceFiles">The source files to analyze</param>
-    /// <param name="promptTemplate">The prompt template text</param>
-    /// <param name="encodingName">Optional encoding name to use</param>
-    /// <returns>Detailed token calculation result</returns>
     public TokenCalculationResult CalculateTotalTokens(
         List<SourceFile> sourceFiles,
         string promptTemplate,
@@ -84,9 +75,6 @@ public class TokenCounterService
         }
     }
 
-    /// <summary>
-    /// Calculates tokens accurately using the SharpToken library
-    /// </summary>
     private TokenCalculationResult CalculateTokensWithSharpToken(
         List<SourceFile> sourceFiles,
         string promptTemplate,
@@ -111,6 +99,7 @@ public class TokenCounterService
             catch (Exception ex)
             {
                 _loggingService.LogOperation($"Error encoding prompt template: {ex.Message}. Skipping SharpToken for prompt.");
+
                 result.PromptTemplateTokens = EstimateTokenCount(promptTemplate.Length);
                 result.TotalTokens += result.PromptTemplateTokens;
             }
@@ -170,9 +159,6 @@ public class TokenCounterService
         return result;
     }
 
-    /// <summary>
-    /// Counts tokens in a source file, including tokens for formatting
-    /// </summary>
     private int CountFileTokens(SourceFile file, GptEncoding encoding)
     {
         if (file == null || string.IsNullOrEmpty(file.Content))
@@ -217,9 +203,6 @@ public class TokenCounterService
         return headerTokens + contentTokens + footerTokens;
     }
 
-    /// <summary>
-    /// Estimates tokens using character counts when SharpToken is unavailable
-    /// </summary>
     private TokenCalculationResult EstimateTokens(List<SourceFile> sourceFiles, string promptTemplate)
     {
         var result = new TokenCalculationResult();
@@ -277,27 +260,18 @@ public class TokenCounterService
         return result;
     }
 
-    /// <summary>
-    /// Estimates token count from character count
-    /// </summary>
     private int EstimateTokenCount(int characterCount)
     {
         // Use a default ratio (0.25 tokens per character is a reasonable approximation)
         return (int)Math.Ceiling(characterCount * _tokenRatios["default"]);
     }
 
-    /// <summary>
-    /// Estimates overhead tokens based on file count
-    /// </summary>
-    private int EstimateOverheadTokens(int fileCount)
+    private static int EstimateOverheadTokens(int fileCount)
     {
         // Estimate overhead for file separators, formatting, etc.
         return 200 + fileCount * 20; // Base overhead + per-file overhead
     }
 
-    /// <summary>
-    /// Adds model compatibility information to the result
-    /// </summary>
     private void AddModelCompatibilityInfo(TokenCalculationResult result)
     {
         const double warningThreshold = 0.9; // 90% of model's capacity

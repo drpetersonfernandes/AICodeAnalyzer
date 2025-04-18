@@ -19,9 +19,6 @@ public partial class FileAssociationManager(Action<string> logInfo, Action<strin
     private readonly Action<string> _logInfo = logInfo;
     private readonly Action<string> _logError = logError;
 
-    /// <summary>
-    /// Checks if the application is currently registered for MD files
-    /// </summary>
     public bool IsApplicationRegistered()
     {
         try
@@ -40,9 +37,6 @@ public partial class FileAssociationManager(Action<string> logInfo, Action<strin
         }
     }
 
-    /// <summary>
-    /// Registers the application as the handler for MD files
-    /// </summary>
     public bool RegisterApplication()
     {
         try
@@ -97,22 +91,20 @@ public partial class FileAssociationManager(Action<string> logInfo, Action<strin
         catch (Exception ex)
         {
             _logError($"Error registering application: {ex.Message}");
-            ErrorLogger.LogError(ex, "Registering file association");
+            ErrorLogger.LogError(ex, "Error registering file association");
+
             return false;
         }
     }
 
-    /// <summary>
-    /// Unregisters the application as the handler for MD files
-    /// </summary>
     public void UnregisterApplication()
     {
         try
         {
-            // Check if we're actually registered
             if (!IsApplicationRegistered())
             {
                 _logInfo("Application is not registered as handler for .md files");
+
                 return;
             }
 
@@ -150,18 +142,15 @@ public partial class FileAssociationManager(Action<string> logInfo, Action<strin
         catch (Exception ex)
         {
             _logError($"Error unregistering application: {ex.Message}");
-            ErrorLogger.LogError(ex, "Unregistering file association");
+            ErrorLogger.LogError(ex, "Error unregistering file association");
         }
     }
 
-    /// <summary>
-    /// Gets the path to the application executable
-    /// </summary>
     private string GetExecutablePath()
     {
         try
         {
-            // First try: Get path from current process
+            // First try: Get the path from the current process
             var processPath = Process.GetCurrentProcess().MainModule?.FileName;
             if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath) && processPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
             {
@@ -193,7 +182,7 @@ public partial class FileAssociationManager(Action<string> logInfo, Action<strin
                 return fallbackPath;
             }
 
-            // Last resort: Find any EXE in current directory
+            // Last resort: Find any EXE in the current directory
             var exeFiles = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.exe");
             if (exeFiles.Length > 0)
             {
@@ -206,6 +195,7 @@ public partial class FileAssociationManager(Action<string> logInfo, Action<strin
         catch (Exception ex)
         {
             _logError($"Error getting executable path: {ex.Message}");
+
             return string.Empty;
         }
     }

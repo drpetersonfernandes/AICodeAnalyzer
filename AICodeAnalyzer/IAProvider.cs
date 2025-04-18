@@ -1,6 +1,6 @@
 ﻿namespace AICodeAnalyzer;
 
-public interface IAiApiProvider
+public interface IAProvider
 {
     string Name { get; }
 }

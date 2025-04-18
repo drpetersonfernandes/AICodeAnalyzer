@@ -104,13 +104,13 @@ public class ApiKeyManager
                     provider.Keys.Remove(badKey);
                 }
 
-                // Replace with decrypted keys (only valid encrypted keys)
+                // Replace it with decrypted keys (only valid encrypted keys)
                 provider.Keys = decryptedKeys;
             }
 
             if (keysChanged)
             {
-                // Save cleaned up keys back to disk
+                // Save cleaned-up keys back to disk
                 SaveKeysEncrypted(storage);
             }
 
@@ -153,6 +153,7 @@ public class ApiKeyManager
         catch (Exception ex)
         {
             ErrorLogger.LogError(ex, "Error saving encrypted API keys");
+
             MessageBox.Show("Failed to securely save API keys. See error log for details.",
                 "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
@@ -190,6 +191,7 @@ public class ApiKeyManager
         catch (Exception ex)
         {
             ErrorLogger.LogError(ex, "Error saving encrypted API keys");
+
             MessageBox.Show("Failed to save API keys securely. See error log for details.",
                 "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
@@ -218,9 +220,10 @@ public class ApiKeyManager
             var decryptedBytes = ProtectedData.Unprotect(encryptedBytes, null, DataProtectionScope.CurrentUser);
             return Encoding.UTF8.GetString(decryptedBytes);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Log error if desired
+            ErrorLogger.LogError(ex, "Key decryption failed");
+
             return string.Empty; // Decryption failed - treat as empty
         }
     }

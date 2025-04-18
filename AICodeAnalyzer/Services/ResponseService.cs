@@ -7,7 +7,7 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.Services;
 
-public class ResponseService(LoggingService loggingService, FileService fileService)
+public sealed class ResponseService(LoggingService loggingService, FileService fileService)
 {
     private readonly LoggingService _loggingService = loggingService;
     private readonly FileService _fileService = fileService;
@@ -27,8 +27,8 @@ public class ResponseService(LoggingService loggingService, FileService fileServ
     public List<ChatMessage> ConversationHistory { get; } = new();
 
     // Events
-    public event EventHandler ResponseUpdated = delegate { };
-    public event EventHandler NavigationChanged = delegate { };
+    public event EventHandler ResponseUpdated = static delegate { };
+    public event EventHandler NavigationChanged = static delegate { };
 
     public void SetCurrentFilePath(string path)
     {
@@ -142,7 +142,7 @@ public class ResponseService(LoggingService loggingService, FileService fileServ
         }
         else
         {
-            // Display as 1-based index for the user (1 of 1 instead of 0 of 0)
+            // Display as a 1-based index for the user (1 of 1 instead of 0 of 0)
             return $"Response {_currentResponseIndex + 1} of {assistantResponses}";
         }
     }
@@ -205,12 +205,12 @@ public class ResponseService(LoggingService loggingService, FileService fileServ
     }
 
     // Event invokers
-    protected virtual void OnResponseUpdated()
+    private void OnResponseUpdated()
     {
         ResponseUpdated?.Invoke(this, EventArgs.Empty);
     }
 
-    protected virtual void OnNavigationChanged()
+    private void OnNavigationChanged()
     {
         NavigationChanged?.Invoke(this, EventArgs.Empty);
     }

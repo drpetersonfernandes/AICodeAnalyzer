@@ -29,6 +29,7 @@ public partial class App
             if (e.Args.Length <= 0) return;
 
             var filePath = e.Args[0];
+
             // Store the file path for later use in MainWindow
             Properties["StartupFilePath"] = filePath;
 
@@ -63,11 +64,17 @@ public partial class App
     private static void LogError(string message)
     {
         Console.WriteLine($"ERROR: {message}");
+
+        var ex = new Exception($"ERROR: {message}");
+        ErrorLogger.LogError(ex, $"ERROR: {message}");
     }
 
     private static void LogInformation(string message)
     {
         Console.WriteLine($"INFORMATION: {message}");
+
+        var ex = new Exception($"INFORMATION: {message}");
+        ErrorLogger.LogError(ex, $"INFORMATION: {message}");
     }
 
     public async Task UpdateFileAssociationAsync(bool register)

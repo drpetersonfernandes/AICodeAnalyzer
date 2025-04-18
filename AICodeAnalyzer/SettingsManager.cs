@@ -74,10 +74,8 @@ public class SettingsManager
         }
         catch (Exception ex)
         {
-            // In a real app, we might want to log this exception
-            Console.WriteLine($"Error saving settings: {ex.Message}");
-
             ErrorLogger.LogError(ex, $"Error saving settings: {ex.Message}");
+
             MessageBox.Show("Error saving settings.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -139,7 +137,5 @@ public class SettingsManager
         // Add the existing InitialPrompt as a "Default" template
         settings.CodePrompts.Add(new CodePrompt("Analyze Source Code", settings.InitialPrompt));
         settings.SelectedPromptName = "Analyze Source Code";
-
-        // Add more migration logic here if needed for future versions
     }
 }

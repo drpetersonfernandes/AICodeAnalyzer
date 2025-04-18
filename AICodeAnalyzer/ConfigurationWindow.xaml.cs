@@ -34,7 +34,7 @@ public partial class ConfigurationWindow
             SelectedPromptName = _settingsManager.Settings.SelectedPromptName
         };
 
-        // Clone the prompts list without duplicates
+        // Clone the prompt list without duplicates
         var uniquePromptNames = new HashSet<string>();
 
         // First pass to collect all prompt names and add them to a HashSet for uniqueness check
@@ -157,9 +157,7 @@ public partial class ConfigurationWindow
             }
         }
 
-        // Update buttons based on selection
         UpdatePromptButtons();
-
         InitializeFileAssociationTab();
     }
 
@@ -174,8 +172,9 @@ public partial class ConfigurationWindow
         }
         catch (Exception ex)
         {
-            // Log the error
             System.Diagnostics.Debug.WriteLine($"Error checking file association: {ex.Message}");
+            ErrorLogger.LogError(ex, $"Error checking file association: {ex.Message}");
+
             return false;
         }
     }
@@ -591,14 +590,13 @@ public partial class ConfigurationWindow
         // Load all keys for all providers
         LoadAllProviderKeys();
 
-        // Default select first provider if available
+        // Default selects first provider if available
         if (CboApiProviders.Items.Count > 0)
         {
             CboApiProviders.SelectedIndex = 0;
         }
     }
 
-// Load all keys for all providers
     private void LoadAllProviderKeys()
     {
         _providerKeysMap.Clear();
@@ -627,7 +625,6 @@ public partial class ConfigurationWindow
         }
     }
 
-// Mask API keys for display (show only first 4 and last 4 characters)
     private static string MaskKey(string key)
     {
         if (string.IsNullOrEmpty(key))
@@ -639,9 +636,7 @@ public partial class ConfigurationWindow
         return $"{key[..4]}...{key[^4..]}";
     }
 
-
-// Update the ListView when provider selection changes
-    private void CboApiProviders_SelectionChanged(object? sender, SelectionChangedEventArgs? e)
+    private void ApiProviders_SelectionChanged(object? sender, SelectionChangedEventArgs? e)
     {
         if (CboApiProviders.SelectedItem is string selectedProvider)
         {
@@ -659,12 +654,11 @@ public partial class ConfigurationWindow
         }
         else
         {
-            // Default to empty list if no provider is selected
+            // Default to an empty list if no provider is selected
             LvApiKeys.ItemsSource = new List<ApiKeyItem>();
         }
     }
 
-// Handle adding a new key
     private void BtnAddKey_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_currentProvider))
@@ -681,12 +675,13 @@ public partial class ConfigurationWindow
             return;
         }
 
-        // Check if key already exists
+        // Check if the key already exists
         if (_providerKeysMap.TryGetValue(_currentProvider, out var existingKeys))
         {
             if (existingKeys.Any(k => k.ActualKey == newKey))
             {
                 MessageBox.Show("This API key already exists for this provider.", "Duplicate Key", MessageBoxButton.OK, MessageBoxImage.Warning);
+
                 return;
             }
         }
@@ -696,17 +691,17 @@ public partial class ConfigurationWindow
 
         // Refresh UI
         LoadAllProviderKeys();
-        CboApiProviders_SelectionChanged(null, null);
+        ApiProviders_SelectionChanged(null, null);
 
         // Clear the input field
         TxtNewApiKey.Password = string.Empty;
     }
 
-// Handle removing a key
     private void BtnRemoveKey_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { DataContext: ApiKeyItem keyItem } ||
             string.IsNullOrEmpty(keyItem.ActualKey)) return;
+
         // Ask for confirmation
         var result = MessageBox.Show(
             "Are you sure you want to remove this API key?",
@@ -715,12 +710,13 @@ public partial class ConfigurationWindow
             MessageBoxImage.Question);
 
         if (result != MessageBoxResult.Yes) return;
+
         // Remove the key using our new method
         if (_apiKeyManager.RemoveKey(_currentProvider, keyItem.ActualKey))
         {
             // Refresh UI
             LoadAllProviderKeys();
-            CboApiProviders_SelectionChanged(null, null);
+            ApiProviders_SelectionChanged(null, null);
         }
         else
         {

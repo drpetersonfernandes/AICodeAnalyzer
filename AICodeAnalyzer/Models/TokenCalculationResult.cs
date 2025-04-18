@@ -5,73 +5,30 @@ using System.Text;
 
 namespace AICodeAnalyzer.Models;
 
-/// <summary>
-/// Contains detailed information about token calculations
-/// </summary>
 public class TokenCalculationResult
 {
-    /// <summary>
-    /// Total number of tokens including all components
-    /// </summary>
     public int TotalTokens { get; set; }
-
-    /// <summary>
-    /// Tokens in the initial prompt or system message
-    /// </summary>
     public int PromptTemplateTokens { get; set; }
-
-    /// <summary>
-    /// Total tokens in file contents
-    /// </summary>
     public int FileTokens { get; set; }
-
-    /// <summary>
-    /// Tokens from section headers and formatting
-    /// </summary>
     public int SectionHeadersTokens { get; set; }
-
-    /// <summary>
-    /// Buffer tokens added for safety
-    /// </summary>
     public int BufferTokens { get; set; }
 
-    /// <summary>
-    /// Alias for backward compatibility
-    /// </summary>
     public int PromptTokens
     {
         get => PromptTemplateTokens;
         set => PromptTemplateTokens = value;
     }
 
-    /// <summary>
-    /// Alias for backward compatibility
-    /// </summary>
     public int OverheadTokens
     {
         get => SectionHeadersTokens + BufferTokens;
         set => SectionHeadersTokens = value; // Simple assignment for compatibility
     }
 
-    /// <summary>
-    /// Detailed breakdown of tokens by file
-    /// </summary>
     public Dictionary<string, int> TokensByFile { get; } = new();
-
-    /// <summary>
-    /// Detailed breakdown of tokens by file extension
-    /// </summary>
     public Dictionary<string, int> TokensByExtension { get; set; } = new();
-
-    /// <summary>
-    /// Compatibility information for different models
-    /// </summary>
     public Dictionary<string, string> ModelCompatibility { get; set; } = new();
 
-    /// <summary>
-    /// Gets a human-readable breakdown of the token allocation
-    /// </summary>
-    /// <returns>A string describing the token breakdown</returns>
     public string GetBreakdown()
     {
         var sb = new StringBuilder();

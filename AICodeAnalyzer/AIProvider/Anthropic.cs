@@ -9,7 +9,7 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class Anthropic : IAiApiProvider, IDisposable
+public class Anthropic : IAProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
@@ -63,51 +63,58 @@ public class Anthropic : IAiApiProvider, IDisposable
 
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
     {
-        var model = modelId;
-        const string apiUrl = "https://api.anthropic.com/v1/messages";
-
-        _httpClient.DefaultRequestHeaders.Clear();
-        _httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
-        _httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-
-        // Properly format the message history for Anthropic API
-        var messages = new List<object>();
-
-        // Add each message from history with the proper format
-        foreach (var msg in conversationHistory)
+        try
         {
-            messages.Add(new { role = msg.Role, content = msg.Content });
+            var model = modelId;
+            const string apiUrl = "https://api.anthropic.com/v1/messages";
+
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("x-api-key", apiKey);
+            _httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+
+            // Properly format the message history for Anthropic API
+            var messages = new List<object>();
+
+            // Add each message from history with the proper format
+            foreach (var msg in conversationHistory)
+            {
+                messages.Add(new { role = msg.Role, content = msg.Content });
+            }
+
+            // Add the current prompt
+            messages.Add(new { role = "user", content = prompt });
+
+            var requestData = new
+            {
+                model,
+                messages
+            };
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(requestData),
+                Encoding.UTF8,
+                "application/json");
+
+            var response = await _httpClient.PostAsync(apiUrl, content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorText = await response.Content.ReadAsStringAsync();
+                throw new Exception($"API error ({response.StatusCode}): {errorText}");
+            }
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(responseJson);
+
+            return doc.RootElement.GetProperty("content").EnumerateArray()
+                .First(static x => x.GetProperty("type").GetString() == "text")
+                .GetProperty("text").GetString() ?? "No response";
         }
-
-        // Add the current prompt
-        messages.Add(new { role = "user", content = prompt });
-
-        var requestData = new
+        catch (Exception ex)
         {
-            model,
-            messages
-            // max_tokens = 4096
-        };
-
-        var content = new StringContent(
-            JsonSerializer.Serialize(requestData),
-            Encoding.UTF8,
-            "application/json");
-
-        var response = await _httpClient.PostAsync(apiUrl, content);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var errorText = await response.Content.ReadAsStringAsync();
-            throw new Exception($"API error ({response.StatusCode}): {errorText}");
+            ErrorLogger.LogError(ex, $"There was an error in the method SendPromptWithModelAsync with model {modelId}");
+            return "There was an error with your request.";
         }
-
-        var responseJson = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(responseJson);
-
-        return doc.RootElement.GetProperty("content").EnumerateArray()
-            .First(static x => x.GetProperty("type").GetString() == "text")
-            .GetProperty("text").GetString() ?? "No response";
     }
 
     public void Dispose()

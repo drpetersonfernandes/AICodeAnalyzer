@@ -9,7 +9,7 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class OpenAi : IAiApiProvider, IDisposable
+public class OpenIa : IAProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
@@ -108,77 +108,82 @@ public class OpenAi : IAiApiProvider, IDisposable
 
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
     {
-        var model = modelId;
-        const string apiUrl = "https://api.openai.com/v1/chat/completions";
-
-        _httpClient.DefaultRequestHeaders.Clear();
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
-        // Properly format the message history for OpenAI API
-        var messages = new List<object>();
-
-        // First add a system message if this is the first message
-        if (conversationHistory.Count == 0)
+        try
         {
-            messages.Add(new { role = "system", content = "You are a helpful assistant specializing in code review and analysis." });
-        }
-        else
-        {
-            // Add each message from history with the proper format
-            foreach (var msg in conversationHistory)
+            var model = modelId;
+            const string apiUrl = "https://api.openai.com/v1/chat/completions";
+
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            // Properly format the message history for OpenAI API
+            var messages = new List<object>();
+
+            // First add a system message if this is the first message
+            if (conversationHistory.Count == 0)
             {
-                messages.Add(new { role = msg.Role, content = msg.Content });
+                messages.Add(new { role = "system", content = "You are a helpful assistant specializing in code review and analysis." });
             }
-        }
-
-        // Add the current prompt
-        messages.Add(new { role = "user", content = prompt });
-
-        // // Set max tokens based on the model
-        // var maxTokens = GetMaxTokensForModel();
-
-        var requestData = new
-        {
-            model,
-            messages
-        };
-
-        var content = new StringContent(
-            JsonSerializer.Serialize(requestData),
-            Encoding.UTF8,
-            "application/json");
-
-        var response = await _httpClient.PostAsync(apiUrl, content);
-
-        JsonDocument? doc;
-        if (!response.IsSuccessStatusCode)
-        {
-            var errorText = await response.Content.ReadAsStringAsync();
-
-            // Try to parse the error for a more user-friendly message
-            try
+            else
             {
-                doc = JsonDocument.Parse(errorText);
-                if (doc.RootElement.TryGetProperty("error", out var errorElement) &&
-                    errorElement.TryGetProperty("message", out var messageElement))
+                // Add each message from history with the proper format
+                foreach (var msg in conversationHistory)
                 {
-                    errorText = messageElement.GetString() ?? errorText;
+                    messages.Add(new { role = msg.Role, content = msg.Content });
                 }
             }
-            catch
+
+            // Add the current prompt
+            messages.Add(new { role = "user", content = prompt });
+
+            var requestData = new
             {
-                // If parsing fails, use the original error text
+                model,
+                messages
+            };
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(requestData),
+                Encoding.UTF8,
+                "application/json");
+
+            var response = await _httpClient.PostAsync(apiUrl, content);
+
+            JsonDocument? doc;
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorText = await response.Content.ReadAsStringAsync();
+
+                // Try to parse the error for a more user-friendly message
+                try
+                {
+                    doc = JsonDocument.Parse(errorText);
+                    if (doc.RootElement.TryGetProperty("error", out var errorElement) &&
+                        errorElement.TryGetProperty("message", out var messageElement))
+                    {
+                        errorText = messageElement.GetString() ?? errorText;
+                    }
+                }
+                catch
+                {
+                    // If parsing fails, use the original error text
+                }
+
+                throw new Exception($"API error ({response.StatusCode}): {errorText}");
             }
 
-            throw new Exception($"API error ({response.StatusCode}): {errorText}");
+            var responseJson = await response.Content.ReadAsStringAsync();
+            doc = JsonDocument.Parse(responseJson);
+
+            return doc.RootElement.GetProperty("choices")[0]
+                .GetProperty("message")
+                .GetProperty("content").GetString() ?? "No response";
         }
-
-        var responseJson = await response.Content.ReadAsStringAsync();
-        doc = JsonDocument.Parse(responseJson);
-
-        return doc.RootElement.GetProperty("choices")[0]
-            .GetProperty("message")
-            .GetProperty("content").GetString() ?? "No response";
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, $"There was an error with model {modelId}");
+            return "There was an error with your request.";
+        }
     }
 
     public void Dispose()

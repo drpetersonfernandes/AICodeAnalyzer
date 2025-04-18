@@ -54,7 +54,7 @@ public class UiStateManager
                 // Start the timer for the animation
                 _statusUpdateTimer.Start();
 
-                // Only show wait cursor to indicate processing
+                // Only show the wait cursor to indicate processing
                 Mouse.OverrideCursor = Cursors.Wait;
 
                 _loggingService.LogOperation($"Processing started: {statusMessage}");
@@ -67,7 +67,7 @@ public class UiStateManager
                 // Clear the wait cursor
                 Mouse.OverrideCursor = null;
 
-                // Reset status message if we're no longer processing
+                // Reset the status message if we're no longer processing
                 _statusTextBlock.Text = "Ready";
 
                 _loggingService.LogOperation("Processing completed");

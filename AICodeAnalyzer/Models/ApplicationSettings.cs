@@ -7,15 +7,10 @@ namespace AICodeAnalyzer.Models;
 [Serializable]
 public class ApplicationSettings
 {
-    // File extensions settings
     public List<string> SourceFileExtensions { get; set; }
-
-    // File size limitations
     public int MaxFileSizeKb { get; set; } = 1024; // Default 1MB
-
     public bool RegisterAsDefaultMdHandler { get; set; }
 
-    // Initial prompt for code analysis - kept for backward compatibility
     public string InitialPrompt
     {
         get => SelectedPromptName != null && CodePrompts.Count > 0
@@ -49,13 +44,9 @@ public class ApplicationSettings
         }
     }
 
-    // Collection of code prompts
     public List<CodePrompt> CodePrompts { get; set; } = new();
 
-    // Currently selected prompt name
     public string? SelectedPromptName { get; set; }
-
-    // Other settings can be added here in the future
 
     // Default prompt text
     private static string DefaultPrompt =>
@@ -68,14 +59,10 @@ public class ApplicationSettings
         Environment.NewLine +
         "Here are all the files from my project:";
 
-    // Constructor with default values
-    // Constructor with all supported extensions
     public ApplicationSettings()
     {
-        // All supported extensions organized by category
-        SourceFileExtensions = new List<string>
-        {
-            // C# and .NET
+        SourceFileExtensions =
+        [
             ".cs", ".vb", ".fs", ".xaml", ".csproj", ".vbproj", ".fsproj",
             ".nuspec", ".aspx", ".asp", ".cshtml", ".axaml",
 
@@ -128,9 +115,8 @@ public class ApplicationSettings
 
             // Configuration/Infrastructure
             ".ini", ".toml", ".tf", ".tfvars", ".proto", ".config"
-        };
+        ];
 
-        // Set up default prompt
         CodePrompts.Add(new CodePrompt("Analyze Source Code", DefaultPrompt));
         SelectedPromptName = "Analyze Source Code";
     }

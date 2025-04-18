@@ -63,7 +63,6 @@ public class RecentFilesManager
         }
         catch (Exception ex)
         {
-            // Log error but continue - adding to recent files is non-critical
             ErrorLogger.LogError(ex, $"Error adding file to recent files: {filePath}");
         }
     }
@@ -106,6 +105,7 @@ public class RecentFilesManager
         {
             // If there's an error loading the recent files, start with an empty list
             _recentFiles = [];
+
             ErrorLogger.LogError(ex, "Loading recent files");
         }
     }

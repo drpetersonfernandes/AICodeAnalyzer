@@ -9,7 +9,7 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class DeepSeek : IAiApiProvider, IDisposable
+public class DeepSeek : IAProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(300) };
 
@@ -164,18 +164,15 @@ public class DeepSeek : IAiApiProvider, IDisposable
         }
         catch (TaskCanceledException ex)
         {
-            // Log the exception or handle it appropriately.
-            Console.WriteLine($"Request timed out: {ex.Message}");
-            throw; // Re-throw the exception to be handled upstream.
+            ErrorLogger.LogError(ex, $"Request timed out with model {modelId}");
+            return "There was an error with your request.";
         }
         catch (Exception ex)
         {
-            // Handle other exceptions as needed.
-            Console.WriteLine($"An error occurred: {ex.Message}");
-            throw;
+            ErrorLogger.LogError(ex, $"An error occurred with model {modelId}");
+            return "There was an error with your request.";
         }
     }
-
 
     private static string GetSystemPromptForModel(string model)
     {

@@ -22,7 +22,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
     public IReadOnlyDictionary<string, List<SourceFile>> FilesByExtension => _filesByExtension;
 
     // Initialize the event with an empty delegate to avoid null checks
-    public event EventHandler FilesChanged = delegate { };
+    public event EventHandler FilesChanged = static delegate { };
 
     public async Task<bool> SelectFolderAsync()
     {
@@ -73,6 +73,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
             };
 
             if (dialog.ShowDialog() != true) return false;
+
             // Initialize the file collection if this is the first selection
             if (string.IsNullOrEmpty(SelectedFolder))
             {
@@ -100,6 +101,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         {
             _loggingService.LogOperation($"Error selecting files: {ex.Message}");
             ErrorLogger.LogError(ex, "Selecting files");
+
             return false;
         }
     }
@@ -108,7 +110,6 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
     {
         try
         {
-            // Clear the file collections
             _filesByExtension.Clear();
             SelectedFolder = string.Empty;
 
@@ -135,7 +136,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
 
             if (!consolidatedFiles.TryGetValue(ext, out var value))
             {
-                value = new List<string>();
+                value = [];
                 consolidatedFiles[ext] = value;
             }
 
@@ -163,29 +164,27 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
                     MessageBoxButton.YesNoCancel,
                     MessageBoxImage.Question);
 
-                if (result == MessageBoxResult.Yes)
+                switch (result)
                 {
-                    // Save on background thread
-                    await Task.Run(() => File.WriteAllText(currentFilePath, responseText));
+                    case MessageBoxResult.Yes:
+                        await Task.Run(() => File.WriteAllText(currentFilePath, responseText));
 
-                    _loggingService.LogOperation($"Overwrote file: {currentFilePath}");
-                    MessageBox.Show($"File saved: {Path.GetFileName(currentFilePath)}", "Save Successful",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
-                    return currentFilePath;
+                        _loggingService.LogOperation($"Overwrote file: {currentFilePath}");
+
+                        MessageBox.Show($"File saved: {Path.GetFileName(currentFilePath)}", "Save Successful",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+
+                        return currentFilePath;
+                    default:
+                        // User canceled the operation
+                        return currentFilePath;
                 }
-                else if (result == MessageBoxResult.Cancel)
-                {
-                    // User canceled the operation
-                    return currentFilePath;
-                }
-                // If No, continue to the save dialog
             }
 
-            // Create a save file dialog
             var saveFileDialog = new SaveFileDialog
             {
                 Filter = "Markdown files (*.md)|*.md|Text files (*.txt)|*.txt|All files (*.*)|*.*",
-                DefaultExt = "md", // Default to Markdown since the responses are markdown formatted
+                DefaultExt = "md",
                 Title = "Save AI Analysis Response"
             };
 
@@ -211,23 +210,25 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
 
             // If the user clicked OK, save the file
             if (dialogResult != true) return currentFilePath;
+
             // Save on background thread
             await Task.Run(() => File.WriteAllText(saveFileDialog.FileName, responseText));
 
             _loggingService.LogOperation($"Saved response to: {saveFileDialog.FileName}");
+
             MessageBox.Show($"Response saved to {saveFileDialog.FileName}", "Save Successful", MessageBoxButton.OK,
                 MessageBoxImage.Information);
 
-            return saveFileDialog.FileName;
-
-            // Return the original file path if save was canceled
+            return saveFileDialog.FileName; // Return the original file path if save was canceled
         }
         catch (Exception ex)
         {
             _loggingService.LogOperation($"Error saving response: {ex.Message}");
             ErrorLogger.LogError(ex, "Saving response to file");
+
             MessageBox.Show("An error occurred while saving the response.", "Save Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
+
             return currentFilePath;
         }
     }
@@ -244,7 +245,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
                 _loggingService.LogOperation($"Created AiOutput directory at {outputDirectory}");
             }
 
-            // Generate a filename based on project name (if available) and timestamp
+            // Generate a filename based on the project name (if available) and timestamp
             var projectName = "unknown";
             if (!string.IsNullOrEmpty(SelectedFolder))
             {
@@ -258,7 +259,6 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
             var filename = $"{projectName}_response_{responseIndex + 1}_{timestamp}.md";
             var filePath = Path.Combine(outputDirectory, filename);
 
-            // Save the response
             File.WriteAllText(filePath, responseText);
             _loggingService.LogOperation($"Auto-saved response #{responseIndex + 1} to {filename}");
         }
@@ -276,8 +276,10 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
             if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
                 _loggingService.LogOperation($"Invalid file path: {filePath}");
+
                 MessageBox.Show("The specified file does not exist.", "Error", MessageBoxButton.OK,
                     MessageBoxImage.Error);
+
                 return string.Empty;
             }
 
@@ -291,7 +293,9 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         {
             _loggingService.LogOperation($"Error loading markdown file: {ex.Message}");
             ErrorLogger.LogError(ex, $"Loading markdown file: {filePath}");
+
             MessageBox.Show($"Error loading file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
             return string.Empty;
         }
     }
@@ -411,7 +415,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
                             string content;
                             try
                             {
-                                // Read file with optimized buffering
+                                // Read the file with optimized buffering
                                 content = await File.ReadAllTextAsync(file.FullName, ct);
                             }
                             catch (Exception ex)
@@ -422,7 +426,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
                                 return;
                             }
 
-                            // Create source file
+                            // Create the source file
                             var sourceFile = new SourceFile
                             {
                                 Path = file.FullName,
@@ -551,7 +555,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
 
                 var fileAdded = false;
 
-                // Use lock to safely update shared collection
+                // Use lock to safely update the shared collection
                 lock (_filesByExtension)
                 {
                     // Initialize the extension group if needed

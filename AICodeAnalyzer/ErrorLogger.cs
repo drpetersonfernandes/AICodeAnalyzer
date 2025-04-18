@@ -64,19 +64,12 @@ public static class ErrorLogger
         catch
         {
             // If logging fails, show a basic error message
-            MessageBox.Show(
-                $"An error occurred: {ex.Message}\n\nFailed to write to the error log.",
-                "Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            MessageBox.Show($"An error occurred: {ex.Message}\n\n" +
+                            $"Failed to write to the error log.",
+                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    /// <summary>
-    /// Logs an error to the file without showing a dialog to the user
-    /// </summary>
-    /// <param name="ex">The exception to log</param>
-    /// <param name="context">Optional context information</param>
     public static void LogErrorSilently(Exception ex, string context = "")
     {
         try
@@ -111,7 +104,7 @@ public static class ErrorLogger
         }
         catch
         {
-            // If silent logging fails, just continue without notify
+            // If silent logging fails, just continue without notification
         }
     }
 }

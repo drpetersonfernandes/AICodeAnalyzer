@@ -8,7 +8,7 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class Google : IAiApiProvider, IDisposable
+public class Google : IAProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
@@ -66,12 +66,11 @@ public class Google : IAiApiProvider, IDisposable
 
     private string GetApiVersionForModel(string modelId)
     {
-        // Find model in the available models list
         var models = GetAvailableModels();
         var model = models.Find(m => m.Id == modelId);
 
-        // Return the API version or default to v1
-        return model?.ApiVersion ?? "v1";
+        // Return the API version or default to v1beta
+        return model?.ApiVersion ?? "v1beta";
     }
 
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
@@ -161,7 +160,7 @@ public class Google : IAiApiProvider, IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error with model {modelId}: {ex.Message}");
+            ErrorLogger.LogError(ex, $"Error with model {modelId}.");
             return "There was an error with your request.";
         }
     }

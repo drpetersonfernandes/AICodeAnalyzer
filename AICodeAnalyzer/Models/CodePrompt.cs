@@ -1,16 +1,14 @@
 ﻿using System;
 
+// ReSharper disable ConvertToPrimaryConstructor
+
 namespace AICodeAnalyzer.Models;
 
 [Serializable]
 public class CodePrompt : IEquatable<CodePrompt>
 {
-    public string Name { get; set; } = string.Empty;
-    public string Content { get; set; } = string.Empty;
-
-    public CodePrompt()
-    {
-    }
+    public string Name { get; set; }
+    public string Content { get; set; }
 
     public CodePrompt(string name, string content)
     {

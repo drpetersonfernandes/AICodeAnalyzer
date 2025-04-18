@@ -67,13 +67,8 @@ public partial class MainWindow
         _uiStateManager = new UiStateManager(TxtStatus, _loggingService);
         _htmlService = new HtmlService(_loggingService);
 
-        // Setup event handlers
         SetupEventHandlers();
-
-        // Initialize UI
         InitializeUi();
-
-        _loggingService.LogOperation("Application started");
     }
 
     private void SetupEventHandlers()
@@ -199,7 +194,6 @@ public partial class MainWindow
         // Display files organized by folder
         DisplayFilesByFolder();
 
-        // Recalculate tokens
         CalculateTotalTokens();
 
         // Update folder text box
@@ -263,7 +257,7 @@ public partial class MainWindow
         // Add a mode indicator (folder scan or manual selection)
         ListOfFiles.Items.Add(new ListViewItem
         {
-            Content = $"===== Files Summary ({_fileService.FilesByExtension.Values.Sum(v => v.Count)} total) =====",
+            Content = $"===== Files Summary ({_fileService.FilesByExtension.Values.Sum(static v => v.Count)} total) =====",
             FontWeight = FontWeights.Bold,
             Background = new SolidColorBrush(Colors.LightGray)
         });
@@ -352,7 +346,7 @@ public partial class MainWindow
         // Get the total token count from the result
         var totalTokens = _tokenCalculationResult.TotalTokens;
 
-        // Format the display text with exact token count
+        // Format the display text with an exact token count
         TxtTokenCount.Text =
             $"Estimated tokens: {totalTokens:N0} (range {(long)(totalTokens * 0.8):N0} - {(long)(totalTokens * 1.2):N0})";
 
@@ -491,7 +485,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             _loggingService.LogOperation($"Error selecting files: {ex.Message}");
-            ErrorLogger.LogError(ex, "Selecting files");
+            ErrorLogger.LogError(ex, "Error selecting files");
         }
         finally
         {
@@ -510,8 +504,7 @@ public partial class MainWindow
         {
             ListOfFiles.Items.Clear();
 
-            var result = MessageBox.Show(
-                "Are you sure you want to clear all currently selected files?",
+            var result = MessageBox.Show("Are you sure you want to clear all currently selected files?",
                 "Clear Files", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
             if (result == MessageBoxResult.Yes)
@@ -547,6 +540,7 @@ public partial class MainWindow
             {
                 MessageBox.Show("Please select an AI provider.", "Missing AI Provider", MessageBoxButton.OK, MessageBoxImage.Warning);
                 _loggingService.LogOperation("Analysis canceled: No AI provider selected");
+
                 return;
             }
 
@@ -647,12 +641,12 @@ public partial class MainWindow
                     _loggingService.LogOperation("Added query text to the prompt");
                 }
 
-                // Get selected API key
+                // Get the selected API key
                 var savedKeys = _aiProviderService.GetKeysForProvider(apiSelection);
                 var keyIndex = AiProviderKeys.SelectedIndex - 1;
                 var apiKey = keyIndex >= 0 && keyIndex < savedKeys.Count ? savedKeys[keyIndex] : string.Empty;
 
-                // Get selected model if applicable
+                // Get the selected model if applicable
                 string? modelId = null;
                 if (AiModel.IsEnabled && AiModel.SelectedItem is ModelDropdownItem selectedModel)
                 {
@@ -706,7 +700,7 @@ public partial class MainWindow
     {
         _loggingService.LogOperation($"Error processing query: {ex.Message}");
 
-        // Disable Continue Button in case of an error
+        // Disable the Continue Button in case of an error
         BtnContinue.IsEnabled = false;
 
         // Update status message, don't log again
@@ -731,9 +725,11 @@ public partial class MainWindow
         {
             // Check if the item is a string representing a file path/name
             if (item is not string displayString) continue;
+
             // Basic check to filter out headers or summary lines
             if (displayString.StartsWith("=====", StringComparison.Ordinal) || displayString.Contains(" files") ||
                 displayString.Contains(" - ")) continue;
+
             // Clean the display string (remove potential prefixes like '+' or '')
             var cleanFileName = displayString.TrimStart(' ', '+');
 
@@ -771,7 +767,7 @@ public partial class MainWindow
             }
         }
 
-        // Add summary of selected files to the prompt
+        // Add a summary of selected files to the prompt
         if (fileCount > 0)
         {
             promptBuilder.AppendLine(CultureInfo.InvariantCulture, $"Specifically, I've selected the following {fileCount} file(s) for you to focus on or reference:");
@@ -973,6 +969,7 @@ public partial class MainWindow
             {
                 MessageBox.Show("There is no response to save.", "No Response", MessageBoxButton.OK,
                     MessageBoxImage.Information);
+
                 return;
             }
 
@@ -996,6 +993,7 @@ public partial class MainWindow
         {
             _loggingService.LogOperation($"Error saving response: {ex.Message}");
             ErrorLogger.LogError(ex, "Saving response to file");
+
             MessageBox.Show("An error occurred while saving the response.", "Save Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -1045,6 +1043,7 @@ public partial class MainWindow
             {
                 MessageBox.Show("Cannot save edits while viewing the input query. Please switch back to the AI response first.",
                     "Save Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+
                 return;
             }
 
@@ -1078,6 +1077,7 @@ public partial class MainWindow
         {
             _loggingService.LogOperation($"Error saving edits: {ex.Message}");
             ErrorLogger.LogError(ex, "Saving edited markdown");
+
             MessageBox.Show("An error occurred while saving your edits.", "Edit Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -1250,7 +1250,7 @@ public partial class MainWindow
                 return;
             }
 
-            // Create file selection dialog
+            // Create a file selection dialog
             var dialog = new OpenFileDialog
             {
                 Title = "Open Past Response",
@@ -1287,7 +1287,6 @@ public partial class MainWindow
 
     private void PromptTemplatesEdit_Click(object sender, RoutedEventArgs e)
     {
-        // This method opens the configuration window focused on the prompt templates tab
         OpenConfigurationWindow();
     }
 
@@ -1373,7 +1372,7 @@ public partial class MainWindow
         {
             if (_isShowingRawText)
             {
-                // Switch to HTML view
+                // Switch to the HTML view
                 _isShowingRawText = false;
                 BtnToggleHtml.Content = "Show Raw Text";
 
@@ -1404,7 +1403,7 @@ public partial class MainWindow
                     return;
                 }
 
-                // Display raw markdown in the WebView2
+                // Display raw Markdown in the WebView2
                 var escapedText = System.Net.WebUtility.HtmlEncode(responseText).Replace("\n", "<br>").Replace("  ", "&nbsp;&nbsp;");
                 var rawHtml = $"<pre style=\"font-family: Consolas, monospace; font-size: 14px; white-space: pre-wrap;\">{escapedText}</pre>";
 

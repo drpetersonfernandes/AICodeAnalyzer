@@ -4,43 +4,28 @@ using AICodeAnalyzer.AIProvider;
 
 namespace AICodeAnalyzer;
 
-/// <summary>
-/// Factory class to create and manage API provider instances
-/// </summary>
 public class ApiProviderFactory
 {
-    private readonly Dictionary<string, IAiApiProvider> _providers = new();
+    private readonly Dictionary<string, IAProvider> _providers = new();
 
-    /// <summary>
-    /// Gets all available API providers
-    /// </summary>
-    public IEnumerable<IAiApiProvider> AllProviders => new List<IAiApiProvider>(_providers.Values).AsReadOnly();
+    public IEnumerable<IAProvider> AllProviders => new List<IAProvider>(_providers.Values).AsReadOnly();
 
     public ApiProviderFactory()
     {
         // Register all available providers
-        RegisterProvider(new Anthropic());
-        RegisterProvider(new OpenAi());
-        RegisterProvider(new DeepSeek());
-        RegisterProvider(new XAi());
-        RegisterProvider(new Google());
+        RegisterProviderName(new Anthropic());
+        RegisterProviderName(new DeepSeek());
+        RegisterProviderName(new Google());
+        RegisterProviderName(new OpenIa());
+        RegisterProviderName(new XIa());
     }
 
-    /// <summary>
-    /// Registers a new API provider
-    /// </summary>
-    /// <param name="provider">The provider to register</param>
-    private void RegisterProvider(IAiApiProvider provider)
+    private void RegisterProviderName(IAProvider provider)
     {
         _providers[provider.Name] = provider;
     }
 
-    /// <summary>
-    /// Gets a provider by name
-    /// </summary>
-    /// <param name="name">The name of the provider</param>
-    /// <returns>The provider instance</returns>
-    public IAiApiProvider GetProvider(string name)
+    public IAProvider GetProviderName(string name)
     {
         if (_providers.TryGetValue(name, out var provider))
         {
