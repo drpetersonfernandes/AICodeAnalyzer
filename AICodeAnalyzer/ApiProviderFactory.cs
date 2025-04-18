@@ -16,8 +16,8 @@ public class ApiProviderFactory
         RegisterProviderName(new Anthropic());
         RegisterProviderName(new DeepSeek());
         RegisterProviderName(new Google());
-        RegisterProviderName(new OpenIa());
-        RegisterProviderName(new XIa());
+        RegisterProviderName(new OpenAi());
+        RegisterProviderName(new XAi());
     }
 
     private void RegisterProviderName(IAProvider provider)

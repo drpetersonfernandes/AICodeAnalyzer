@@ -9,11 +9,11 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class XIa : IAProvider, IDisposable
+public class XAi : IAProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
-    public string Name => "xAI API";
+    public string Name => "xAI";
 
     public List<GrokModelInfo> GetAvailableModels()
     {

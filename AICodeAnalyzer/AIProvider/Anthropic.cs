@@ -13,7 +13,7 @@ public class Anthropic : IAProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
-    public string Name => "Anthropic API";
+    public string Name => "Anthropic";
 
     private static class Models
     {

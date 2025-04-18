@@ -12,7 +12,7 @@ public class Google : IAProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
-    public string Name => "Google API";
+    public string Name => "Google";
 
     private static class Models
     {

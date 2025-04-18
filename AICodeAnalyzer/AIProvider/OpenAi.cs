@@ -9,11 +9,11 @@ using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.AIProvider;
 
-public class OpenIa : IAProvider, IDisposable
+public class OpenAi : IAProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new();
 
-    public string Name => "OpenAI API";
+    public string Name => "OpenAI";
 
     private static class Models
     {

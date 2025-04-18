@@ -37,25 +37,25 @@ public class AiProviderService(LoggingService loggingService)
         {
             switch (providerName)
             {
-                case "DeepSeek API":
-                    var deepSeekProvider = (DeepSeek)_apiProviderFactory.GetProviderName(providerName);
-                    return deepSeekProvider.GetAvailableModels().Cast<ModelInfo>().ToList();
-
-                case "Anthropic API":
+                case "Anthropic":
                     var claudeProvider = (Anthropic)_apiProviderFactory.GetProviderName(providerName);
                     return claudeProvider.GetAvailableModels().Cast<ModelInfo>().ToList();
 
-                case "xAI API":
-                    var grokProvider = (XIa)_apiProviderFactory.GetProviderName(providerName);
-                    return grokProvider.GetAvailableModels().Cast<ModelInfo>().ToList();
+                case "DeepSeek":
+                    var deepSeekProvider = (DeepSeek)_apiProviderFactory.GetProviderName(providerName);
+                    return deepSeekProvider.GetAvailableModels().Cast<ModelInfo>().ToList();
 
-                case "Google API":
+                case "Google":
                     var geminiProvider = (Google)_apiProviderFactory.GetProviderName(providerName);
                     return geminiProvider.GetAvailableModels().Cast<ModelInfo>().ToList();
 
-                case "OpenAI API":
-                    var openAiProvider = (OpenIa)_apiProviderFactory.GetProviderName(providerName);
+                case "OpenAI":
+                    var openAiProvider = (OpenAi)_apiProviderFactory.GetProviderName(providerName);
                     return openAiProvider.GetAvailableModels().Cast<ModelInfo>().ToList();
+
+                case "xAI":
+                    var grokProvider = (XAi)_apiProviderFactory.GetProviderName(providerName);
+                    return grokProvider.GetAvailableModels().Cast<ModelInfo>().ToList();
 
                 default:
                     return []; // Return an empty list for providers without model selection
@@ -70,7 +70,7 @@ public class AiProviderService(LoggingService loggingService)
 
     public static bool SupportsModelSelection(string providerName)
     {
-        return providerName is "Anthropic API" or "DeepSeek API" or "Google API" or "OpenAI API" or "xAI API";
+        return providerName is "Anthropic" or "DeepSeek" or "Google" or "OpenAI" or "xAI";
     }
 
     public async Task<string> SendPromptAsync(
@@ -107,13 +107,13 @@ public class AiProviderService(LoggingService loggingService)
                 case Anthropic claudeProvider when modelId != null:
                     response = await claudeProvider.SendPromptWithModelAsync(key, prompt, conversationHistory, modelId);
                     break;
-                case XIa grokProvider when modelId != null:
+                case XAi grokProvider when modelId != null:
                     response = await grokProvider.SendPromptWithModelAsync(key, prompt, conversationHistory, modelId);
                     break;
                 case Google geminiProvider when modelId != null:
                     response = await geminiProvider.SendPromptWithModelAsync(key, prompt, conversationHistory, modelId);
                     break;
-                case OpenIa openAiProvider when modelId != null:
+                case OpenAi openAiProvider when modelId != null:
                     response = await openAiProvider.SendPromptWithModelAsync(key, prompt, conversationHistory, modelId);
                     break;
                 default:

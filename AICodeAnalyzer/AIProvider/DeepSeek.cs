@@ -13,7 +13,7 @@ public class DeepSeek : IAProvider, IDisposable
 {
     private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(300) };
 
-    public string Name => "DeepSeek API";
+    public string Name => "DeepSeek";
 
     private static class Models
     {
