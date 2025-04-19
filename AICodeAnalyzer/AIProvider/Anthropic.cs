@@ -11,7 +11,7 @@ namespace AICodeAnalyzer.AIProvider;
 
 public class Anthropic : IAProvider, IDisposable
 {
-    private readonly HttpClient _httpClient = new();
+    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(300) };
 
     public string Name => "Anthropic";
 
