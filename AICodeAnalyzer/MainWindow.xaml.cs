@@ -1295,9 +1295,30 @@ public partial class MainWindow
             var result = configWindow.ShowDialog();
 
             if (result != true) return;
-            // Settings were saved, update any necessary UI
-            _loggingService.LogOperation("Settings updated");
+
+            // Settings were saved, update the necessary parts of the MainWindow
+            _loggingService.LogOperation("Settings updated. Refreshing UI and services.");
+
+            // 1. Reload API Keys and refresh the API dropdowns
+            _aiProviderService.ReloadApiKeys();
+            PopulateAiProviders(); // Repopulate providers (less likely to change, but safe)
+            // UpdateProviderKeys is called by AiProvider_SelectionChanged when the provider is selected
+            // Ensure the currently selected provider's keys are updated if a provider is already selected
+            if (AiProvider.SelectedItem is string selectedProvider)
+            {
+                UpdateProviderKeys(selectedProvider);
+            }
+
+            // 2. Reload Prompt Templates and refresh the prompt dropdown
             LoadPromptTemplates();
+
+            // 3. Recalculate token count based on potentially new file extensions/size limits
+            // This will also update the token count display
+            CalculateTotalTokens();
+
+            // 4. File association change is handled directly in the ConfigurationWindow, no action needed here.
+
+            _loggingService.LogOperation("Settings update complete.");
         }
         catch (Exception ex)
         {

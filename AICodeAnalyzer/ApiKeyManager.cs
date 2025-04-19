@@ -227,6 +227,14 @@ public class ApiKeyManager
             return string.Empty; // Decryption failed - treat as empty
         }
     }
+
+    /// <summary>
+    /// Reloads API keys from the storage file.
+    /// </summary>
+    public void ReloadKeys()
+    {
+        KeyStorage = LoadKeys();
+    }
 }
 
 [Serializable]

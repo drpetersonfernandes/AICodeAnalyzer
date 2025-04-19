@@ -567,7 +567,8 @@ public partial class ConfigurationWindow
 
         DialogResult = true;
 
-        RestartApplication.Restart();
+        // REMOVE THIS LINE:
+        // RestartApplication.Restart();
 
         Close();
     }

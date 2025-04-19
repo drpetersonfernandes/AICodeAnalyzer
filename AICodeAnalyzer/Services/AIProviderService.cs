@@ -73,6 +73,15 @@ public class AiProviderService(LoggingService loggingService)
         return providerName is "Anthropic" or "DeepSeek" or "Google" or "OpenAI" or "xAI";
     }
 
+    /// <summary>
+    /// Reloads API keys from the storage file via the ApiKeyManager.
+    /// </summary>
+    public void ReloadApiKeys()
+    {
+        _keyManager.ReloadKeys();
+        _loggingService.LogOperation("API keys reloaded from file.");
+    }
+
     public async Task<string> SendPromptAsync(
         string providerName,
         string key,
