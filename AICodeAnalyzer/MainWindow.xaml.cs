@@ -11,6 +11,7 @@ using AICodeAnalyzer.Models;
 using AICodeAnalyzer.Services;
 using Microsoft.Win32;
 using System.Windows.Media;
+using System.Windows.Input; // Add this using directive
 
 namespace AICodeAnalyzer;
 
@@ -30,10 +31,19 @@ public partial class MainWindow
 
     private readonly HtmlService _htmlService;
     private bool _isShowingRawText; // State variable for raw text mode
+
+    // Zoom variables for WebView2
     private double _webViewZoomFactor = 1.0;
-    private const double ZoomStep = 0.1;
-    private const double MinZoom = 0.2;
-    private const double MaxZoom = 5.0;
+    private const double WebViewZoomStep = 0.1;
+    private const double MinWebViewZoom = 0.2;
+    private const double MaxWebViewZoom = 5.0;
+
+    // Zoom variables for Raw Text Box
+    private double _rawTextFontSize = 12.0; // Default font size from XAML
+    private const double RawZoomStep = 2.0;
+    private const double MinRawFontSize = 8.0;
+    private const double MaxRawFontSize = 48.0;
+
 
     // State tracking
     private TokenCalculationResult _tokenCalculationResult = new();
@@ -123,7 +133,6 @@ public partial class MainWindow
         BtnResetZoom.Click -= BtnResetZoom_Click;
         BtnResetZoom.Click += BtnResetZoom_Click;
 
-
         if (MenuConfigure != null)
         {
             MenuConfigure.Click -= MenuConfigure_Click;
@@ -175,6 +184,8 @@ public partial class MainWindow
         if (RawResponseTextBox != null)
         {
             RawResponseTextBox.Visibility = Visibility.Collapsed;
+            // Initialize raw text font size from XAML default
+            _rawTextFontSize = RawResponseTextBox.FontSize;
         }
 
         _isShowingRawText = false; // Ensure the state is correct
@@ -929,6 +940,7 @@ public partial class MainWindow
                     {
                         RawResponseTextBox.Visibility = Visibility.Visible;
                         RawResponseTextBox.Text = responseText; // Load content into editor
+                        RawResponseTextBox.FontSize = _rawTextFontSize; // Apply current zoom level
                     }
 
                     BtnToggleHtml.Content = "Show HTML";
@@ -1545,12 +1557,20 @@ public partial class MainWindow
     {
         try
         {
-            // Zoom only applies to the HTML view
-            if (_isShowingRawText || HtmlViewer == null) return;
-
-            _webViewZoomFactor = Math.Min(_webViewZoomFactor + ZoomStep, MaxZoom);
-            HtmlViewer.ZoomFactor = _webViewZoomFactor;
-            _loggingService.LogOperation($"Zoomed In to {_webViewZoomFactor:P0}");
+            if (_isShowingRawText && RawResponseTextBox != null)
+            {
+                // Zoom Raw Text Box
+                _rawTextFontSize = Math.Min(_rawTextFontSize + RawZoomStep, MaxRawFontSize);
+                RawResponseTextBox.FontSize = _rawTextFontSize;
+                _loggingService.LogOperation($"Zoomed In Raw Text to {_rawTextFontSize:F0}pt");
+            }
+            else if (HtmlViewer != null)
+            {
+                // Zoom WebView2
+                _webViewZoomFactor = Math.Min(_webViewZoomFactor + WebViewZoomStep, MaxWebViewZoom);
+                HtmlViewer.ZoomFactor = _webViewZoomFactor;
+                _loggingService.LogOperation($"Zoomed In WebView2 to {_webViewZoomFactor:P0}");
+            }
         }
         catch (Exception ex)
         {
@@ -1563,12 +1583,20 @@ public partial class MainWindow
     {
         try
         {
-             // Zoom only applies to the HTML view
-             if (_isShowingRawText || HtmlViewer == null) return;
-
-             _webViewZoomFactor = Math.Max(_webViewZoomFactor - ZoomStep, MinZoom);
-             HtmlViewer.ZoomFactor = _webViewZoomFactor;
-             _loggingService.LogOperation($"Zoomed Out to {_webViewZoomFactor:P0}");
+            if (_isShowingRawText && RawResponseTextBox != null)
+            {
+                // Zoom Raw Text Box
+                _rawTextFontSize = Math.Max(_rawTextFontSize - RawZoomStep, MinRawFontSize);
+                RawResponseTextBox.FontSize = _rawTextFontSize;
+                _loggingService.LogOperation($"Zoomed Out Raw Text to {_rawTextFontSize:F0}pt");
+            }
+            else if (HtmlViewer != null)
+            {
+                // Zoom WebView2
+                _webViewZoomFactor = Math.Max(_webViewZoomFactor - WebViewZoomStep, MinWebViewZoom);
+                HtmlViewer.ZoomFactor = _webViewZoomFactor;
+                _loggingService.LogOperation($"Zoomed Out WebView2 to {_webViewZoomFactor:P0}");
+            }
         }
         catch (Exception ex)
         {
@@ -1581,12 +1609,20 @@ public partial class MainWindow
     {
         try
         {
-             // Zoom only applies to the HTML view
-             if (_isShowingRawText || HtmlViewer == null) return;
-
-             _webViewZoomFactor = 1.0;
-             HtmlViewer.ZoomFactor = _webViewZoomFactor;
-             _loggingService.LogOperation("Zoom Reset to 100%");
+            if (_isShowingRawText && RawResponseTextBox != null)
+            {
+                // Reset Raw Text Box Zoom
+                _rawTextFontSize = 12.0; // Reset to default XAML size
+                RawResponseTextBox.FontSize = _rawTextFontSize;
+                _loggingService.LogOperation("Raw Text Zoom Reset to 12pt");
+            }
+            else if (HtmlViewer != null)
+            {
+                // Reset WebView2 Zoom
+                _webViewZoomFactor = 1.0;
+                HtmlViewer.ZoomFactor = _webViewZoomFactor;
+                _loggingService.LogOperation("WebView2 Zoom Reset to 100%");
+            }
         }
         catch (Exception ex)
         {
@@ -1636,5 +1672,33 @@ public partial class MainWindow
         {
             ErrorLogger.LogError(ex, "Error handling command line arguments from another instance.");
         }
+    }
+
+    private void RawResponseTextBox_PreviewMouseWheel(object sender, MouseWheelEventArgs e) // Renamed method
+    {
+        // Check if Ctrl key is pressed
+        if (Keyboard.Modifiers != ModifierKeys.Control) return; // Check specifically for Ctrl
+        if (RawResponseTextBox == null) return;
+
+        switch (e.Delta)
+        {
+            case > 0:
+                // Mouse wheel up - Zoom In
+                _rawTextFontSize = Math.Min(_rawTextFontSize + RawZoomStep, MaxRawFontSize);
+                RawResponseTextBox.FontSize = _rawTextFontSize;
+                _loggingService.LogOperation($"Zoomed In Raw Text to {_rawTextFontSize:F0}pt via mouse wheel");
+                break;
+            case < 0:
+                // Mouse wheel down - Zoom Out
+                _rawTextFontSize = Math.Max(_rawTextFontSize - RawZoomStep, MinRawFontSize);
+                RawResponseTextBox.FontSize = _rawTextFontSize;
+                _loggingService.LogOperation($"Zoomed Out Raw Text to {_rawTextFontSize:F0}pt via mouse wheel");
+                break;
+        }
+
+        // Mark the event as handled to prevent default scrolling
+        e.Handled = true; // THIS IS CRUCIAL WHEN CTRL IS PRESSED
+        // If Ctrl is NOT pressed, do nothing. The event will NOT be handled here,
+        // and the default TextBox scrolling will occur.
     }
 }

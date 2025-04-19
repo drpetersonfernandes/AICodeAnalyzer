@@ -496,7 +496,9 @@
                                  FontFamily="Consolas"
                                  FontSize="12"
                                  Background="{StaticResource CodeBlockBackgroundBrush}"
-                                 Padding="5" />
+                                 Padding="5"
+                                 PreviewMouseWheel="RawResponseTextBox_PreviewMouseWheel" /> <!-- Changed event here -->
+
                     </Grid>
                 </DockPanel>
             </GroupBox>
