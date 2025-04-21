@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO; // Added for File.Exists
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks; // Added for async
 using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.Services;
@@ -13,7 +15,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
     private readonly FileService _fileService = fileService;
     private int _currentResponseIndex = -1;
     private string _currentResponseText = string.Empty;
-    private string _currentFilePath = string.Empty;
+    private string? _currentFilePath = string.Empty; // Made nullable
     private string _lastInputPrompt = string.Empty;
     private readonly List<SourceFile> _lastIncludedFiles = new();
     private string _previousMarkdownContent = string.Empty;
@@ -21,7 +23,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
 
     public int CurrentResponseIndex => _currentResponseIndex;
     public string CurrentResponseText => _currentResponseText;
-    public string CurrentFilePath => _currentFilePath;
+    public string? CurrentFilePath => _currentFilePath; // Made nullable
     public bool IsShowingInputQuery => _isShowingInputQuery;
     public string PreviousMarkdownContent => _previousMarkdownContent;
     public List<ChatMessage> ConversationHistory { get; } = new();
@@ -30,7 +32,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
     public event EventHandler ResponseUpdated = static delegate { };
     public event EventHandler NavigationChanged = static delegate { };
 
-    public void SetCurrentFilePath(string path)
+    public void SetCurrentFilePath(string? path) // Made nullable
     {
         _currentFilePath = path;
     }
@@ -47,12 +49,30 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
 
         if (isNewResponse)
         {
-            // For a new response, set the index to the last response
-            _currentResponseIndex = ConversationHistory.Count(m => m.Role == "assistant") - 1;
+            // For a new response, create a new ChatMessage and add it
+            var newAssistantMessage = new ChatMessage
+            {
+                Role = "assistant",
+                Content = responseText,
+                FilePath = null // FilePath will be set after auto-save
+            };
+            ConversationHistory.Add(newAssistantMessage);
 
-            // Auto-save the response and store the path
-            _currentFilePath = _fileService.AutoSaveResponse(responseText, _currentResponseIndex);
+            // Auto-save the response and get the path
+            // Pass the 0-based index of the newly added message
+            var filePath = _fileService.AutoSaveResponse(responseText, ConversationHistory.Count - 1);
+
+            // Update the newly added message with the file path
+            newAssistantMessage.FilePath = filePath;
+
+            // Set the current state
+            _currentResponseIndex = ConversationHistory.Count - 1;
+            _currentFilePath = filePath;
         }
+        // If !isNewResponse, it means we are updating the *current* response (e.g., from editing or loading a file).
+        // The _currentFilePath should already be set in these cases.
+        // We just update the in-memory text (_currentResponseText) and keep the existing _currentFilePath.
+        // The history entry's content is NOT updated here, as navigation will reload from the file if FilePath exists.
 
         OnResponseUpdated();
         OnNavigationChanged();
@@ -60,14 +80,13 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
 
     public void AddToConversation(string content, string role)
     {
-        ConversationHistory.Add(new ChatMessage { Role = role, Content = content });
+        // Only add user messages here. Assistant messages are added via UpdateCurrentResponse
+        if (role != "user") return;
 
-        if (role == "user")
-        {
-            _lastInputPrompt = content;
-        }
-
+        ConversationHistory.Add(new ChatMessage { Role = role, Content = content, FilePath = null });
+        _lastInputPrompt = content;
         OnNavigationChanged();
+        // Ignore assistant role here to ensure UpdateCurrentResponse is the single source for assistant messages
     }
 
     public void StoreIncludedFiles(List<SourceFile> includedFiles)
@@ -86,7 +105,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
         _lastInputPrompt = string.Empty;
         _lastIncludedFiles.Clear();
         _isShowingInputQuery = false;
-        _currentFilePath = string.Empty;
+        _currentFilePath = string.Empty; // Set to empty string or null
 
         OnResponseUpdated();
         OnNavigationChanged();
@@ -94,37 +113,62 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
         _loggingService.LogOperation("Cleared conversation history and responses");
     }
 
-    private void NavigateToResponse(int index)
+    private async Task NavigateToResponse(int index) // Made async
     {
         // Get all assistant responses from the conversation history
-        var assistantResponses = ConversationHistory
+        var assistantMessages = ConversationHistory
             .Where(m => m.Role == "assistant")
             .ToList();
 
         // Ensure the index is within bounds
-        if (assistantResponses.Count == 0 || index < 0 || index >= assistantResponses.Count)
+        if (assistantMessages.Count == 0 || index < 0 || index >= assistantMessages.Count)
         {
+            // This should not happen if CanNavigatePrevious/Next are checked, but as a safeguard
+            _loggingService.LogOperation($"Navigation failed: Index {index} out of bounds for {assistantMessages.Count} assistant messages.");
             return;
         }
 
-        // Get the response at the specified index
-        var response = assistantResponses[index].Content;
+        // Find the original ChatMessage object in the full history list
+        // We need the original object to access its FilePath property
+        var targetMessage = ConversationHistory
+            .Where(m => m.Role == "assistant")
+            .ElementAt(index); // Use ElementAt to get the message at the correct assistant index
 
-        // Update the current index
+        if (targetMessage == null)
+        {
+            _loggingService.LogOperation($"Navigation failed: Could not find message at assistant index {index}.");
+            return;
+        }
+
+        string contentToDisplay;
+        string? filePathToSet;
+
+        // Check if the message has an associated file path and if the file exists
+        if (!string.IsNullOrEmpty(targetMessage.FilePath) && File.Exists(targetMessage.FilePath))
+        {
+            _loggingService.LogOperation($"Navigating to file-backed response: {Path.GetFileName(targetMessage.FilePath)}");
+            // Load the content from the file
+            contentToDisplay = await _fileService.LoadMarkdownFileAsync(targetMessage.FilePath);
+            filePathToSet = targetMessage.FilePath;
+        }
+        else
+        {
+            _loggingService.LogOperation($"Navigating to in-memory response #{index + 1}.");
+            // Use the content stored in the history
+            contentToDisplay = targetMessage.Content;
+            filePathToSet = string.Empty; // No file path associated with this view
+        }
+
+        // Update the current state
         _currentResponseIndex = index;
-
-        // Update the current response text
-        _currentResponseText = response;
-        _previousMarkdownContent = response;
-
-        // When navigating, clear the current file path as we are viewing history, not a loaded file
-        _currentFilePath = string.Empty;
-
+        _currentResponseText = contentToDisplay;
+        _previousMarkdownContent = contentToDisplay; // Also update previous content for potential edits
+        _currentFilePath = filePathToSet;
 
         OnResponseUpdated();
         OnNavigationChanged();
 
-        _loggingService.LogOperation($"Navigated to response #{index + 1} of {assistantResponses.Count}");
+        _loggingService.LogOperation($"Navigated to response #{index + 1} of {assistantMessages.Count}");
     }
 
     public bool CanNavigatePrevious()
@@ -134,38 +178,38 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
 
     public bool CanNavigateNext()
     {
-        var totalResponses = ConversationHistory.Count(m => m.Role == "assistant");
-        return _currentResponseIndex < totalResponses - 1;
+        var totalAssistantResponses = ConversationHistory.Count(m => m.Role == "assistant");
+        return _currentResponseIndex < totalAssistantResponses - 1;
     }
 
     public string GetNavigationCounterText()
     {
-        var assistantResponses = ConversationHistory.Count(m => m.Role == "assistant");
+        var totalAssistantResponses = ConversationHistory.Count(m => m.Role == "assistant");
 
-        if (assistantResponses == 0)
+        if (totalAssistantResponses == 0)
         {
             return "No responses";
         }
         else
         {
             // Display as a 1-based index for the user (1 of 1 instead of 0 of 0)
-            return $"Response {_currentResponseIndex + 1} of {assistantResponses}";
+            return $"Response {_currentResponseIndex + 1} of {totalAssistantResponses}";
         }
     }
 
-    public void NavigatePrevious()
+    public async Task NavigatePrevious() // Made async
     {
         if (CanNavigatePrevious())
         {
-            NavigateToResponse(_currentResponseIndex - 1);
+            await NavigateToResponse(_currentResponseIndex - 1);
         }
     }
 
-    public void NavigateNext()
+    public async Task NavigateNext() // Made async
     {
         if (CanNavigateNext())
         {
-            NavigateToResponse(_currentResponseIndex + 1);
+            await NavigateToResponse(_currentResponseIndex + 1);
         }
     }
 

@@ -501,7 +501,7 @@ public partial class MainWindow
         try
         {
             ListOfFiles.Items.Clear();
-            _fileService.ClearFiles();
+            TxtTokenCount.Text = "";
         }
         catch (Exception ex)
         {
@@ -644,18 +644,15 @@ public partial class MainWindow
                     modelId = selectedModel.ModelId;
                 }
 
-                // Add to conversation history and store prompt
+                // Add user message to conversation history
                 _responseService.AddToConversation(prompt, "user");
 
                 // Send to AI API and get response
                 var response = await _aiProviderService.SendPromptAsync(
                     apiSelection, apiKey, prompt, _responseService.ConversationHistory, modelId);
 
-                // Add response to conversation history
-                _responseService.AddToConversation(response, "assistant");
-
-                // Update display with the response (isNewResponse = true will trigger auto-save and update CurrentFilePath)
-                _responseService.UpdateCurrentResponse(response, true);
+                // Add response to conversation history and handle auto-save
+                _responseService.UpdateCurrentResponse(response, true); // isNewResponse = true
 
                 // Reset query input
                 TxtFollowupQuestion.Text = string.Empty;
@@ -1068,28 +1065,42 @@ public partial class MainWindow
         }
     }
 
-    private void BtnPreviousResponse_Click(object sender, RoutedEventArgs e)
+    private async void BtnPreviousResponse_Click(object sender, RoutedEventArgs e) // Made async
     {
-        // If currently in raw editing mode, save edits before navigating
-        if (_isShowingRawText && RawResponseTextBox != null)
+        try
         {
-            _responseService.UpdateCurrentResponse(RawResponseTextBox.Text);
-            _isShowingRawText = false; // Switch back to HTML view after saving edits
-        }
+            // If currently in raw editing mode, save edits before navigating
+            if (_isShowingRawText && RawResponseTextBox != null)
+            {
+                _responseService.UpdateCurrentResponse(RawResponseTextBox.Text);
+                _isShowingRawText = false; // Switch back to HTML view after saving edits
+            }
 
-        _responseService.NavigatePrevious();
+            await _responseService.NavigatePrevious(); // Await the async navigation
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Error in method BtnPreviousResponse_Click");
+        }
     }
 
-    private void BtnNextResponse_Click(object sender, RoutedEventArgs e)
+    private async void BtnNextResponse_Click(object sender, RoutedEventArgs e) // Made async
     {
-        // If currently in raw editing mode, save edits before navigating
-        if (_isShowingRawText && RawResponseTextBox != null)
+        try
         {
-            _responseService.UpdateCurrentResponse(RawResponseTextBox.Text);
-            _isShowingRawText = false; // Switch back to HTML view after saving edits
-        }
+            // If currently in raw editing mode, save edits before navigating
+            if (_isShowingRawText && RawResponseTextBox != null)
+            {
+                _responseService.UpdateCurrentResponse(RawResponseTextBox.Text);
+                _isShowingRawText = false; // Switch back to HTML view after saving edits
+            }
 
-        _responseService.NavigateNext();
+            await _responseService.NavigateNext(); // Await the async navigation
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Error in method BtnNextResponse_Click");
+        }
     }
 
     private void BtnShowInputQuery_Click(object sender, RoutedEventArgs e)
@@ -1156,31 +1167,43 @@ public partial class MainWindow
             }
 
             // Update the service's current response text with the edited content
-            _responseService.UpdateCurrentResponse(editedText); // This updates the service's internal text
+            // This updates the in-memory text but does NOT change the FilePath
+            _responseService.UpdateCurrentResponse(editedText);
 
-            // Check if the current response is associated with a file in AiOutput
-            // We only overwrite if it was loaded from a file (which would be in AiOutput)
-            var outputDirectory = Path.Combine(AppContext.BaseDirectory, "AiOutput");
+            // Check if the current response is associated with a file path that exists
             var currentFilePath = _responseService.CurrentFilePath;
 
-            if (!string.IsNullOrEmpty(currentFilePath) && File.Exists(currentFilePath) && currentFilePath.StartsWith(outputDirectory, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(currentFilePath) && File.Exists(currentFilePath))
             {
                 _uiStateManager.SetProcessingState(true, "Saving edits");
 
-                // Save the changes to the file asynchronously
-                await _fileService.OverwriteResponseAsync(currentFilePath, _responseService.CurrentResponseText);
+                try
+                {
+                    // Save the changes to the file asynchronously
+                    await _fileService.OverwriteResponseAsync(currentFilePath, _responseService.CurrentResponseText);
 
-                _loggingService.LogOperation($"Automatically saved edits to file: {currentFilePath}");
-                _uiStateManager.SetStatusMessage($"Edits applied and saved to {Path.GetFileName(currentFilePath)}");
+                    _loggingService.LogOperation($"Automatically saved edits to file: {currentFilePath}");
+                    _uiStateManager.SetStatusMessage($"Edits applied and saved to {Path.GetFileName(currentFilePath)}");
 
-                MessageBox.Show($"Edits applied and saved to {Path.GetFileName(currentFilePath)}",
-                    "Edits Saved", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                _uiStateManager.SetProcessingState(false);
+                    MessageBox.Show($"Edits applied and saved to {Path.GetFileName(currentFilePath)}",
+                        "Edits Saved", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    _loggingService.LogOperation($"Error overwriting file {currentFilePath}: {ex.Message}");
+                    ErrorLogger.LogError(ex, $"Error overwriting file: {currentFilePath}");
+                    MessageBox.Show($"An error occurred while saving your edits to {Path.GetFileName(currentFilePath)}.", "Edit Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                finally
+                {
+                    _uiStateManager.SetProcessingState(false);
+                }
             }
             else
             {
-                // No file path in AiOutput, so only update the in-memory content
+                // No valid file path is associated with the current response (e.g., it's a new AI response not yet saved,
+                // or a history item, or the original file was deleted).
+                // Edits were applied to the in-memory content but cannot be saved back to an original file.
                 _loggingService.LogOperation("Applied edits to the content (not saved to file)");
                 _uiStateManager.SetStatusMessage("Edits applied (not saved to file)");
 
@@ -1190,12 +1213,13 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            _loggingService.LogOperation($"Error saving edits: {ex.Message}");
-            ErrorLogger.LogError(ex, "Saving edited markdown");
+            _loggingService.LogOperation($"Error in SaveEdits_Click: {ex.Message}");
+            ErrorLogger.LogError(ex, "Error in SaveEdits_Click");
 
-            MessageBox.Show("An error occurred while saving your edits.", "Edit Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("Could not save the edited file.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
+
 
     private async void RecentFileMenuItem_Click(object sender, RoutedEventArgs e)
     {
@@ -1494,14 +1518,35 @@ public partial class MainWindow
                 var response = await _aiProviderService.SendPromptAsync(
                     apiSelection, apiKey, queryText, _responseService.ConversationHistory, modelId);
 
+                // Add response to conversation history and handle auto-save
+                // This will append the new response content to the existing content in ResponseService
+                // and auto-save the *combined* content if it's the current response.
+                // However, the user wants to *continue* the *previous* response, not append.
+                // We need to handle the conversation history correctly for 'Continue'.
+
+                // The ResponseService already maintains the full conversation history.
+                // We just need to add the 'continue' user message and the new assistant response.
+                // The AI provider service handles sending the full history for context.
+                // The new response should replace the *current* displayed response, not append.
+
+                // Let's rethink the 'Continue' logic slightly.
+                // The current ResponseService.UpdateCurrentResponse(combinedResponse, true)
+                // adds a *new* assistant message with the *combined* content.
+                // This is not ideal for conversation history.
+                // A better approach is to add the new assistant response as a separate message,
+                // but the UI should display the *latest* response in the conversation.
+
+                // Let's revert the 'Continue' logic to simply add the new response
+                // and let the UI display the latest one via UpdateResponseDisplay.
+
                 // Add response to conversation history
                 _responseService.AddToConversation(response, "assistant");
 
-                // Append the new response to the current one
-                var combinedResponse = _responseService.CurrentResponseText + "\n\n" + response;
+                // Update display with the response (isNewResponse = true will trigger auto-save and update CurrentFilePath)
+                // This will now just save the *new* response, not the combined one.
+                // The navigation will handle showing previous responses.
+                _responseService.UpdateCurrentResponse(response, true);
 
-                // Update display with the combined response (isNewResponse = true will trigger auto-save and update CurrentFilePath)
-                _responseService.UpdateCurrentResponse(combinedResponse, true);
 
                 _uiStateManager.SetStatusMessage("Query processed successfully!");
                 _loggingService.EndOperationTimer("ContinueProcessing");
