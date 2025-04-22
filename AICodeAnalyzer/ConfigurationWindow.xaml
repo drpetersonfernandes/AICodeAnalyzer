@@ -1,9 +1,9 @@
-﻿<Window x:Class="AICodeAnalyzer.ConfigurationWindow"
+﻿<mah:MetroWindow x:Class="AICodeAnalyzer.ConfigurationWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
-        Title="Configuration" Height="500" Width="600"
+        xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls" Title="Configuration" Height="500" Width="600"
         WindowStartupLocation="CenterOwner" ResizeMode="CanResize">
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -178,7 +178,7 @@
                         </StackPanel>
                     </GroupBox>
 
-                    <TextBlock Grid.Row="2" Margin="0,20,0,0" TextWrapping="Wrap" Foreground="#707070">
+                    <TextBlock Grid.Row="2" Margin="0,20,0,0" TextWrapping="Wrap" Foreground="#707070"> <!-- Added Margin="0,0,0,0" -->
                         Note: Changing this setting may require administrator privileges on some systems.
                         If you encounter issues, try running the application as administrator.
                     </TextBlock>
@@ -262,4 +262,4 @@
             <Button x:Name="BtnCancel" Content="Cancel" Padding="20,5" Click="BtnCancel_Click" />
         </StackPanel>
     </Grid>
-</Window>
+</mah:MetroWindow>

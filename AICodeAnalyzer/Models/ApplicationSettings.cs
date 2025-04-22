@@ -11,6 +11,10 @@ public class ApplicationSettings
     public int MaxFileSizeKb { get; set; } = 1024; // Default 1MB
     public bool RegisterAsDefaultMdHandler { get; set; }
 
+    // Add Theme Settings
+    public string BaseTheme { get; set; } = "Light"; // Default Base Theme
+    public string AccentColor { get; set; } = "Blue"; // Default Accent Color
+
     public string InitialPrompt
     {
         get => SelectedPromptName != null && CodePrompts.Count > 0

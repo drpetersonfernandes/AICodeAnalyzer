@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace AICodeAnalyzer;
 
-public partial class ConfigurationWindow
+public partial class ConfigurationWindow // Change base class
 {
     private readonly SettingsManager _settingsManager;
     private ApplicationSettings _workingSettings;

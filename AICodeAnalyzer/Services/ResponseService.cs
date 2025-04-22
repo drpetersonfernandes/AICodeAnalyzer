@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO; // Added for File.Exists
+using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks; // Added for async
+using System.Threading.Tasks;
 using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer.Services;
@@ -13,217 +13,367 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
 {
     private readonly LoggingService _loggingService = loggingService;
     private readonly FileService _fileService = fileService;
-    private int _currentResponseIndex = -1;
-    private string _currentResponseText = string.Empty;
-    private string? _currentFilePath = string.Empty; // Made nullable
-    private string _lastInputPrompt = string.Empty;
-    private readonly List<SourceFile> _lastIncludedFiles = new();
-    private string _previousMarkdownContent = string.Empty;
-    private bool _isShowingInputQuery;
 
-    public int CurrentResponseIndex => _currentResponseIndex;
-    public string CurrentResponseText => _currentResponseText;
-    public string? CurrentFilePath => _currentFilePath; // Made nullable
-    public bool IsShowingInputQuery => _isShowingInputQuery;
-    public string PreviousMarkdownContent => _previousMarkdownContent;
-    public List<ChatMessage> ConversationHistory { get; } = new();
+    // Use a list of Interactions to store the history
+    private readonly List<Interaction> _interactions = new();
+    private int _currentInteractionIndex = -1; // Index of the currently viewed interaction
+
+    private bool _isShowingInputQuery; // State for toggling between input/output view
 
     // Events
     public event EventHandler ResponseUpdated = static delegate { };
     public event EventHandler NavigationChanged = static delegate { };
 
-    public void SetCurrentFilePath(string? path) // Made nullable
+    // Expose current state based on the selected interaction
+    public string CurrentResponseText { get; private set; } = string.Empty;
+    public string? CurrentFilePath { get; private set; } // File path of the *displayed* content (response file if viewing response, query file if viewing query)
+    public bool IsShowingInputQuery => _isShowingInputQuery;
+
+    // Publicly expose the current index (using the existing property name)
+    public int CurrentResponseIndex => _currentInteractionIndex;
+
+    // Expose the list of interactions for methods like LoadMarkdownFileAsync
+    public IReadOnlyList<Interaction> Interactions => _interactions.AsReadOnly();
+
+
+    /// <summary>
+    /// Starts a new interaction by saving the user prompt and included files.
+    /// </summary>
+    /// <param name="userPrompt">The full text of the user's prompt.</param>
+    /// <param name="includedFiles">The list of files included with this prompt.</param>
+    public async Task<Interaction> StartNewInteractionAsync(string userPrompt, List<SourceFile> includedFiles)
     {
-        _currentFilePath = path;
+        try
+        {
+            var newInteraction = new Interaction
+            {
+                UserPrompt = userPrompt,
+                IncludedFiles = includedFiles,
+                UserPromptFilePath = await _fileService.AutoSaveQuery(userPrompt, _interactions.Count)
+            };
+
+            _interactions.Add(newInteraction);
+            _currentInteractionIndex = _interactions.Count - 1;
+            _isShowingInputQuery = true;
+
+            _loggingService.LogOperation($"Started new interaction #{_currentInteractionIndex + 1}.");
+
+            return newInteraction;
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Error starting new interaction.");
+            return new Interaction();
+        }
+    }
+
+
+    /// <summary>
+    /// Updates the current interaction with the AI's response.
+    /// </summary>
+    /// <param name="assistantResponse">The text of the AI's response.</param>
+    public async Task CompleteCurrentInteraction(string assistantResponse)
+    {
+        if (_currentInteractionIndex < 0 || _currentInteractionIndex >= _interactions.Count)
+        {
+            _loggingService.LogOperation("Attempted to complete interaction but no current interaction found.");
+            // Handle error or create a new interaction if necessary
+            return;
+        }
+
+        var currentInteraction = _interactions[_currentInteractionIndex];
+
+        // Update the interaction with the response
+        currentInteraction.AssistantResponse = assistantResponse;
+
+        // Auto-save the assistant response
+        currentInteraction.AssistantResponseFilePath = _fileService.AutoSaveResponse(assistantResponse, _currentInteractionIndex);
+
+        // Switch to showing the response view
+        _isShowingInputQuery = false;
+
+        // Update UI (will show the response)
+        await DisplayCurrentInteraction();
+
+        _loggingService.LogOperation($"Completed interaction #{_currentInteractionIndex + 1} with AI response.");
+    }
+
+    public void ClearCurrentResponse()
+    {
+        CurrentResponseText = string.Empty;
+        CurrentFilePath = string.Empty;
+        _isShowingInputQuery = false;
+        OnResponseUpdated();
+        OnNavigationChanged();
     }
 
     /// <summary>
-    /// Updates the current response text and optionally triggers auto-save and file path update.
+    /// Adds a pre-built interaction (like a loaded file) to the history and sets it as the current one.
     /// </summary>
-    /// <param name="responseText">The new response text.</param>
-    /// <param name="isNewResponse">True if this is a newly generated AI response, false otherwise (e.g., loading from file, applying edits).</param>
-    public void UpdateCurrentResponse(string responseText, bool isNewResponse = false)
+    /// <param name="interaction">The interaction to add.</param>
+    public async Task AddInteractionAndSetCurrent(Interaction interaction)
     {
-        _currentResponseText = responseText;
-        _previousMarkdownContent = responseText;
-
-        if (isNewResponse)
+        try
         {
-            // For a new response, create a new ChatMessage and add it
-            var newAssistantMessage = new ChatMessage
-            {
-                Role = "assistant",
-                Content = responseText,
-                FilePath = null // FilePath will be set after auto-save
-            };
-            ConversationHistory.Add(newAssistantMessage);
-
-            // Auto-save the response and get the path
-            // Pass the 0-based index of the newly added message
-            var filePath = _fileService.AutoSaveResponse(responseText, ConversationHistory.Count - 1);
-
-            // Update the newly added message with the file path
-            newAssistantMessage.FilePath = filePath;
-
-            // Set the current state
-            _currentResponseIndex = ConversationHistory.Count - 1;
-            _currentFilePath = filePath;
+            _interactions.Add(interaction);
+            _currentInteractionIndex = _interactions.Count - 1;
+            // Default to showing the response for loaded files
+            _isShowingInputQuery = false;
+            await DisplayCurrentInteraction();
+            _loggingService.LogOperation($"Added interaction #{_currentInteractionIndex + 1} and set as current.");
         }
-        // If !isNewResponse, it means we are updating the *current* response (e.g., from editing or loading a file).
-        // The _currentFilePath should already be set in these cases.
-        // We just update the in-memory text (_currentResponseText) and keep the existing _currentFilePath.
-        // The history entry's content is NOT updated here, as navigation will reload from the file if FilePath exists.
-
-        OnResponseUpdated();
-        OnNavigationChanged();
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Error adding interaction and setting as current.");
+        }
     }
 
-    public void AddToConversation(string content, string role)
+    /// <summary>
+    /// Sets the current interaction index.
+    /// </summary>
+    /// <param name="index">The 0-based index of the interaction to display.</param>
+    public async void SetCurrentInteractionIndex(int index)
     {
-        // Only add user messages here. Assistant messages are added via UpdateCurrentResponse
-        if (role != "user") return;
-
-        ConversationHistory.Add(new ChatMessage { Role = role, Content = content, FilePath = null });
-        _lastInputPrompt = content;
-        OnNavigationChanged();
-        // Ignore assistant role here to ensure UpdateCurrentResponse is the single source for assistant messages
+        try
+        {
+            if (index >= 0 && index < _interactions.Count)
+            {
+                _currentInteractionIndex = index;
+                // Default to showing the response when navigating
+                _isShowingInputQuery = false;
+                await DisplayCurrentInteraction();
+                _loggingService.LogOperation($"Set current interaction index to {index}.");
+            }
+            else
+            {
+                _loggingService.LogOperation($"Attempted to set invalid interaction index: {index}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Error setting current interaction index.");
+        }
     }
 
-    public void StoreIncludedFiles(List<SourceFile> includedFiles)
+    /// <summary>
+    /// Gets the conversation history formatted for the AI API.
+    /// </summary>
+    /// <returns>A list of ChatMessage objects representing the history.</returns>
+    public List<ChatMessage> GetConversationHistoryForApi()
     {
-        _lastIncludedFiles.Clear();
-        _lastIncludedFiles.AddRange(includedFiles);
-        _loggingService.LogOperation($"Stored {_lastIncludedFiles.Count} included files for reference");
+        var history = new List<ChatMessage>();
+
+        // Reconstruct history from interactions up to the current one
+        for (var i = 0; i <= _currentInteractionIndex; i++)
+        {
+            var interaction = _interactions[i];
+
+            // Add user prompt (use in-memory content)
+            // The content should already be loaded into UserPrompt by StartNewInteraction
+            history.Add(new ChatMessage { Role = "user", Content = interaction.UserPrompt });
+
+            // Add assistant response if it exists (use in-memory content)
+            // The content should already be loaded into AssistantResponse by CompleteCurrentInteraction
+            if (!string.IsNullOrEmpty(interaction.AssistantResponse))
+            {
+                history.Add(new ChatMessage { Role = "assistant", Content = interaction.AssistantResponse });
+            }
+        }
+
+        return history;
     }
 
+    /// <summary>
+    /// Clears all interaction history.
+    /// </summary>
     public void ClearHistory()
     {
-        ConversationHistory.Clear();
-        _currentResponseIndex = -1;
-        _currentResponseText = string.Empty;
-        _previousMarkdownContent = string.Empty;
-        _lastInputPrompt = string.Empty;
-        _lastIncludedFiles.Clear();
+        _interactions.Clear();
+        _currentInteractionIndex = -1;
+        CurrentResponseText = string.Empty;
+        CurrentFilePath = string.Empty;
         _isShowingInputQuery = false;
-        _currentFilePath = string.Empty; // Set to empty string or null
 
         OnResponseUpdated();
         OnNavigationChanged();
 
-        _loggingService.LogOperation("Cleared conversation history and responses");
+        _loggingService.LogOperation("Cleared all interaction history.");
     }
 
-    private async Task NavigateToResponse(int index) // Made async
+    /// <summary>
+    /// Displays the interaction at the current index.
+    /// Loads content from files if paths exist and in-memory content is empty.
+    /// </summary>
+    private async Task DisplayCurrentInteraction() // Changed to return Task
     {
-        // Get all assistant responses from the conversation history
-        var assistantMessages = ConversationHistory
-            .Where(m => m.Role == "assistant")
-            .ToList();
-
-        // Ensure the index is within bounds
-        if (assistantMessages.Count == 0 || index < 0 || index >= assistantMessages.Count)
+        try
         {
-            // This should not happen if CanNavigatePrevious/Next are checked, but as a safeguard
-            _loggingService.LogOperation($"Navigation failed: Index {index} out of bounds for {assistantMessages.Count} assistant messages.");
+            if (_currentInteractionIndex < 0 || _currentInteractionIndex >= _interactions.Count)
+            {
+                CurrentResponseText = string.Empty;
+                CurrentFilePath = string.Empty;
+                _isShowingInputQuery = false; // Should default to not showing input if no interaction
+                OnResponseUpdated();
+                OnNavigationChanged();
+                return;
+            }
+
+            var interaction = _interactions[_currentInteractionIndex];
+
+            string contentToDisplay;
+            string? filePathToSet;
+
+            if (_isShowingInputQuery)
+            {
+                // Display the user prompt
+                // Prioritize in-memory content, fallback to file if path exists
+                contentToDisplay = interaction.UserPrompt;
+                filePathToSet = interaction.UserPromptFilePath;
+
+                if (string.IsNullOrEmpty(contentToDisplay) && !string.IsNullOrEmpty(filePathToSet) && File.Exists(filePathToSet))
+                {
+                    contentToDisplay = await _fileService.LoadMarkdownFileAsync(filePathToSet);
+                    // Optionally update the in-memory property if loaded from file
+                    interaction.UserPrompt = contentToDisplay;
+                }
+
+                _loggingService.LogOperation($"Displaying input query for interaction #{_currentInteractionIndex + 1}.");
+            }
+            else
+            {
+                // Display the assistant response
+                // Prioritize in-memory content, fallback to file if path exists
+                contentToDisplay = interaction.AssistantResponse;
+                filePathToSet = interaction.AssistantResponseFilePath;
+
+                if (string.IsNullOrEmpty(contentToDisplay) && !string.IsNullOrEmpty(filePathToSet) && File.Exists(filePathToSet))
+                {
+                    contentToDisplay = await _fileService.LoadMarkdownFileAsync(filePathToSet);
+                    // Optionally update the in-memory property if loaded from file
+                    interaction.AssistantResponse = contentToDisplay;
+                }
+
+                _loggingService.LogOperation($"Displaying assistant response for interaction #{_currentInteractionIndex + 1}.");
+            }
+
+            CurrentResponseText = contentToDisplay;
+            CurrentFilePath = filePathToSet;
+
+            OnResponseUpdated();
+            OnNavigationChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Error displaying current interaction.");
+        }
+    }
+
+
+    /// <summary>
+    /// Updates the content of the currently displayed item (either prompt or response).
+    /// This is used for applying edits from the raw text view.
+    /// </summary>
+    /// <param name="editedContent">The edited text.</param>
+    public void UpdateCurrentResponse(string editedContent)
+    {
+        if (_currentInteractionIndex < 0 || _currentInteractionIndex >= _interactions.Count)
+        {
+            _loggingService.LogOperation("Attempted to update content but no current interaction found.");
             return;
         }
 
-        // Find the original ChatMessage object in the full history list
-        // We need the original object to access its FilePath property
-        var targetMessage = ConversationHistory
-            .Where(m => m.Role == "assistant")
-            .ElementAt(index); // Use ElementAt to get the message at the correct assistant index
+        var interaction = _interactions[_currentInteractionIndex];
 
-        if (targetMessage == null)
+        if (_isShowingInputQuery)
         {
-            _loggingService.LogOperation($"Navigation failed: Could not find message at assistant index {index}.");
-            return;
-        }
-
-        string contentToDisplay;
-        string? filePathToSet;
-
-        // Check if the message has an associated file path and if the file exists
-        if (!string.IsNullOrEmpty(targetMessage.FilePath) && File.Exists(targetMessage.FilePath))
-        {
-            _loggingService.LogOperation($"Navigating to file-backed response: {Path.GetFileName(targetMessage.FilePath)}");
-            // Load the content from the file
-            contentToDisplay = await _fileService.LoadMarkdownFileAsync(targetMessage.FilePath);
-            filePathToSet = targetMessage.FilePath;
+            // Update the user prompt content
+            interaction.UserPrompt = editedContent;
+            // Note: We don't auto-save edits to the query file here.
+            // The user can use "Save Response" to save the whole interaction if needed.
+            _loggingService.LogOperation($"Updated in-memory input query for interaction #{_currentInteractionIndex + 1}.");
         }
         else
         {
-            _loggingService.LogOperation($"Navigating to in-memory response #{index + 1}.");
-            // Use the content stored in the history
-            contentToDisplay = targetMessage.Content;
-            filePathToSet = string.Empty; // No file path associated with this view
+            // Update the assistant response content
+            interaction.AssistantResponse = editedContent;
+            // Note: Auto-saving to the response file happens in SaveEdits_Click in MainWindow
+            _loggingService.LogOperation($"Updated in-memory assistant response for interaction #{_currentInteractionIndex + 1}.");
         }
 
-        // Update the current state
-        _currentResponseIndex = index;
-        _currentResponseText = contentToDisplay;
-        _previousMarkdownContent = contentToDisplay; // Also update previous content for potential edits
-        _currentFilePath = filePathToSet;
-
-        OnResponseUpdated();
-        OnNavigationChanged();
-
-        _loggingService.LogOperation($"Navigated to response #{index + 1} of {assistantMessages.Count}");
+        // Update the displayed text immediately
+        CurrentResponseText = editedContent;
+        // Do NOT call DisplayCurrentInteraction here, as it would reload from file/memory
+        // and overwrite the edits just applied to the in-memory object.
+        // The UI update is handled by the TextChanged event or the SaveEdits_Click logic.
     }
+
 
     public bool CanNavigatePrevious()
     {
-        return _currentResponseIndex > 0;
+        return _currentInteractionIndex > 0;
     }
 
     public bool CanNavigateNext()
     {
-        var totalAssistantResponses = ConversationHistory.Count(m => m.Role == "assistant");
-        return _currentResponseIndex < totalAssistantResponses - 1;
+        return _currentInteractionIndex < _interactions.Count - 1;
     }
 
     public string GetNavigationCounterText()
     {
-        var totalAssistantResponses = ConversationHistory.Count(m => m.Role == "assistant");
+        var totalInteractions = _interactions.Count;
 
-        if (totalAssistantResponses == 0)
+        if (totalInteractions == 0)
         {
-            return "No responses";
+            return "No interactions";
         }
         else
         {
-            // Display as a 1-based index for the user (1 of 1 instead of 0 of 0)
-            return $"Response {_currentResponseIndex + 1} of {totalAssistantResponses}";
+            // Display as a 1-based index for the user
+            return $"Interaction {_currentInteractionIndex + 1} of {totalInteractions}";
         }
     }
 
-    public async Task NavigatePrevious() // Made async
+    public async Task NavigatePrevious() // Changed to async Task
     {
         if (CanNavigatePrevious())
         {
-            await NavigateToResponse(_currentResponseIndex - 1);
+            _currentInteractionIndex--;
+            await DisplayCurrentInteraction(); // Await the async display method
         }
     }
 
-    public async Task NavigateNext() // Made async
+    public async Task NavigateNext() // Changed to async Task
     {
         if (CanNavigateNext())
         {
-            await NavigateToResponse(_currentResponseIndex + 1);
+            _currentInteractionIndex++;
+            await DisplayCurrentInteraction(); // Await the async display method
         }
     }
 
-    public string GetInputQueryMarkdown()
+    /// <summary>
+    /// Gets the markdown content for the input query of the currently viewed interaction.
+    /// </summary>
+    /// <returns>Markdown formatted string of the input query and included files.</returns>
+    // Change signature to async Task<string>
+    public async Task<string> GetInputQueryMarkdownAsync()
     {
+        if (_currentInteractionIndex < 0 || _currentInteractionIndex >= _interactions.Count)
+        {
+            return "No input query available for this interaction.";
+        }
+
+        var interaction = _interactions[_currentInteractionIndex];
+
         // Generate File Summary
         var fileSummary = new StringBuilder();
         fileSummary.AppendLine("## Files Included in Query");
-        fileSummary.AppendLine(CultureInfo.InvariantCulture, $"Total files: {_lastIncludedFiles.Count}");
+        fileSummary.AppendLine(CultureInfo.InvariantCulture, $"Total files: {interaction.IncludedFiles.Count}");
 
-        if (_lastIncludedFiles.Count != 0)
+        if (interaction.IncludedFiles.Count != 0)
         {
             fileSummary.AppendLine("```");
-            foreach (var file in _lastIncludedFiles.OrderBy(f => f.RelativePath))
+            foreach (var file in interaction.IncludedFiles.OrderBy(f => f.RelativePath))
             {
                 fileSummary.AppendLine(CultureInfo.InvariantCulture, $"- {file.RelativePath} ({file.Extension})");
             }
@@ -242,17 +392,39 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
         fullInputView.Append(fileSummary);
         fullInputView.AppendLine("## Full Input Prompt Sent to AI");
         fullInputView.AppendLine("```text");
-        fullInputView.AppendLine(_lastInputPrompt);
+
+        string promptContent;
+
+        if (!string.IsNullOrEmpty(interaction.UserPromptFilePath) && File.Exists(interaction.UserPromptFilePath))
+        {
+            promptContent = await _fileService.LoadMarkdownFileAsync(interaction.UserPromptFilePath);
+        }
+        else
+        {
+            promptContent = interaction.UserPrompt;
+        }
+
+        fullInputView.AppendLine(promptContent);
         fullInputView.AppendLine("```");
 
         return fullInputView.ToString();
     }
 
-    public void ToggleInputQueryView()
+    /// <summary>
+    /// Toggles between displaying the input query and the AI response for the current interaction.
+    /// </summary>
+    public async void ToggleInputQueryView()
     {
-        _isShowingInputQuery = !_isShowingInputQuery;
-        OnResponseUpdated();
-        OnNavigationChanged();
+        try
+        {
+            _isShowingInputQuery = !_isShowingInputQuery;
+            // Display the current interaction again to update the view
+            await DisplayCurrentInteraction();
+        }
+        catch (Exception ex)
+        {
+            ErrorLogger.LogError(ex, "Error toggling input query view.");
+        }
     }
 
     // Event invokers

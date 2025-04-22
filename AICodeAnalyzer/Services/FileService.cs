@@ -136,7 +136,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
 
             if (!consolidatedFiles.TryGetValue(ext, out var value))
             {
-                value = [];
+                value = new List<string>();
                 consolidatedFiles[ext] = value;
             }
 
@@ -194,7 +194,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
             {
                 Filter = "Markdown files (*.md)|*.md|Text files (*.txt)|*.txt|All files (*.*)|*.*",
                 DefaultExt = "md",
-                Title = "Save AI Analysis Response"
+                Title = "Save AI Analysis Response Copy" // Changed title
             };
 
             // If the user has selected a project folder, suggest that as the initial directory
@@ -246,9 +246,25 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
     /// Auto-saves the response text to a file in the AiOutput directory.
     /// </summary>
     /// <param name="responseText">The text content to save.</param>
-    /// <param name="responseIndex">The index of the response in the conversation history (1-based).</param>
+    /// <param name="interactionIndex">The index of the interaction (0-based).</param>
     /// <returns>The full path of the saved file.</returns>
-    public string AutoSaveResponse(string responseText, int responseIndex)
+    public string AutoSaveResponse(string responseText, int interactionIndex)
+    {
+        return AutoSaveContent(responseText, interactionIndex, "response");
+    }
+
+    /// <summary>
+    /// Auto-saves the input query text to a file in the AiOutput directory.
+    /// </summary>
+    /// <param name="queryText">The text content to save.</param>
+    /// <param name="interactionIndex">The index of the interaction (0-based).</param>
+    /// <returns>The full path of the saved file.</returns>
+    public async Task<string> AutoSaveQuery(string queryText, int interactionIndex)
+    {
+        return await AutoSaveContentAsync(queryText, interactionIndex, "query");
+    }
+
+    private async Task<string> AutoSaveContentAsync(string content, int interactionIndex, string type)
     {
         try
         {
@@ -260,7 +276,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
                 _loggingService.LogOperation($"Created AiOutput directory at {outputDirectory}");
             }
 
-            // Generate a filename based on the project name (if available) and timestamp
+            // Generate a filename based on the project name (if available), type, index, and timestamp
             var projectName = "unknown";
             if (!string.IsNullOrEmpty(SelectedFolder))
             {
@@ -271,21 +287,61 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
             }
 
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", System.Globalization.CultureInfo.InvariantCulture);
-            var filename = $"{projectName}_response_{responseIndex + 1}_{timestamp}.md";
+            var filename = $"{projectName}_{type}_{interactionIndex + 1}_{timestamp}.md"; // Use 1-based index for filename
             var filePath = Path.Combine(outputDirectory, filename);
 
-            File.WriteAllText(filePath, responseText);
-            _loggingService.LogOperation($"Auto-saved response #{responseIndex + 1} to {filename}");
+            await Task.Run(() => File.WriteAllText(filePath, content)); // Await the file write
+            _loggingService.LogOperation($"Auto-saved {type} for interaction #{interactionIndex + 1} to {filename}");
 
             return filePath; // Return the path of the saved file
         }
         catch (Exception ex)
         {
             // Log error but don't interrupt the user experience
-            _loggingService.LogOperation($"Error auto-saving response: {ex.Message}");
+            _loggingService.LogOperation($"Error auto-saving {type}: {ex.Message}");
             return string.Empty; // Return empty string on failure
         }
     }
+
+    private string AutoSaveContent(string content, int interactionIndex, string type)
+    {
+        try
+        {
+            // Create the AiOutput directory if it doesn't exist
+            var outputDirectory = Path.Combine(AppContext.BaseDirectory, "AiOutput");
+            if (!Directory.Exists(outputDirectory))
+            {
+                Directory.CreateDirectory(outputDirectory);
+                _loggingService.LogOperation($"Created AiOutput directory at {outputDirectory}");
+            }
+
+            // Generate a filename based on the project name (if available), type, index, and timestamp
+            var projectName = "unknown";
+            if (!string.IsNullOrEmpty(SelectedFolder))
+            {
+                projectName = new DirectoryInfo(SelectedFolder).Name;
+
+                // Sanitize the project name to remove invalid characters
+                projectName = string.Join("_", projectName.Split(Path.GetInvalidFileNameChars()));
+            }
+
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", System.Globalization.CultureInfo.InvariantCulture);
+            var filename = $"{projectName}_{type}_{interactionIndex + 1}_{timestamp}.md"; // Use 1-based index for filename
+            var filePath = Path.Combine(outputDirectory, filename);
+
+            File.WriteAllText(filePath, content);
+            _loggingService.LogOperation($"Auto-saved {type} for interaction #{interactionIndex + 1} to {filename}");
+
+            return filePath; // Return the path of the saved file
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't interrupt the user experience
+            _loggingService.LogOperation($"Error auto-saving {type}: {ex.Message}");
+            return string.Empty; // Return empty string on failure
+        }
+    }
+
 
     /// <summary>
     /// Overwrites an existing file with new content asynchronously.
@@ -630,3 +686,4 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         FilesChanged?.Invoke(this, EventArgs.Empty);
     }
 }
+
