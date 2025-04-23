@@ -354,7 +354,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
     }
 
 
-    public async Task<string> LoadMarkdownFileAsync(string filePath)
+    public string LoadMarkdownFile(string filePath)
     {
         try
         {
@@ -368,8 +368,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
                 return string.Empty;
             }
 
-            // Read the file on a background thread
-            var fileContent = await Task.Run(() => File.ReadAllText(filePath));
+            var fileContent = File.ReadAllText(filePath);
             _loggingService.LogOperation($"Loaded markdown file: {filePath}");
 
             return fileContent;

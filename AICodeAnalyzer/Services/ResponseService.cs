@@ -32,7 +32,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
     // Publicly expose the current index (using the existing property name)
     public int CurrentResponseIndex => _currentInteractionIndex;
 
-    // Expose the list of interactions for methods like LoadMarkdownFileAsync
+    // Expose the list of interactions for methods like LoadMarkdownFile
     public IReadOnlyList<Interaction> Interactions => _interactions.AsReadOnly();
 
 
@@ -66,7 +66,6 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
             return new Interaction();
         }
     }
-
 
     /// <summary>
     /// Updates the current interaction with the AI's response.
@@ -204,7 +203,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
     /// Displays the interaction at the current index.
     /// Loads content from files if paths exist and in-memory content is empty.
     /// </summary>
-    private async Task DisplayCurrentInteraction() // Changed to return Task
+    public Task DisplayCurrentInteraction() // Changed to return Task
     {
         try
         {
@@ -215,7 +214,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
                 _isShowingInputQuery = false; // Should default to not showing input if no interaction
                 OnResponseUpdated();
                 OnNavigationChanged();
-                return;
+                return Task.CompletedTask;
             }
 
             var interaction = _interactions[_currentInteractionIndex];
@@ -230,9 +229,10 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
                 contentToDisplay = interaction.UserPrompt;
                 filePathToSet = interaction.UserPromptFilePath;
 
-                if (string.IsNullOrEmpty(contentToDisplay) && !string.IsNullOrEmpty(filePathToSet) && File.Exists(filePathToSet))
+                // Always attempt to load from file if path exists, making the file the source of truth
+                if (!string.IsNullOrEmpty(filePathToSet) && File.Exists(filePathToSet))
                 {
-                    contentToDisplay = await _fileService.LoadMarkdownFileAsync(filePathToSet);
+                    contentToDisplay = _fileService.LoadMarkdownFile(filePathToSet);
                     // Optionally update the in-memory property if loaded from file
                     interaction.UserPrompt = contentToDisplay;
                 }
@@ -246,9 +246,10 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
                 contentToDisplay = interaction.AssistantResponse;
                 filePathToSet = interaction.AssistantResponseFilePath;
 
-                if (string.IsNullOrEmpty(contentToDisplay) && !string.IsNullOrEmpty(filePathToSet) && File.Exists(filePathToSet))
+                // Always attempt to load from file if path exists, making the file the source of truth
+                if (!string.IsNullOrEmpty(filePathToSet) && File.Exists(filePathToSet))
                 {
-                    contentToDisplay = await _fileService.LoadMarkdownFileAsync(filePathToSet);
+                    contentToDisplay = _fileService.LoadMarkdownFile(filePathToSet);
                     // Optionally update the in-memory property if loaded from file
                     interaction.AssistantResponse = contentToDisplay;
                 }
@@ -266,6 +267,8 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
         {
             ErrorLogger.LogError(ex, "Error displaying current interaction.");
         }
+
+        return Task.CompletedTask;
     }
 
 
@@ -356,11 +359,11 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
     /// </summary>
     /// <returns>Markdown formatted string of the input query and included files.</returns>
     // Change signature to async Task<string>
-    public async Task<string> GetInputQueryMarkdownAsync()
+    public Task<string> GetInputQueryMarkdownAsync()
     {
         if (_currentInteractionIndex < 0 || _currentInteractionIndex >= _interactions.Count)
         {
-            return "No input query available for this interaction.";
+            return Task.FromResult("No input query available for this interaction.");
         }
 
         var interaction = _interactions[_currentInteractionIndex];
@@ -397,7 +400,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
 
         if (!string.IsNullOrEmpty(interaction.UserPromptFilePath) && File.Exists(interaction.UserPromptFilePath))
         {
-            promptContent = await _fileService.LoadMarkdownFileAsync(interaction.UserPromptFilePath);
+            promptContent = _fileService.LoadMarkdownFile(interaction.UserPromptFilePath);
         }
         else
         {
@@ -407,7 +410,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
         fullInputView.AppendLine(promptContent);
         fullInputView.AppendLine("```");
 
-        return fullInputView.ToString();
+        return Task.FromResult(fullInputView.ToString());
     }
 
     /// <summary>

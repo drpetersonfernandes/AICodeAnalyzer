@@ -1205,7 +1205,7 @@ public partial class MainWindow
         _loggingService.LogOperation($"Selected prompt template: {selectedPrompt.Name}");
     }
 
-    private async void UpdateResponseDisplay() // Keep async void as it's an event handler
+    private async void UpdateResponseDisplay()
     {
         try
         {
@@ -1227,76 +1227,112 @@ public partial class MainWindow
                 }
             }
 
-            // Use Dispatcher.InvokeAsync to ensure UI updates happen on the UI thread
-            await Dispatcher.InvokeAsync(async () =>
+            // Manage visibility of WebView2 and RawResponseTextBox
+            if (isShowingInputQuery) // Showing Input Query
             {
-                // Manage visibility of WebView2 and RawResponseTextBox
-                if (isShowingInputQuery)
+                HtmlViewer.Visibility = Visibility.Visible;
+                RawResponseTextBox.Visibility = Visibility.Collapsed;
+
+                _isShowingRawText = false; // Cannot be in raw text mode while showing input query
+
+                // Convert Input Query to Html and display it
+                var inputQueryMd = await _responseService.GetInputQueryMarkdownAsync();
+                var html = _htmlService.ConvertMarkdownToHtml(inputQueryMd);
+                HtmlViewer.NavigateToString(html);
+
+                // Switch the button
+                BtnShowInputQuery.Content = "Show AI Response";
+
+                // Navigation buttons are handled by UpdateNavigationControls
+                BtnSaveResponse.IsEnabled = false; // Cannot save input query using Save Response
+                BtnSaveEdits.IsEnabled = false; // Cannot save edits to input query file this way
+                BtnToggleHtml.IsEnabled = false; // Cannot toggle raw/html for input query
+                BtnToggleHtml.Content = "Show Raw Text"; // Reset button text
+            }
+            else // Showing AI Response or Loaded File Content
+            {
+                HtmlViewer.Visibility = Visibility.Visible;
+                RawResponseTextBox.Visibility = Visibility.Collapsed;
+
+                // Switch the button
+                BtnShowInputQuery.Content = "Show Input Query";
+
+                // Navigation buttons are handled by UpdateNavigationControls
+                BtnSaveResponse.IsEnabled = !string.IsNullOrEmpty(responseText);
+                BtnSaveEdits.IsEnabled = !string.IsNullOrEmpty(responseText);
+                BtnShowInputQuery.IsEnabled = _responseService.CurrentResponseIndex >= 0; // Only allow toggling back if there's an interaction
+
+                if (_isShowingRawText)
                 {
-                    HtmlViewer.Visibility = Visibility.Visible;
+                    HtmlViewer.Visibility = Visibility.Collapsed;
+                    RawResponseTextBox.Visibility = Visibility.Visible;
+
                     if (RawResponseTextBox != null)
                     {
-                        RawResponseTextBox.Visibility = Visibility.Collapsed;
+                        // Try loading from file first
+                        if (!string.IsNullOrEmpty(_responseService.CurrentFilePath) && File.Exists(_responseService.CurrentFilePath))
+                        {
+                            try
+                            {
+                                var rawContent = await File.ReadAllTextAsync(_responseService.CurrentFilePath);
+                                RawResponseTextBox.Text = rawContent;
+                                _responseService.UpdateCurrentResponse(rawContent);
+                            }
+                            catch (Exception ex)
+                            {
+                                _loggingService.LogOperation($"Error loading file for raw view: {ex.Message}");
+                                // Fall back to in-memory content
+                                RawResponseTextBox.Text = _responseService.CurrentResponseText;
+                            }
+                        }
+                        else // No file path or file doesn't exist
+                        {
+                            // Use in-memory content instead of showing error
+                            RawResponseTextBox.Text = _responseService.CurrentResponseText;
+                        }
+        
+                        RawResponseTextBox.FontSize = _rawTextFontSize;
                     }
 
-                    _isShowingRawText = false; // Cannot be in raw text mode while showing input query
+                    BtnToggleHtml.Content = "Show HTML";
+                    BtnToggleHtml.IsEnabled = true;
+                }
 
-                    var inputQueryMd = await _responseService.GetInputQueryMarkdownAsync();
-                    var html = _htmlService.ConvertMarkdownToHtml(inputQueryMd);
+                else
+                {
+                    // Show HTML view
+                    HtmlViewer.Visibility = Visibility.Visible;
+                    RawResponseTextBox.Visibility = Visibility.Collapsed;
+
+                    var contentToRender = _responseService.CurrentResponseText;
+
+                    // Try load from file when CurrentFilePath exists
+                    if (!string.IsNullOrEmpty(_responseService.CurrentFilePath) && File.Exists(_responseService.CurrentFilePath))
+                    {
+                        try
+                        {
+                            contentToRender = _fileService.LoadMarkdownFile(_responseService.CurrentFilePath);
+
+                            // Update in-memory content so model stays consistent
+                            _responseService.UpdateCurrentResponse(contentToRender);
+                        }
+                        catch (Exception ex)
+                        {
+                            _loggingService.LogOperation($"Failed loading md file for HTML view: {ex.Message}");
+                            // Fallback will use in-memory content
+                        }
+                    }
+
+                    var html = _htmlService.ConvertMarkdownToHtml(contentToRender);
                     HtmlViewer.NavigateToString(html);
 
-                    BtnShowInputQuery.Content = "Show AI Response";
-                    // Navigation buttons are handled by UpdateNavigationControls
-                    BtnSaveResponse.IsEnabled = false; // Cannot save input query using Save Response
-                    BtnSaveEdits.IsEnabled = false; // Cannot save edits to input query file this way
-                    BtnToggleHtml.IsEnabled = false; // Cannot toggle raw/html for input query
-                    BtnToggleHtml.Content = "Show Raw Text"; // Reset button text
+                    BtnToggleHtml.Content = "Show Raw Text";
+                    BtnToggleHtml.IsEnabled = !string.IsNullOrEmpty(contentToRender); // Enable if content exists
                 }
-                else // Showing AI Response or Loaded File Content
-                {
-                    BtnShowInputQuery.Content = "Show Input Query";
-                    // Navigation buttons are handled by UpdateNavigationControls
-                    BtnSaveResponse.IsEnabled = !string.IsNullOrEmpty(responseText);
-                    BtnSaveEdits.IsEnabled = !string.IsNullOrEmpty(responseText);
-                    BtnShowInputQuery.IsEnabled = _responseService.CurrentResponseIndex >= 0; // Only allow toggling back if there's an interaction
-
-                    if (_isShowingRawText)
-                    {
-                        // Show the raw text editor
-                        HtmlViewer.Visibility = Visibility.Collapsed;
-                        if (RawResponseTextBox != null)
-                        {
-                            RawResponseTextBox.Visibility = Visibility.Visible;
-                            RawResponseTextBox.Text = responseText; // Load content into editor
-                            RawResponseTextBox.FontSize = _rawTextFontSize; // Apply current zoom level
-                        }
-
-                        BtnToggleHtml.Content = "Show HTML";
-                        BtnToggleHtml.IsEnabled = true; // Can toggle back to HTML
-                    }
-                    else
-                    {
-                        // Show the HTML viewer
-                        HtmlViewer.Visibility = Visibility.Visible;
-                        if (RawResponseTextBox != null)
-                        {
-                            RawResponseTextBox.Visibility = Visibility.Collapsed;
-                        }
-
-                        var html = _htmlService.ConvertMarkdownToHtml(responseText);
-                        HtmlViewer.NavigateToString(html);
-
-                        BtnToggleHtml.Content = "Show Raw Text";
-                        BtnToggleHtml.IsEnabled = !string.IsNullOrEmpty(responseText); // Can toggle to raw if content exists
-                    }
-                }
-            }); // End Dispatcher.InvokeAsync block
+            }
         }
         catch (Exception ex)
         {
-            // This catch block is now inside the async void handler,
-            // but Dispatcher.InvokeAsync calls are synchronous from the perspective of the await.
-            // Any exceptions *inside* the InvokeAsync lambda will be caught here.
             ErrorLogger.LogError(ex, "Error in method UpdateResponseDisplay");
         }
     }
@@ -1323,14 +1359,6 @@ public partial class MainWindow
     {
         try
         {
-            // Ensure we are not showing the input query
-            if (_responseService.IsShowingInputQuery)
-            {
-                MessageBox.Show("Cannot save the input query using 'Save Response'. This button is for saving AI responses.",
-                    "Save Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
             // Ensure the current response text is up-to-date if in raw editing mode
             if (_isShowingRawText && RawResponseTextBox != null)
             {
@@ -1500,49 +1528,52 @@ public partial class MainWindow
                 return;
             }
 
-            // Update the service's current response text with the edited content
-            _responseService.UpdateCurrentResponse(editedText);
-
             // Check if the current response is associated with a file path that exists
             var currentFilePath = _responseService.CurrentFilePath;
 
-            if (!string.IsNullOrEmpty(currentFilePath) && File.Exists(currentFilePath))
+            // Ensure we are saving the AI response, not the input query
+            if (_responseService.IsShowingInputQuery || string.IsNullOrEmpty(currentFilePath))
             {
-                _uiStateManager.SetProcessingState(true, "Saving edits");
-
-                try
-                {
-                    // Save the changes to the file asynchronously
-                    await _fileService.OverwriteResponseAsync(currentFilePath, _responseService.CurrentResponseText);
-
-                    _loggingService.LogOperation($"Automatically saved edits to file: {currentFilePath}");
-                    _uiStateManager.SetStatusMessage($"Edits applied and saved to {Path.GetFileName(currentFilePath)}");
-
-                    MessageBox.Show($"Edits applied and saved to {Path.GetFileName(currentFilePath)}",
-                        "Edits Saved", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                catch (Exception ex)
-                {
-                    _loggingService.LogOperation($"Error overwriting file {currentFilePath}: {ex.Message}");
-                    ErrorLogger.LogError(ex, $"Error overwriting file: {currentFilePath}");
-                    MessageBox.Show($"An error occurred while saving your edits to {Path.GetFileName(currentFilePath)}.", "Edit Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-                finally
-                {
-                    _uiStateManager.SetProcessingState(false);
-                }
+                MessageBox.Show("Cannot save edits. This action is only available for AI responses that have been saved to a file.",
+                    "Save Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
-            else
+
+            if (string.IsNullOrEmpty(currentFilePath) || !File.Exists(currentFilePath)) return;
+
+            _uiStateManager.SetProcessingState(true, "Saving edits");
+
+            try
             {
-                // No valid file path is associated with the current response (e.g., it's a new AI response not yet saved,
-                // or a history item, or the original file was deleted).
-                // Edits were applied to the in-memory content but cannot be saved back to an original file.
-                _loggingService.LogOperation("Applied edits to the content (not saved to file)");
-                _uiStateManager.SetStatusMessage("Edits applied (not saved to file)");
+                // Save the changes to the file asynchronously
 
-                MessageBox.Show("Edits applied to the content. Use 'Save Response' to save a copy to a new file.",
-                    "Edits Applied", MessageBoxButton.OK, MessageBoxImage.Information);
+                await _fileService.OverwriteResponseAsync(currentFilePath, editedText);
+
+                // After successful file save, update the in-memory content
+                // and refresh the display from the now-updated in-memory object (or file).
+                _responseService.UpdateCurrentResponse(editedText);
+
+                _loggingService.LogOperation($"Automatically saved edits to file: {currentFilePath}");
+                _uiStateManager.SetStatusMessage($"Edits applied and saved to {Path.GetFileName(currentFilePath)}");
+
+                MessageBox.Show($"Edits applied and saved to {Path.GetFileName(currentFilePath)}",
+                    "Edits Saved", MessageBoxButton.OK, MessageBoxImage.Information);
             }
+            catch (Exception ex)
+            {
+                _loggingService.LogOperation($"Error overwriting file {currentFilePath}: {ex.Message}");
+                ErrorLogger.LogError(ex, $"Error overwriting file: {currentFilePath}");
+                MessageBox.Show($"An error occurred while saving your edits to {Path.GetFileName(currentFilePath)}.", "Edit Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                // Refresh the display to show the saved content (either raw or HTML)
+                await _responseService.DisplayCurrentInteraction();
+                _uiStateManager.SetProcessingState(false);
+            }
+
+            MessageBox.Show("Edits applied to the content. Use 'Save Response' to save a copy to a new file.",
+                "Edits Applied", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
@@ -1580,7 +1611,6 @@ public partial class MainWindow
         _loggingService.LogOperation("Cleared recent files list");
     }
 
-    // Modified method signature to return Task instead of Task<string>
     public async Task LoadMarkdownFileAsync(string filePath)
     {
         try
@@ -1589,7 +1619,7 @@ public partial class MainWindow
             _uiStateManager.SetStatusMessage($"Loading {Path.GetFileName(filePath)} - please wait");
 
             // Read the file content asynchronously
-            var fileContent = await _fileService.LoadMarkdownFileAsync(filePath);
+            var fileContent = _fileService.LoadMarkdownFile(filePath);
 
             if (string.IsNullOrEmpty(fileContent))
             {
@@ -1898,7 +1928,6 @@ public partial class MainWindow
     {
         try
         {
-            // Ensure we are not showing the input query before toggling raw/HTML
             if (_responseService.IsShowingInputQuery)
             {
                 MessageBox.Show("Cannot toggle view while viewing the input query. Please switch back to the AI response first.",
@@ -1908,42 +1937,30 @@ public partial class MainWindow
 
             if (_isShowingRawText)
             {
-                // Currently showing raw text, switch to HTML view
+                _isShowingRawText = false; // Uncommented and fixed
+                BtnToggleHtml.Content = "Show Raw Text"; // Fixed typo: Should be "Show Raw Text" when switching back
 
-                // Get the edited text from the TextBox and update the service
-                if (RawResponseTextBox != null)
-                {
-                    _responseService.UpdateCurrentResponse(RawResponseTextBox.Text);
-                }
-
-                _isShowingRawText = false;
-                BtnToggleHtml.Content = "Show Raw Text";
-
-                // Update the display (will now show HTML from the updated service text)
                 UpdateResponseDisplay();
 
-                // Re-enable buttons that were disabled in raw mode
-                BtnSaveEdits.IsEnabled = true;
                 BtnSaveResponse.IsEnabled = true;
+                BtnSaveEdits.IsEnabled = false; // Editing is only for raw mode
             }
-            else
+            else // HTML mode
             {
-                // Currently showing HTML, switch to raw text view
-                _isShowingRawText = true;
+                _isShowingRawText = true; // Uncommented and fixed
                 BtnToggleHtml.Content = "Show HTML";
 
-                // Update the display (will now show raw text in the TextBox)
                 UpdateResponseDisplay();
 
-                // Disable buttons that don't apply in raw mode (except Apply Edits)
-                BtnSaveResponse.IsEnabled = false;
+                BtnSaveResponse.IsEnabled = true;
+                BtnSaveEdits.IsEnabled = true; // Enable editing in raw mode
             }
         }
         catch (Exception ex)
         {
             _loggingService.LogOperation($"Error toggling raw/HTML view: {ex.Message}");
             ErrorLogger.LogError(ex, "Toggling raw/HTML view");
-            MessageBox.Show("An error occurred while toggling the view.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("An error occurred while toggling the view mode.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

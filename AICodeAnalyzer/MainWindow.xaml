@@ -470,18 +470,18 @@
 
                     <Grid>
                         <!-- WebView2 HTML Viewer -->
-                        <wv2:WebView2 x:Name="HtmlViewer" Visibility="Visible" />
+                        <wv2:WebView2 x:Name="HtmlViewer" Visibility="Collapsed" />
 
-                        <!-- Raw Text Editor (initially hidden) -->
+                        <!-- Raw Text Editor -->
                         <TextBox x:Name="RawResponseTextBox"
-                                 Visibility="Collapsed"
+                                 Visibility="Visible"
                                  AcceptsReturn="True"
                                  TextWrapping="Wrap"
                                  VerticalScrollBarVisibility="Auto"
                                  HorizontalScrollBarVisibility="Auto"
                                  FontFamily="Consolas"
                                  FontSize="12"
-                                 Background="#F5F5F5"
+                                 
                                  Padding="5"
                                  PreviewMouseWheel="RawResponseTextBox_PreviewMouseWheel" />
                         <!-- Changed event here -->
