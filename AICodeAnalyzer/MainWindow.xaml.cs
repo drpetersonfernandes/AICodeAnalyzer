@@ -1290,7 +1290,7 @@ public partial class MainWindow
                             // Use in-memory content instead of showing error
                             RawResponseTextBox.Text = _responseService.CurrentResponseText;
                         }
-        
+
                         RawResponseTextBox.FontSize = _rawTextFontSize;
                     }
 
