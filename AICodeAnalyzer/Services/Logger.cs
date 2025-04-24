@@ -5,9 +5,9 @@ using System.IO;
 using System.Text;
 using System.Windows;
 
-namespace AICodeAnalyzer;
+namespace AICodeAnalyzer.Services;
 
-public static class ErrorLogger
+public static class Logger
 {
     private const string LogFileName = "ErrorLog.txt";
     private static readonly string LogFilePath = Path.Combine(AppContext.BaseDirectory, LogFileName);
@@ -47,9 +47,7 @@ public static class ErrorLogger
             // Ask the user if they want to view the log
             var result = MessageBox.Show(
                 $"An error occurred: {ex.Message}\n\nThe error has been logged to {LogFileName}. Would you like to open the log file?",
-                "Error",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Error);
+                "Error", MessageBoxButton.YesNo, MessageBoxImage.Error);
 
             if (result == MessageBoxResult.Yes)
             {

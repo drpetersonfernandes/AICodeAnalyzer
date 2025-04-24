@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using AICodeAnalyzer.Services;
 using Microsoft.Win32;
 
 namespace AICodeAnalyzer;
@@ -91,7 +92,7 @@ public partial class FileAssociationManager(Action<string> logInfo, Action<strin
         catch (Exception ex)
         {
             _logError($"Error registering application: {ex.Message}");
-            ErrorLogger.LogError(ex, "Error registering file association");
+            Logger.LogError(ex, "Error registering file association");
 
             return false;
         }
@@ -142,7 +143,7 @@ public partial class FileAssociationManager(Action<string> logInfo, Action<strin
         catch (Exception ex)
         {
             _logError($"Error unregistering application: {ex.Message}");
-            ErrorLogger.LogError(ex, "Error unregistering file association");
+            Logger.LogError(ex, "Error unregistering file association");
         }
     }
 

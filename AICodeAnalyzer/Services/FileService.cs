@@ -35,6 +35,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
             };
 
             if (dialog.ShowDialog() != CommonFileDialogResult.Ok) return false;
+
             // Update selected folder
             SelectedFolder = dialog.FileName;
             _loggingService.LogOperation($"Starting folder scan: {SelectedFolder}");
@@ -56,7 +57,8 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         catch (Exception ex)
         {
             _loggingService.LogOperation($"Error selecting folder: {ex.Message}");
-            ErrorLogger.LogError(ex, "Opening folder selection dialog");
+            Logger.LogError(ex, "Opening folder selection dialog");
+
             return false;
         }
     }
@@ -100,7 +102,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         catch (Exception ex)
         {
             _loggingService.LogOperation($"Error selecting files: {ex.Message}");
-            ErrorLogger.LogError(ex, "Selecting files");
+            Logger.LogError(ex, "Selecting files");
 
             return false;
         }
@@ -121,7 +123,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         catch (Exception ex)
         {
             _loggingService.LogOperation($"Error clearing files: {ex.Message}");
-            ErrorLogger.LogError(ex, "Clearing files");
+            Logger.LogError(ex, "Clearing files");
         }
     }
 
@@ -150,13 +152,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         return consolidatedFiles;
     }
 
-    /// <summary>
-    /// Saves the response text to a file, prompting the user for location.
-    /// </summary>
-    /// <param name="responseText">The text content to save.</param>
-    /// <param name="currentFilePath">The path of the currently viewed file, if any.</param>
-    /// <returns>The path where the file was saved, or the original currentFilePath if canceled.</returns>
-    public async Task<string> SaveResponseAsync(string responseText, string currentFilePath)
+    public async Task<string> SaveAiResponseAsync(string responseText, string currentFilePath)
     {
         try
         {
@@ -233,7 +229,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         catch (Exception ex)
         {
             _loggingService.LogOperation($"Error saving response: {ex.Message}");
-            ErrorLogger.LogError(ex, "Saving response to file");
+            Logger.LogError(ex, "Saving response to file");
 
             MessageBox.Show("An error occurred while saving the response.", "Save Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
@@ -242,24 +238,12 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         }
     }
 
-    /// <summary>
-    /// Auto-saves the response text to a file in the AiOutput directory.
-    /// </summary>
-    /// <param name="responseText">The text content to save.</param>
-    /// <param name="interactionIndex">The index of the interaction (0-based).</param>
-    /// <returns>The full path of the saved file.</returns>
-    public string AutoSaveResponse(string responseText, int interactionIndex)
+    public string AutoSaveAiResponse(string responseText, int interactionIndex)
     {
         return AutoSaveContent(responseText, interactionIndex, "response");
     }
 
-    /// <summary>
-    /// Auto-saves the input query text to a file in the AiOutput directory.
-    /// </summary>
-    /// <param name="queryText">The text content to save.</param>
-    /// <param name="interactionIndex">The index of the interaction (0-based).</param>
-    /// <returns>The full path of the saved file.</returns>
-    public async Task<string> AutoSaveQuery(string queryText, int interactionIndex)
+    public async Task<string> AutoSaveInputQuery(string queryText, int interactionIndex)
     {
         return await AutoSaveContentAsync(queryText, interactionIndex, "query");
     }
@@ -343,12 +327,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
     }
 
 
-    /// <summary>
-    /// Overwrites an existing file with new content asynchronously.
-    /// </summary>
-    /// <param name="filePath">The path of the file to overwrite.</param>
-    /// <param name="content">The new content for the file.</param>
-    public async Task OverwriteResponseAsync(string filePath, string content)
+    public async Task OverwriteAiResponseAsync(string filePath, string content)
     {
         await Task.Run(() => File.WriteAllText(filePath, content));
     }
@@ -376,7 +355,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         catch (Exception ex)
         {
             _loggingService.LogOperation($"Error loading markdown file: {ex.Message}");
-            ErrorLogger.LogError(ex, $"Loading markdown file: {filePath}");
+            Logger.LogError(ex, $"Loading markdown file: {filePath}");
 
             MessageBox.Show($"Error loading file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
 

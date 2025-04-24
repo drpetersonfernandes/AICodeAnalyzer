@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using AICodeAnalyzer.AIProvider;
+using AICodeAnalyzer.Models;
 
 namespace AICodeAnalyzer;
 

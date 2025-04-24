@@ -1,6 +1,6 @@
 ﻿namespace AICodeAnalyzer.Services;
 
-public class GetCodeLanguage
+public static class GetCodeLanguage
 {
     public static string GetLanguageForExtension(string ext)
     {

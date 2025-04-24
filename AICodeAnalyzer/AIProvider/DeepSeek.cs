@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using AICodeAnalyzer.Models;
+using AICodeAnalyzer.Services;
 
 namespace AICodeAnalyzer.AIProvider;
 
@@ -164,12 +165,13 @@ public class DeepSeek : IAProvider, IDisposable
         }
         catch (TaskCanceledException ex)
         {
-            ErrorLogger.LogError(ex, $"Request timed out with model {modelId}");
+            Logger.LogError(ex, $"Request timed out with model {modelId}");
             return "There was an error with your request.";
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, $"An error occurred with model {modelId}");
+            Logger.LogError(ex, $"An error occurred with model {modelId}");
+
             return "There was an error with your request.";
         }
     }

@@ -24,7 +24,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
     public event EventHandler ResponseUpdated = static delegate { };
     public event EventHandler NavigationChanged = static delegate { };
 
-    // Expose current state based on the selected interaction
+    // Expose the current state based on the selected interaction
     public string CurrentResponseText { get; private set; } = string.Empty;
     public string? CurrentFilePath { get; private set; } // File path of the *displayed* content (response file if viewing response, query file if viewing query)
     public bool IsShowingInputQuery => _isShowingInputQuery;
@@ -34,7 +34,6 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
 
     // Expose the list of interactions for methods like LoadMarkdownFile
     public IReadOnlyList<Interaction> Interactions => _interactions.AsReadOnly();
-
 
     /// <summary>
     /// Starts a new interaction by saving the user prompt and included files.
@@ -49,7 +48,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
             {
                 UserPrompt = userPrompt,
                 IncludedFiles = includedFiles,
-                UserPromptFilePath = await _fileService.AutoSaveQuery(userPrompt, _interactions.Count)
+                UserPromptFilePath = await _fileService.AutoSaveInputQuery(userPrompt, _interactions.Count)
             };
 
             _interactions.Add(newInteraction);
@@ -62,7 +61,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, "Error starting new interaction.");
+            Logger.LogError(ex, "Error starting new interaction.");
             return new Interaction();
         }
     }
@@ -86,7 +85,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
         currentInteraction.AssistantResponse = assistantResponse;
 
         // Auto-save the assistant response
-        currentInteraction.AssistantResponseFilePath = _fileService.AutoSaveResponse(assistantResponse, _currentInteractionIndex);
+        currentInteraction.AssistantResponseFilePath = _fileService.AutoSaveAiResponse(assistantResponse, _currentInteractionIndex);
 
         // Switch to showing the response view
         _isShowingInputQuery = false;
@@ -123,7 +122,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, "Error adding interaction and setting as current.");
+            Logger.LogError(ex, "Error adding interaction and setting as current.");
         }
     }
 
@@ -150,7 +149,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, "Error setting current interaction index.");
+            Logger.LogError(ex, "Error setting current interaction index.");
         }
     }
 
@@ -265,12 +264,11 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, "Error displaying current interaction.");
+            Logger.LogError(ex, "Error displaying current interaction.");
         }
 
         return Task.CompletedTask;
     }
-
 
     /// <summary>
     /// Updates the content of the currently displayed item (either prompt or response).
@@ -426,7 +424,7 @@ public sealed class ResponseService(LoggingService loggingService, FileService f
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, "Error toggling input query view.");
+            Logger.LogError(ex, "Error toggling input query view.");
         }
     }
 

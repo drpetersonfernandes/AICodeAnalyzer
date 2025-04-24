@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.IO.Pipes;
 using System.Threading;
+using AICodeAnalyzer.Services;
 
 namespace AICodeAnalyzer;
 
@@ -45,7 +46,8 @@ public partial class App : IDisposable
                     }
 
                     // The arguments have been sent, exit this instance
-                    Shutdown(); // Exit the application
+                    Shutdown();
+
                     return;
                 }
                 catch (TimeoutException)
@@ -78,7 +80,6 @@ public partial class App : IDisposable
                 await Task.Run(() => _fileAssociationManager.RegisterApplication());
             }
 
-            // NEW: Instead of storing file path in Properties for MainWindow to pick up,
             // call a new public async method on MainWindow to load the file:
             if (args.Length <= 0 || !File.Exists(args[0])) return;
 
@@ -89,7 +90,7 @@ public partial class App : IDisposable
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, "Error in the OnStartup method.");
+            Logger.LogError(ex, "Error in the OnStartup method.");
             Shutdown(-1);
         }
     }
@@ -218,7 +219,7 @@ public partial class App : IDisposable
         Console.WriteLine($"ERROR: {message}");
 
         var ex = new Exception($"ERROR: {message}");
-        ErrorLogger.LogError(ex, $"ERROR: {message}");
+        Logger.LogError(ex, $"ERROR: {message}");
     }
 
     private static void LogInformation(string message)

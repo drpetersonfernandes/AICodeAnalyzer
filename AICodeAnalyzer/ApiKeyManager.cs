@@ -5,6 +5,7 @@ using System.Windows;
 using MessagePack;
 using System.Security.Cryptography;
 using System.Text;
+using AICodeAnalyzer.Services;
 
 namespace AICodeAnalyzer;
 
@@ -45,12 +46,6 @@ public class ApiKeyManager
         return providerEntry?.Keys ?? new List<string>();
     }
 
-    /// <summary>
-    /// Removes an API key for a specific provider
-    /// </summary>
-    /// <param name="provider">The provider name</param>
-    /// <param name="key">The key to remove</param>
-    /// <returns>True if the key was removed, false if it wasn't found</returns>
     public bool RemoveKey(string provider, string key)
     {
         var providerEntry = KeyStorage.Providers.Find(p => p.Name == provider);
@@ -152,7 +147,7 @@ public class ApiKeyManager
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, "Error saving encrypted API keys");
+            Logger.LogError(ex, "Error saving encrypted API keys");
 
             MessageBox.Show("Failed to securely save API keys. See error log for details.",
                 "Error", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -190,7 +185,7 @@ public class ApiKeyManager
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, "Error saving encrypted API keys");
+            Logger.LogError(ex, "Error saving encrypted API keys");
 
             MessageBox.Show("Failed to save API keys securely. See error log for details.",
                 "Error", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -222,15 +217,12 @@ public class ApiKeyManager
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, "Key decryption failed");
+            Logger.LogError(ex, "Key decryption failed");
 
             return string.Empty; // Decryption failed - treat as empty
         }
     }
 
-    /// <summary>
-    /// Reloads API keys from the storage file.
-    /// </summary>
     public void ReloadKeys()
     {
         KeyStorage = LoadKeys();

@@ -1,4 +1,4 @@
-﻿namespace AICodeAnalyzer;
+﻿namespace AICodeAnalyzer.Models;
 
 public interface IAProvider
 {

@@ -5,10 +5,11 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using AICodeAnalyzer.Models;
 using System.Linq;
+using AICodeAnalyzer.Services;
 
 namespace AICodeAnalyzer;
 
-public partial class ConfigurationWindow // Change base class
+public partial class ConfigurationWindow
 {
     private readonly SettingsManager _settingsManager;
     private ApplicationSettings _workingSettings;
@@ -173,7 +174,7 @@ public partial class ConfigurationWindow // Change base class
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error checking file association: {ex.Message}");
-            ErrorLogger.LogError(ex, $"Error checking file association: {ex.Message}");
+            Logger.LogError(ex, $"Error checking file association: {ex.Message}");
 
             return false;
         }
@@ -321,7 +322,7 @@ public partial class ConfigurationWindow // Change base class
             return;
         }
 
-        // Create new prompt with empty content
+        // Create a new prompt with empty content
         var newPrompt = new CodePrompt(promptName, "");
         _workingSettings.CodePrompts.Add(newPrompt);
 
@@ -342,7 +343,7 @@ public partial class ConfigurationWindow // Change base class
             "Enter new name for this prompt template:", _currentPrompt.Name);
 
         if (string.IsNullOrEmpty(newName) || newName == _currentPrompt.Name) return;
-        // Check if name already exists
+        // Check if the name already exists
         if (_workingSettings.CodePrompts.Any(p => p.Name == newName))
         {
             MessageBox.Show($"A prompt template named '{newName}' already exists.",
@@ -353,7 +354,7 @@ public partial class ConfigurationWindow // Change base class
         // Rename the prompt
         _currentPrompt.Name = newName;
 
-        // Update selected prompt name if needed
+        // Update the selected prompt name if needed
         if (_workingSettings.SelectedPromptName == _currentPrompt.Name)
         {
             _workingSettings.SelectedPromptName = newName;
@@ -566,9 +567,6 @@ public partial class ConfigurationWindow // Change base class
         }
 
         DialogResult = true;
-
-        // REMOVE THIS LINE:
-        // RestartApplication.Restart();
 
         Close();
     }

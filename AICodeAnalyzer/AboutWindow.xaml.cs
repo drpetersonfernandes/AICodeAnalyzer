@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Navigation;
+using AICodeAnalyzer.Services;
 
 namespace AICodeAnalyzer;
 
@@ -33,7 +34,7 @@ public partial class AboutWindow
         catch (Exception ex)
         {
             const string contextMessage = "Error in the Hyperlink_RequestNavigate method.";
-            ErrorLogger.LogError(ex, contextMessage);
+            Logger.LogError(ex, contextMessage);
 
             MessageBox.Show("Unable to open the link.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }

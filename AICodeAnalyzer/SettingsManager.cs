@@ -6,6 +6,7 @@ using System.Xml.Serialization;
 using AICodeAnalyzer.Models;
 using System.Linq;
 using System.Windows;
+using AICodeAnalyzer.Services;
 
 namespace AICodeAnalyzer;
 
@@ -52,8 +53,7 @@ public class SettingsManager
         }
         catch (Exception ex)
         {
-            // In a real app, we might want to log this exception
-            Console.WriteLine($"Error loading settings: {ex.Message}");
+            Logger.LogError(ex, $"Error loading settings: {ex.Message}");
 
             // If there's any error, return default settings
             return new ApplicationSettings();
@@ -74,7 +74,7 @@ public class SettingsManager
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, $"Error saving settings: {ex.Message}");
+            Logger.LogError(ex, $"Error saving settings: {ex.Message}");
 
             MessageBox.Show("Error saving settings.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }

@@ -382,14 +382,14 @@
                                     VerticalAlignment="Center"
                                     VerticalContentAlignment="Center"
                                     HorizontalContentAlignment="Center"
-                                    HorizontalAlignment="Center"/>
+                                    HorizontalAlignment="Center" />
 
                             <TextBlock x:Name="TxtResponseCounter"
                                        Text="Response 0 of 0"
                                        FontSize="12"
                                        Margin="5,0"
                                        VerticalAlignment="Center"
-                                       HorizontalAlignment="Center"/>
+                                       HorizontalAlignment="Center" />
 
                             <Button x:Name="BtnNextResponse"
                                     Content="▶" Width="30" Height="30"
@@ -400,7 +400,7 @@
                                     VerticalAlignment="Center"
                                     VerticalContentAlignment="Center"
                                     HorizontalContentAlignment="Center"
-                                    HorizontalAlignment="Center"/>
+                                    HorizontalAlignment="Center" />
                         </StackPanel>
 
                         <!-- Zoom Controls -->
@@ -429,7 +429,7 @@
                                     VerticalAlignment="Center"
                                     VerticalContentAlignment="Center"
                                     HorizontalContentAlignment="Center"
-                                    HorizontalAlignment="Center"/>
+                                    HorizontalAlignment="Center" />
 
                             <Button x:Name="BtnZoomIn"
                                     Width="32" Height="32"
@@ -439,7 +439,7 @@
                                     VerticalAlignment="Center"
                                     VerticalContentAlignment="Center"
                                     HorizontalContentAlignment="Center"
-                                    HorizontalAlignment="Center"/>
+                                    HorizontalAlignment="Center" />
 
                         </StackPanel>
 
@@ -481,7 +481,7 @@
                                  HorizontalScrollBarVisibility="Auto"
                                  FontFamily="Consolas"
                                  FontSize="12"
-                                 
+
                                  Padding="5"
                                  PreviewMouseWheel="RawResponseTextBox_PreviewMouseWheel" />
                         <!-- Changed event here -->

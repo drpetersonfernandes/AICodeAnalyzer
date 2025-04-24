@@ -561,7 +561,7 @@ public class HtmlService(LoggingService loggingService)
 		catch (Exception ex)
 		{
 			_loggingService.LogOperation($"Error converting markdown to HTML: {ex.Message}");
-			ErrorLogger.LogError(ex, "Markdown to HTML conversion");
+			Logger.LogError(ex, "Markdown to HTML conversion");
 
 			return $"<pre style=\"color:red;\">Error converting markdown to HTML: {ex.Message}</pre>";
         }

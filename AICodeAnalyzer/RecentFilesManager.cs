@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Xml;
 using System.Xml.Serialization;
+using AICodeAnalyzer.Services;
 
 namespace AICodeAnalyzer;
 
@@ -63,7 +64,7 @@ public class RecentFilesManager
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, $"Error adding file to recent files: {filePath}");
+            Logger.LogError(ex, $"Error adding file to recent files: {filePath}");
         }
     }
 
@@ -106,7 +107,7 @@ public class RecentFilesManager
             // If there's an error loading the recent files, start with an empty list
             _recentFiles = [];
 
-            ErrorLogger.LogError(ex, "Loading recent files");
+            Logger.LogError(ex, "Loading recent files");
         }
     }
 
@@ -125,7 +126,7 @@ public class RecentFilesManager
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, "Error saving recent files");
+            Logger.LogError(ex, "Error saving recent files");
         }
     }
 }

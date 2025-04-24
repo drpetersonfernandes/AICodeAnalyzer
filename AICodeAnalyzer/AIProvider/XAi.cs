@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using AICodeAnalyzer.Models;
+using AICodeAnalyzer.Services;
 
 namespace AICodeAnalyzer.AIProvider;
 
@@ -100,7 +101,7 @@ public class XAi : IAProvider, IDisposable
         }
         catch (Exception ex)
         {
-            ErrorLogger.LogError(ex, $"Error with model {modelId}.");
+            Logger.LogError(ex, $"Error with model {modelId}.");
             return "There was an error with your request.";
         }
     }

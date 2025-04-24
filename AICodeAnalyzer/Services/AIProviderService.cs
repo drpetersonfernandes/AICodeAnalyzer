@@ -73,9 +73,6 @@ public class AiProviderService(LoggingService loggingService)
         return providerName is "Anthropic" or "DeepSeek" or "Google" or "OpenAI" or "xAI";
     }
 
-    /// <summary>
-    /// Reloads API keys from the storage file via the ApiKeyManager.
-    /// </summary>
     public void ReloadApiKeys()
     {
         _keyManager.ReloadKeys();
@@ -138,7 +135,7 @@ public class AiProviderService(LoggingService loggingService)
         catch (Exception ex)
         {
             _loggingService.LogOperation($"Error calling {providerName} API: {ex.Message}");
-            ErrorLogger.LogError(ex, $"Error calling {providerName} API");
+            Logger.LogError(ex, $"Error calling {providerName} API");
             throw; // Re-throw to let the caller handle it
         }
     }
