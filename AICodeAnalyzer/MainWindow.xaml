@@ -100,14 +100,14 @@
                 </MenuItem>
             </MenuItem>
             <MenuItem Header="Theme" Style="{StaticResource MenuItemStyle}">
-                <MenuItem Header="BaseTheme}">
+                <MenuItem Header="BaseTheme">
                     <MenuItem.Icon>
                         <Image Source="pack://application:,,,/images/theme.png" Width="16" Height="16" />
                     </MenuItem.Icon>
                     <MenuItem x:Name="Light" Header="Light" Click="ChangeBaseTheme_Click" IsCheckable="True" />
                     <MenuItem x:Name="Dark" Header="Dark" Click="ChangeBaseTheme_Click" IsCheckable="True" />
                 </MenuItem>
-                <MenuItem Header="AccentColors}">
+                <MenuItem Header="AccentColors">
                     <MenuItem.Icon>
                         <Image Source="pack://application:,,,/images/theme.png" Width="16" Height="16" />
                     </MenuItem.Icon>
