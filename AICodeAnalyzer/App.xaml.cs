@@ -13,10 +13,17 @@ public partial class App : IDisposable
     private FileAssociationManager? _fileAssociationManager;
     private const int ErrorBrokenPipe = unchecked((int)0x800700E7);
 
-    // Added for single instance logic
-    private const string AppUniqueId = "A1C0D3-A7A7-4A87-B1B1-F1L3A550C1A70R"; // A unique GUID-like string
-    private static string PipeName => $"AICodeAnalyzerPipe-{Environment.UserName}-{AppUniqueId}"; // Unique pipe name per user
+    // Static GUID for pipe name uniqueness
+    private static readonly string AppGuid;
+    private static string PipeName => $"AICodeAnalyzerPipe-{Environment.UserName}-{AppGuid}"; // Now uses a GUID for uniqueness
+
     private CancellationTokenSource? _pipeServerCts;
+
+    static App()
+    {
+        // Initialize a new GUID in the static constructor to ensure it's generated once
+        AppGuid = Guid.NewGuid().ToString();
+    }
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -80,7 +87,7 @@ public partial class App : IDisposable
                 await Task.Run(() => _fileAssociationManager.RegisterApplication());
             }
 
-            // call a new public async method on MainWindow to load the file:
+            // Call a new public async method on MainWindow to load the file:
             if (args.Length <= 0 || !File.Exists(args[0])) return;
 
             var filePath = args[0];
@@ -103,78 +110,87 @@ public partial class App : IDisposable
         {
             try
             {
-                await using var server = new NamedPipeServerStream(PipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-
-                // Wait for a client connection or cancellation
-                await server.WaitForConnectionAsync(ct);
-
-                // Client connected, read arguments
-                using var reader = new StreamReader(server);
-                var receivedArgs = new System.Collections.Generic.List<string>();
-
+                // Outer try-catch to handle exceptions in the loop
                 try
                 {
-                    var argCountString = await reader.ReadLineAsync(ct);
-                    if (int.TryParse(argCountString, out var argCount))
+                    await using var server = new NamedPipeServerStream(PipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+
+                    // Wait for a client connection or cancellation
+                    await server.WaitForConnectionAsync(ct);
+
+                    // Client connected, read arguments
+                    using var reader = new StreamReader(server);
+                    var receivedArgs = new System.Collections.Generic.List<string>();
+
+                    try
                     {
-                        for (var i = 0; i < argCount; i++)
+                        var argCountString = await reader.ReadLineAsync(ct);
+                        if (int.TryParse(argCountString, out var argCount))
                         {
-                            var arg = await reader.ReadLineAsync(ct);
-                            if (arg != null)
+                            for (var i = 0; i < argCount; i++)
                             {
-                                receivedArgs.Add(arg);
+                                var arg = await reader.ReadLineAsync(ct);
+                                if (arg != null)
+                                {
+                                    receivedArgs.Add(arg);
+                                }
                             }
                         }
                     }
-                }
-                // Catch broken pipe specifically using HResult
-                catch (IOException ioEx) when (ioEx.HResult == ErrorBrokenPipe)
-                {
-                    // Client disconnected prematurely, just log and continue
-                    LogInformation("Pipe client disconnected prematurely (broken pipe).");
+                    // Catch broken pipe specifically using HResult
+                    catch (IOException ioEx) when (ioEx.HResult == ErrorBrokenPipe)
+                    {
+                        // Client disconnected prematurely, just log and continue
+                        LogInformation("Pipe client disconnected prematurely (broken pipe).");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Cancellation requested while reading, exit loop
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError($"Error reading from pipe: {ex.Message}");
+                    }
+
+                    // Process received arguments on the UI thread
+                    if (receivedArgs.Count > 0)
+                    {
+                        // Find the main window and invoke the argument handling method
+                        // Use InvokeAsync to avoid blocking the server thread
+                        await Dispatcher.InvokeAsync(() =>
+                        {
+                            if (Current.MainWindow is MainWindow mainWindow)
+                            {
+                                mainWindow.HandleCommandLineArguments(receivedArgs.ToArray());
+                            }
+                            else
+                            {
+                                // If MainWindow isn't ready yet, store the args for when it is
+                                Current.Properties["StartupFilePath"] = receivedArgs[0]; // Assuming the first arg is the file path
+                                // We might need a more robust way to handle this if MainWindow takes long to load
+                            }
+                        });
+                    }
+
+                    // Close the connection (using block handles this)
                 }
                 catch (OperationCanceledException)
                 {
-                    // Cancellation requested while reading, exit loop
+                    // Cancellation requested while waiting for connection, exit loop
                     break;
                 }
-                catch (Exception ex)
+                catch (Exception ex) // Catch any other exceptions in the loop
                 {
-                    LogError($"Error reading from pipe: {ex.Message}");
+                    // Log the error but continue the loop
+                    LogError($"Error in pipe server loop: {ex.Message}");
+                    await Task.Delay(1000, ct); // Wait a bit before the next iteration
                 }
-
-                // Process received arguments on the UI thread
-                if (receivedArgs.Count > 0)
-                {
-                    // Find the main window and invoke the argument handling method
-                    // Use InvokeAsync to avoid blocking the server thread
-                    await Dispatcher.InvokeAsync(() =>
-                    {
-                        if (Current.MainWindow is MainWindow mainWindow)
-                        {
-                            mainWindow.HandleCommandLineArguments(receivedArgs.ToArray());
-                        }
-                        else
-                        {
-                            // If MainWindow isn't ready yet, store the args for when it is
-                            Current.Properties["StartupFilePath"] = receivedArgs[0]; // Assuming the first arg is the file path
-                            // We might need a more robust way to handle this if MainWindow takes long to load
-                        }
-                    });
-                }
-
-                // Close the connection (using block handles this)
             }
-            catch (OperationCanceledException)
+            catch (Exception ex) // Broad catch for the while loop body
             {
-                // Cancellation requested while waiting for connection, exit loop
-                break;
-            }
-            catch (Exception ex)
-            {
-                // Log other server errors but keep listening
-                LogError($"Pipe server error: {ex.Message}");
-                await Task.Delay(1000, ct); // Wait a bit before trying to recreate the server
+                LogError($"Unexpected error in StartPipeServerAsync loop: {ex.Message}");
+                await Task.Delay(1000, ct); // Delay to prevent tight looping on errors
             }
         }
 

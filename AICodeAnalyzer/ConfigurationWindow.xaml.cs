@@ -166,8 +166,7 @@ public partial class ConfigurationWindow
     {
         try
         {
-            var fileAssociationManager = new FileAssociationManager(static message => System.Diagnostics.Debug.WriteLine($"INFO: {message}"), static message => System.Diagnostics.Debug.WriteLine($"ERROR: {message}")
-            );
+            var fileAssociationManager = new FileAssociationManager(static message => System.Diagnostics.Debug.WriteLine($"INFO: {message}"), static message => System.Diagnostics.Debug.WriteLine($"ERROR: {message}"));
 
             return fileAssociationManager.IsApplicationRegistered();
         }
@@ -653,8 +652,8 @@ public partial class ConfigurationWindow
         }
         else
         {
-            // Default to an empty list if no provider is selected
-            LvApiKeys.ItemsSource = new List<ApiKeyItem>();
+            _currentProvider = string.Empty;
+            LvApiKeys.ItemsSource = new List<ApiKeyItem>(); // Default to an empty list if no provider is selected
         }
     }
 
@@ -668,9 +667,10 @@ public partial class ConfigurationWindow
 
         var newKey = TxtNewApiKey.Password.Trim();
 
-        if (string.IsNullOrWhiteSpace(newKey))
+        // Basic validation: Check if the key is at least 20 characters long
+        if (string.IsNullOrWhiteSpace(newKey) || newKey.Length < 20)
         {
-            MessageBox.Show("Please enter an API key.", "Empty Key", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("Invalid API key. It must be at least 20 characters long.", "Invalid Key", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -680,7 +680,6 @@ public partial class ConfigurationWindow
             if (existingKeys.Any(k => k.ActualKey == newKey))
             {
                 MessageBox.Show("This API key already exists for this provider.", "Duplicate Key", MessageBoxButton.OK, MessageBoxImage.Warning);
-
                 return;
             }
         }

@@ -63,7 +63,7 @@
         <!-- Menu at the top -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="_File" Style="{StaticResource MenuItemStyle}">
-                <MenuItem x:Name="MenuStart" Header="_Restart" Click="MenuStart_Click">
+                <MenuItem x:Name="MenuStart" Header="_Restart" Click="MenuRestart_Click">
                     <MenuItem.Icon>
                         <Image Source="pack://application:,,,/images/reset.png" Width="16" Height="16" />
                     </MenuItem.Icon>

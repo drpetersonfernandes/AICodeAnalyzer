@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using AICodeAnalyzer.Services;
 using Microsoft.Win32;
@@ -83,17 +84,24 @@ public partial class FileAssociationManager(Action<string> logInfo, Action<strin
                 }
             }
 
-            // Notify Windows of the change
-            SHChangeNotify(0x08000000, 0x0000, IntPtr.Zero, IntPtr.Zero);
-
-            _logInfo("Successfully registered application as handler for .md files");
-            return true;
+            // Notify Windows of the change with error handling
+            try
+            {
+                SHChangeNotify(0x08000000, 0x0000, IntPtr.Zero, IntPtr.Zero);
+                _logInfo("Successfully registered application as handler for .md files");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logError($"Error notifying Windows of changes during registration: {ex.Message}");
+                Logger.LogError(ex, "Error in SHChangeNotify during registration");
+                return false; // Return false to indicate failure
+            }
         }
         catch (Exception ex)
         {
             _logError($"Error registering application: {ex.Message}");
             Logger.LogError(ex, "Error registering file association");
-
             return false;
         }
     }
@@ -105,7 +113,6 @@ public partial class FileAssociationManager(Action<string> logInfo, Action<strin
             if (!IsApplicationRegistered())
             {
                 _logInfo("Application is not registered as handler for .md files");
-
                 return;
             }
 
@@ -135,10 +142,17 @@ public partial class FileAssociationManager(Action<string> logInfo, Action<strin
                 _logInfo("ProgID entry was already removed");
             }
 
-            // Notify Windows of the change
-            SHChangeNotify(0x08000000, 0x0000, IntPtr.Zero, IntPtr.Zero);
-
-            _logInfo("Successfully unregistered application");
+            // Notify Windows of the change with error handling
+            try
+            {
+                SHChangeNotify(0x08000000, 0x0000, IntPtr.Zero, IntPtr.Zero);
+                _logInfo("Successfully unregistered application");
+            }
+            catch (Exception ex)
+            {
+                _logError($"Error notifying Windows of changes during unregistration: {ex.Message}");
+                Logger.LogError(ex, "Error in SHChangeNotify during unregistration");
+            }
         }
         catch (Exception ex)
         {
@@ -163,7 +177,7 @@ public partial class FileAssociationManager(Action<string> logInfo, Action<strin
             if (!string.IsNullOrEmpty(assemblyLocation))
             {
                 var directory = Path.GetDirectoryName(assemblyLocation);
-                var assemblyName = Assembly.GetEntryAssembly()?.GetName().Name;
+                var assemblyName = Assembly.GetEntryAssembly()?.GetName().Name; // First declaration
                 if (!string.IsNullOrEmpty(directory) && !string.IsNullOrEmpty(assemblyName))
                 {
                     var exePath = Path.Combine(directory, $"{assemblyName}.exe");
@@ -183,21 +197,26 @@ public partial class FileAssociationManager(Action<string> logInfo, Action<strin
                 return fallbackPath;
             }
 
-            // Last resort: Find any EXE in the current directory
+            // Last resort: Find any EXE in the current directory that matches the assembly name
             var exeFiles = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.exe");
-            if (exeFiles.Length > 0)
+            var targetAssemblyName = Assembly.GetEntryAssembly()?.GetName().Name; // Renamed to avoid conflict
+            if (string.IsNullOrEmpty(targetAssemblyName))
+                throw new FileNotFoundException(
+                    "Could not find the correct executable path matching the assembly name.");
+
+            var matchingExe = exeFiles.FirstOrDefault(f => Path.GetFileName(f).Equals($"{targetAssemblyName}.exe", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(matchingExe))
             {
-                return exeFiles[0];
+                return matchingExe;
             }
 
-            _logError("Could not determine executable path");
-            return string.Empty;
+            // If no valid path is found, throw an exception
+            throw new FileNotFoundException("Could not find the correct executable path matching the assembly name.");
         }
         catch (Exception ex)
         {
             _logError($"Error getting executable path: {ex.Message}");
-
-            return string.Empty;
+            throw; // Re-throw to allow the caller to handle it
         }
     }
 

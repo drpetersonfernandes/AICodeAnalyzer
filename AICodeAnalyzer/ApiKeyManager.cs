@@ -9,6 +9,11 @@ using AICodeAnalyzer.Services;
 
 namespace AICodeAnalyzer;
 
+/// <summary>
+/// Manages API keys, including encryption and storage.
+/// Note: Keys are encrypted using ProtectedData, which is machine-bound and tied to the current user.
+/// This means keys may not be accessible on other machines or user accounts without explicit handling.
+/// </summary>
 public class ApiKeyManager
 {
     private const string KeysFileName = "keys.dat";
@@ -86,6 +91,8 @@ public class ApiKeyManager
                         // Could NOT decrypt -> probably unencrypted key or corrupted, so discard it
                         keysChanged = true;
                         keysToRemove.Add(key);
+                        Logger.LogError(new Exception("Decryption failed for key"), "Key decryption failed in LoadKeys");
+                        AlertUserOnDecryptionFailure(); // Alert the user about the failure
                     }
                     else
                     {
@@ -111,8 +118,9 @@ public class ApiKeyManager
 
             return storage;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Logger.LogError(ex, "Error loading API keys");
             return new ApiKeyStorage();
         }
     }
@@ -148,7 +156,6 @@ public class ApiKeyManager
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving encrypted API keys");
-
             MessageBox.Show("Failed to securely save API keys. See error log for details.",
                 "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
@@ -186,13 +193,17 @@ public class ApiKeyManager
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error saving encrypted API keys");
-
             MessageBox.Show("Failed to save API keys securely. See error log for details.",
                 "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     // Encrypt a plaintext key as base64
+    /// <summary>
+    /// Encrypts the provided plaintext key using ProtectedData.
+    /// Note: This encryption is machine-bound and tied to the current user via DataProtectionScope.CurrentUser.
+    /// Keys encrypted this way may not be accessible on other machines.
+    /// </summary>
     private static string EncryptKey(string plainText)
     {
         if (string.IsNullOrEmpty(plainText))
@@ -204,6 +215,11 @@ public class ApiKeyManager
     }
 
     // Decrypt base64-encrypted key string back to plaintext
+    /// <summary>
+    /// Decrypts the provided encrypted key string.
+    /// Note: This decryption is machine-bound and will fail if attempted on a different machine.
+    /// Explicit checks for failures are in place to handle this.
+    /// </summary>
     private static string DecryptKey(string encryptedBase64)
     {
         if (string.IsNullOrEmpty(encryptedBase64))
@@ -215,17 +231,28 @@ public class ApiKeyManager
             var decryptedBytes = ProtectedData.Unprotect(encryptedBytes, null, DataProtectionScope.CurrentUser);
             return Encoding.UTF8.GetString(decryptedBytes);
         }
+        catch (CryptographicException ex) // Specific exception for decryption failures
+        {
+            Logger.LogError(ex, "Key decryption failed due to machine-specific restrictions");
+            return string.Empty; // Still return empty, but with enhanced logging
+        }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Key decryption failed");
-
-            return string.Empty; // Decryption failed - treat as empty
+            return string.Empty;
         }
     }
 
     public void ReloadKeys()
     {
         KeyStorage = LoadKeys();
+    }
+
+    // Static method to alert the user on decryption failure
+    private static void AlertUserOnDecryptionFailure()
+    {
+        MessageBox.Show("Decryption of one or more API keys failed. This could be due to machine-specific restrictions or corrupted data. Keys have been discarded for security. Please re-enter your keys if needed.",
+            "Decryption Error", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 }
 

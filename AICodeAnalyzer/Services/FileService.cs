@@ -114,8 +114,8 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
         {
             _filesByExtension.Clear();
             SelectedFolder = string.Empty;
-
-            _loggingService.LogOperation("File selection cleared");
+            _loggingService.LogOperation("File selection fully cleared, including dictionary reset");
+            _loggingService.LogOperation($"Files cleared. Dictionary count: {_filesByExtension.Count}");
 
             // Notify that files have changed
             OnFilesChanged();
@@ -126,6 +126,7 @@ public class FileService(SettingsManager settingsManager, LoggingService logging
             Logger.LogError(ex, "Clearing files");
         }
     }
+
 
     public Dictionary<string, List<string>> PrepareConsolidatedFiles(List<SourceFile> includedFiles)
     {
