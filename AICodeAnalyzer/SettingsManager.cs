@@ -85,12 +85,24 @@ public class SettingsManager
         if (Settings.CodePrompts.Count <= 1)
             return;
 
-        // Create a dictionary to store the first occurrence of each prompt name
+        const string defaultPromptName = "Analyze Source Code"; // Define the default prompt name
         var uniquePrompts = new Dictionary<string, CodePrompt>();
 
         foreach (var prompt in Settings.CodePrompts)
         {
-            uniquePrompts.TryAdd(prompt.Name, prompt);
+            var name = prompt.Name;
+
+            if (name == defaultPromptName) // For the default prompt, keep only the first occurrence
+            {
+                if (!uniquePrompts.ContainsKey(name))
+                {
+                    uniquePrompts[name] = prompt; // Add only if not already present
+                }
+            }
+            else // For other prompts, always use the new (last) occurrence
+            {
+                uniquePrompts[name] = prompt; // Overwrite if it exists
+            }
         }
 
         // Replace the prompt list with the unique prompts

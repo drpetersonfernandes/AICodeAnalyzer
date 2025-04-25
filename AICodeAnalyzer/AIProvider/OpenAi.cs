@@ -150,31 +150,14 @@ public class OpenAi : IAProvider, IDisposable
 
             var response = await _httpClient.PostAsync(apiUrl, content);
 
-            JsonDocument? doc;
             if (!response.IsSuccessStatusCode)
             {
                 var errorText = await response.Content.ReadAsStringAsync();
-
-                // Try to parse the error for a more user-friendly message
-                try
-                {
-                    doc = JsonDocument.Parse(errorText);
-                    if (doc.RootElement.TryGetProperty("error", out var errorElement) &&
-                        errorElement.TryGetProperty("message", out var messageElement))
-                    {
-                        errorText = messageElement.GetString() ?? errorText;
-                    }
-                }
-                catch
-                {
-                    // If parsing fails, use the original error text
-                }
-
                 throw new Exception($"API error ({response.StatusCode}): {errorText}");
             }
 
             var responseJson = await response.Content.ReadAsStringAsync();
-            doc = JsonDocument.Parse(responseJson);
+            var doc = JsonDocument.Parse(responseJson);
 
             return doc.RootElement.GetProperty("choices")[0]
                 .GetProperty("message")
@@ -182,7 +165,8 @@ public class OpenAi : IAProvider, IDisposable
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, $"There was an error with model {modelId}");
+            // Fix for issue 13: Log the full exception before returning
+            Logger.LogError(ex, $"There was an error in the method SendPromptWithModelAsync with model {modelId}");
             return "There was an error with your request.";
         }
     }

@@ -857,7 +857,6 @@ public partial class MainWindow
             {
                 MessageBox.Show("Please select an AI provider.", "Missing AI Provider", MessageBoxButton.OK, MessageBoxImage.Warning);
                 _loggingService.LogOperation("Analysis canceled: No AI provider selected");
-
                 return;
             }
 
@@ -869,126 +868,34 @@ public partial class MainWindow
 
             try
             {
-                // Initialize prompt variable
-                string prompt;
+                var prompt = PreparePrompt(queryText);
 
-                // Create a temporary list to track files for this specific query
                 var currentQueryFiles = new List<SourceFile>();
-
-                // First determine if we need to include files
-                if (IncludeSelectedFilesChecker.IsChecked == true)
-                {
-                    _loggingService.LogOperation("Include Files checkbox is checked - preparing files");
-                    _loggingService.StartOperationTimer("PrepareFiles");
-
-                    // Generate base prompt based on whether to include template
-                    if (IncludePromptTemplate.IsChecked == true)
-                    {
-                        _loggingService.LogOperation("Including prompt template");
-                        prompt = GetPromptTemplateText() + "\n\n";
-                    }
-                    else
-                    {
-                        _loggingService.LogOperation("Not using prompt template");
-                        prompt = ""; // Start with an empty prompt if no template
-                    }
-
-                    // Now determine which files to include
-                    if (ListOfFiles.SelectedItems.Count > 0)
-                    {
-                        // User has specifically selected files in the list
-                        prompt = AppendSelectedFilesToPrompt(prompt, currentQueryFiles);
-                        _loggingService.LogOperation($"Added {currentQueryFiles.Count} specifically selected files to the prompt");
-                    }
-                    else if (_fileService.FilesByExtension.Count > 0)
-                    {
-                        // No specific selection, include all files
-                        var consolidatedFiles = _fileService.PrepareConsolidatedFiles(currentQueryFiles);
-
-                        // Add files to the prompt
-                        foreach (var ext in consolidatedFiles.Keys)
-                        {
-                            prompt += $"--- {ext.ToUpperInvariant()} FILES ---\n\n";
-
-                            foreach (var fileContent in consolidatedFiles[ext])
-                            {
-                                prompt += fileContent + "\n\n";
-                            }
-                        }
-
-                        _loggingService.LogOperation($"Added all {currentQueryFiles.Count} files to the prompt");
-                    }
-                    else
-                    {
-                        prompt += "--- NO FILES AVAILABLE TO INCLUDE ---\n\n";
-                        _loggingService.LogOperation("No files available to include");
-                    }
-
-                    _loggingService.EndOperationTimer("PrepareFiles");
-                }
-                else
-                {
-                    // Files not included - generate a basic prompt
-                    if (IncludePromptTemplate.IsChecked == true)
-                    {
-                        _loggingService.LogOperation("Using prompt template only (no files)");
-                        prompt = GetPromptTemplateText() + "\n\n";
-                    }
-                    else
-                    {
-                        _loggingService.LogOperation("Using minimal prompt (no template, no files)");
-                        prompt = "Please respond to the following:\n\n";
-                    }
-                    // No files included, currentQueryFiles remains empty
-                }
-
-                // Add user query if provided
-                if (!string.IsNullOrEmpty(queryText))
-                {
-                    prompt += "--- Additional Instructions/Question ---\n" + queryText;
-                    _loggingService.LogOperation("Added query text to the prompt");
-                }
-
-                // Start a new interaction in the ResponseService
                 await _responseService.StartNewInteractionAsync(prompt, currentQueryFiles);
 
-                // Get the conversation history for the API call (uses in-memory content now)
                 var conversationHistory = _responseService.GetConversationHistoryForApi();
-
-                // Get the selected API key
                 var savedKeys = _aiProviderService.GetKeysForProvider(apiSelection);
                 var keyIndex = AiProviderKeys.SelectedIndex - 1;
                 var apiKey = keyIndex >= 0 && keyIndex < savedKeys.Count ? savedKeys[keyIndex] : string.Empty;
-
-                // Get the selected model if applicable
                 string? modelId = null;
                 if (AiModel.IsEnabled && AiModel.SelectedItem is ModelDropdownItem selectedModel)
                 {
                     modelId = selectedModel.ModelId;
                 }
 
-                // Send to AI API and get response
-                var response = await _aiProviderService.SendPromptAsync(
-                    apiSelection, apiKey, prompt, conversationHistory, modelId);
+                var response = await SendRequestToAi(apiSelection, apiKey, prompt, conversationHistory, modelId);
 
-                // Check for null or empty response
                 if (string.IsNullOrEmpty(response))
                 {
                     throw new Exception("Received an empty response from the AI provider.");
                 }
 
-                // Complete the current interaction with the AI response
                 await _responseService.CompleteCurrentInteraction(response);
 
-                // Reset query input
                 TxtFollowupQuestion.Text = string.Empty;
-
-                // Enable buttons
                 BtnSaveResponse.IsEnabled = true;
                 BtnShowInputQuery.IsEnabled = true;
                 BtnContinue.IsEnabled = true;
-
-                // Disable Checkbox
                 IncludePromptTemplate.IsChecked = false;
                 IncludeSelectedFilesChecker.IsChecked = false;
 
@@ -1008,6 +915,76 @@ public partial class MainWindow
         {
             Logger.LogError(ex, "Error processing query");
         }
+    }
+
+    private string PreparePrompt(string queryText)
+    {
+        var prompt = string.Empty;
+        var currentQueryFiles = new List<SourceFile>();
+
+        if (IncludeSelectedFilesChecker.IsChecked == true)
+        {
+            _loggingService.LogOperation("Include Files checkbox is checked - preparing files");
+            _loggingService.StartOperationTimer("PrepareFiles");
+
+            if (IncludePromptTemplate.IsChecked == true)
+            {
+                _loggingService.LogOperation("Including prompt template");
+                prompt = GetPromptTemplateText() + "\n\n";
+            }
+
+            if (ListOfFiles.SelectedItems.Count > 0)
+            {
+                prompt = AppendSelectedFilesToPrompt(prompt, currentQueryFiles);
+                _loggingService.LogOperation($"Added {currentQueryFiles.Count} specifically selected files to the prompt");
+            }
+            else if (_fileService.FilesByExtension.Count > 0)
+            {
+                var consolidatedFiles = _fileService.PrepareConsolidatedFiles(currentQueryFiles);
+                foreach (var ext in consolidatedFiles.Keys)
+                {
+                    prompt += $"--- {ext.ToUpperInvariant()} FILES ---\n\n";
+                    foreach (var fileContent in consolidatedFiles[ext])
+                    {
+                        prompt += fileContent + "\n\n";
+                    }
+                }
+
+                _loggingService.LogOperation($"Added all {currentQueryFiles.Count} files to the prompt");
+            }
+            else
+            {
+                prompt += "--- NO FILES AVAILABLE TO INCLUDE ---\n\n";
+                _loggingService.LogOperation("No files available to include");
+            }
+
+            _loggingService.EndOperationTimer("PrepareFiles");
+        }
+        else
+        {
+            if (IncludePromptTemplate.IsChecked == true)
+            {
+                _loggingService.LogOperation("Using prompt template only (no files)");
+                prompt = GetPromptTemplateText() + "\n\n";
+            }
+            else
+            {
+                _loggingService.LogOperation("Using minimal prompt (no template, no files)");
+                prompt = "Please respond to the following:\n\n";
+            }
+        }
+
+        if (string.IsNullOrEmpty(queryText)) return prompt;
+
+        prompt += "--- Additional Instructions/Question ---\n" + queryText;
+        _loggingService.LogOperation("Added query text to the prompt");
+
+        return prompt;
+    }
+
+    private async Task<string> SendRequestToAi(string apiSelection, string apiKey, string prompt, List<ChatMessage> conversationHistory, string? modelId)
+    {
+        return await _aiProviderService.SendPromptAsync(apiSelection, apiKey, prompt, conversationHistory, modelId);
     }
 
     private void HandleQueryError(Exception ex)

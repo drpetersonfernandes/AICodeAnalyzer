@@ -107,14 +107,22 @@ public class Anthropic : IAProvider, IDisposable
             var responseJson = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(responseJson);
 
-            return doc.RootElement.GetProperty("content").EnumerateArray()
-                .First(static x => x.GetProperty("type").GetString() == "text")
-                .GetProperty("text").GetString() ?? "No response";
+            // Try-catch for JSON structure (Fix for issue 11)
+            try
+            {
+                return doc.RootElement.GetProperty("content").EnumerateArray()
+                    .First(static x => x.GetProperty("type").GetString() == "text")
+                    .GetProperty("text").GetString() ?? "No response";
+            }
+            catch (JsonException jsonEx)
+            {
+                Logger.LogError(jsonEx, "Error parsing Anthropic response JSON structure");
+                return "Error processing response: Unexpected JSON format. Please try again.";
+            }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, $"There was an error in the method SendPromptWithModelAsync with model {modelId}");
-
             return "There was an error with your request.";
         }
     }

@@ -58,7 +58,7 @@ public class DeepSeek : IAProvider, IDisposable
         // Handle the DeepSeek Reasoner model which requires strict user/assistant alternation
         if (model == Models.DeepSeekReasoner)
         {
-            // For DeepSeek Reasoner, we need to ensure strict alternation between user and assistant
+            // For DeepSeek Reasoner, ensure strict alternation between user and assistant
             var systemPrompt = GetSystemPromptForModel(model);
 
             // Always add a system message first
@@ -71,20 +71,13 @@ public class DeepSeek : IAProvider, IDisposable
             }
             else
             {
-                // For existing conversations, we need to ensure user/assistant alternation
-                // Start with determining what the first role should be
+                // For existing conversations, ensure user/assistant alternation
                 var expectedRole = "user";
 
-                // Process history and force proper alternation
                 foreach (var msg in conversationHistory)
                 {
-                    // Skip messages that don't fit the expected alternating pattern
-                    if (msg.Role != expectedRole)
-                    {
-                        continue;
-                    }
+                    if (msg.Role != expectedRole) continue;
 
-                    // Add the message and flip the expected role
                     messages.Add(new { role = msg.Role, content = msg.Content });
                     expectedRole = expectedRole == "user" ? "assistant" : "user";
                 }
@@ -94,29 +87,11 @@ public class DeepSeek : IAProvider, IDisposable
                 {
                     messages.Add(new { role = "user", content = prompt });
                 }
-                else
-                {
-                    // If the last message was from a user, we need to combine the prompts
-                    // to maintain the alternating pattern
-                    var lastMessage = messages[^1];
-                    var lastContent = ((dynamic)lastMessage).content;
-
-                    // Remove the last message
-                    messages.RemoveAt(messages.Count - 1);
-
-                    // Add a combined message
-                    messages.Add(new
-                    {
-                        role = "user",
-                        content = $"{lastContent}\n\nFollow-up question: {prompt}"
-                    });
-                }
             }
         }
         else
         {
             // For standard DeepSeek Chat, use the original behavior
-            // First add system message if this is the first message
             if (conversationHistory.Count == 0)
             {
                 var systemPrompt = GetSystemPromptForModel(model);
@@ -124,14 +99,12 @@ public class DeepSeek : IAProvider, IDisposable
             }
             else
             {
-                // Add each message from history with the proper format
                 foreach (var msg in conversationHistory)
                 {
                     messages.Add(new { role = msg.Role, content = msg.Content });
                 }
             }
 
-            // Add the current prompt
             messages.Add(new { role = "user", content = prompt });
         }
 
@@ -159,9 +132,17 @@ public class DeepSeek : IAProvider, IDisposable
             var responseJson = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(responseJson);
 
-            return doc.RootElement.GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content").GetString() ?? "No response";
+            // Robust JSON handling: Check for optional properties
+            if (doc.RootElement.TryGetProperty("choices", out var choicesElement) &&
+                choicesElement.ValueKind == JsonValueKind.Array && // Fixed: Check for array kind
+                choicesElement.GetArrayLength() > 0 && // Now using GetArrayLength() after confirming it's an array
+                choicesElement[0].TryGetProperty("message", out var messageElement) &&
+                messageElement.TryGetProperty("content", out var contentElement))
+            {
+                return contentElement.GetString() ?? "No response";
+            }
+
+            return "No response found in the API output.";
         }
         catch (TaskCanceledException ex)
         {
@@ -171,7 +152,6 @@ public class DeepSeek : IAProvider, IDisposable
         catch (Exception ex)
         {
             Logger.LogError(ex, $"An error occurred with model {modelId}");
-
             return "There was an error with your request.";
         }
     }
@@ -180,8 +160,7 @@ public class DeepSeek : IAProvider, IDisposable
     {
         return model switch
         {
-            Models.DeepSeekReasoner => "You are a helpful assistant specializing in code review and analysis.",
-            _ => "You are a helpful assistant specializing in code review and analysis." // Default for deepseek-chat and others
+            _ => "You are a helpful assistant specializing in code review and analysis."
         };
     }
 

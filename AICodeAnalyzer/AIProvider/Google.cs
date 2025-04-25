@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -68,10 +69,17 @@ public class Google : IAProvider, IDisposable
     private string GetApiVersionForModel(string modelId)
     {
         var models = GetAvailableModels();
-        var model = models.Find(m => m.Id == modelId);
+        var model = models.FirstOrDefault(m => m.Id == modelId);
 
-        // Return the API version or default to v1beta
-        return model?.ApiVersion ?? "v1beta";
+        if (model != null)
+        {
+            return model.ApiVersion;
+        }
+
+        // Throw an exception and log the error
+        var ex = new Exception($"Model '{modelId}' not found.");
+        Logger.LogError(ex, $"Error in GetApiVersionForModel for model {modelId}");
+        throw ex;
     }
 
     public async Task<string> SendPromptWithModelAsync(string apiKey, string prompt, List<ChatMessage> conversationHistory, string modelId)
@@ -94,9 +102,8 @@ public class Google : IAProvider, IDisposable
             {
                 foreach (var msg in conversationHistory)
                 {
-                    // Map "assistant" role to "model" for Google API
-                    var role = msg.Role == "assistant" ? "model" : msg.Role;
-
+                    // Fix for issue: Ensure 'role' is declared here
+                    var role = msg.Role == "assistant" ? "model" : msg.Role; // Declare 'role' inside the loop
                     contents.Add(new
                     {
                         role,
@@ -108,7 +115,7 @@ public class Google : IAProvider, IDisposable
             // Add the current prompt
             contents.Add(new
             {
-                role = "user",
+                role = "user", // Use 'user' directly for the current prompt
                 parts = new[] { new { text = prompt } }
             });
 
@@ -128,31 +135,14 @@ public class Google : IAProvider, IDisposable
 
             var response = await _httpClient.PostAsync(apiUrl, content);
 
-            JsonDocument? doc;
             if (!response.IsSuccessStatusCode)
             {
                 var errorText = await response.Content.ReadAsStringAsync();
-
-                // Try to extract a user-friendly error message
-                string userFriendlyError;
-                try
-                {
-                    doc = JsonDocument.Parse(errorText);
-                    userFriendlyError = doc.RootElement
-                        .GetProperty("error")
-                        .GetProperty("message")
-                        .GetString() ?? errorText;
-                }
-                catch
-                {
-                    userFriendlyError = errorText;
-                }
-
-                throw new Exception($"API error ({response.StatusCode}): {userFriendlyError}");
+                throw new Exception($"API error ({response.StatusCode}): {errorText}");
             }
 
             var responseJson = await response.Content.ReadAsStringAsync();
-            doc = JsonDocument.Parse(responseJson);
+            var doc = JsonDocument.Parse(responseJson);
 
             return doc.RootElement.GetProperty("candidates")[0]
                 .GetProperty("content")
