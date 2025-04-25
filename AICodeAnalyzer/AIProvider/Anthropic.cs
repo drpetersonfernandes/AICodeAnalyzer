@@ -33,7 +33,8 @@ public class Anthropic : IAProvider, IDisposable
                 Id = Models.Claude37Sonnet,
                 Name = "Claude 3.7 Sonnet",
                 Description = "200K context - $3/M input tokens - $15/M output tokens.",
-                ContextLength = 200000
+                ContextLength = 200000,
+                MaxOutputTokens = 64000
             },
 
             new ClaudeModelInfo
@@ -41,7 +42,8 @@ public class Anthropic : IAProvider, IDisposable
                 Id = Models.Claude35Sonnet,
                 Name = "Claude 3.5 Sonnet",
                 Description = "200K context - $3/M input tokens - $15/M output tokens.",
-                ContextLength = 200000
+                ContextLength = 200000,
+                MaxOutputTokens = 8192
             },
 
             new ClaudeModelInfo
@@ -49,7 +51,8 @@ public class Anthropic : IAProvider, IDisposable
                 Id = Models.Claude35Haiku,
                 Name = "Claude 3.5 Haiku",
                 Description = "200K context - $0,8/M input tokens - $4/M output tokens.",
-                ContextLength = 200000
+                ContextLength = 200000,
+                MaxOutputTokens = 4096
             },
 
             new ClaudeModelInfo
@@ -57,7 +60,8 @@ public class Anthropic : IAProvider, IDisposable
                 Id = Models.Claude3Opus,
                 Name = "Claude 3 Opus",
                 Description = "200K context - $15/M input tokens - $75/M output tokens.",
-                ContextLength = 200000
+                ContextLength = 200000,
+                MaxOutputTokens = 4096
             }
         ];
     }
@@ -85,12 +89,17 @@ public class Anthropic : IAProvider, IDisposable
             // Add the current prompt
             messages.Add(new { role = "user", content = prompt });
 
+            // --- Retrieve Max Output Tokens for the selected model ---
+            var selectedModelInfo = GetAvailableModels().FirstOrDefault(m => m.Id == modelId);
+            // Use the model's specific max_tokens or a fallback (e.g., 4096)
+            var maxTokens = selectedModelInfo?.MaxOutputTokens > 0 ? selectedModelInfo.MaxOutputTokens : 4096;
+            // ---------------------------------------------------------
+
             var requestData = new
             {
                 model,
                 messages,
-                // FIX: Add the required max_tokens parameter
-                max_tokens = 4096 // Set a reasonable default maximum token limit for the response
+                max_tokens = maxTokens // Use the dynamic maxTokens value
             };
 
             var content = new StringContent(
@@ -136,7 +145,4 @@ public class Anthropic : IAProvider, IDisposable
     }
 }
 
-public class ClaudeModelInfo : ModelInfo
-{
-    // No need for additional properties as ModelInfo has everything we need
-}
+public class ClaudeModelInfo : ModelInfo;

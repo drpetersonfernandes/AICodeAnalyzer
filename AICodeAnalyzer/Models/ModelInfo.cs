@@ -7,4 +7,5 @@ public class ModelInfo
     public string Description { get; set; } = string.Empty;
     public int ContextLength { get; set; }
     public string Category { get; set; } = string.Empty;
+    public int MaxOutputTokens { get; set; }
 }
