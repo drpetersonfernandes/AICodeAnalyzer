@@ -42,24 +42,13 @@ public class TokenCalculationResult
         sb.AppendLine(CultureInfo.InvariantCulture, $"- Buffer/Overhead: {BufferTokens:N0} tokens");
         sb.AppendLine();
 
-        if (TokensByExtension.Count > 0)
+        if (TokensByExtension.Count <= 0) return sb.ToString();
+
+        sb.AppendLine("File Extension Breakdown:");
+        foreach (var ext in TokensByExtension.OrderByDescending(e => e.Value))
         {
-            sb.AppendLine("File Extension Breakdown:");
-            foreach (var ext in TokensByExtension.OrderByDescending(e => e.Value))
-            {
-                var percentage = (double)ext.Value / TotalTokens * 100;
-                sb.AppendLine(CultureInfo.InvariantCulture, $"- {ext.Key}: {ext.Value:N0} tokens ({percentage:F1}%)");
-            }
-
-            sb.AppendLine();
-        }
-
-        if (ModelCompatibility.Count <= 0) return sb.ToString();
-
-        sb.AppendLine("Model Compatibility:");
-        foreach (var model in ModelCompatibility)
-        {
-            sb.AppendLine(CultureInfo.InvariantCulture, $"- {model.Key}: {model.Value}");
+            var percentage = (double)ext.Value / TotalTokens * 100;
+            sb.AppendLine(CultureInfo.InvariantCulture, $"- {ext.Key}: {ext.Value:N0} tokens ({percentage:F1}%)");
         }
 
         return sb.ToString();
