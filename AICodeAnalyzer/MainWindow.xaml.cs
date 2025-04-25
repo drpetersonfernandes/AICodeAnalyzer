@@ -1835,13 +1835,12 @@ public partial class MainWindow
                 return;
             }
 
-            // Get query text and API selection
-            const string queryText = "continue";
+            // Get API selection
             var apiSelection = AiProvider.SelectedItem?.ToString();
 
-            if (apiSelection == null)
+            if (string.IsNullOrEmpty(apiSelection))
             {
-                MessageBox.Show("Please enter an AI provider.", "Missing AI Provider", MessageBoxButton.OK,
+                MessageBox.Show("Please select an AI provider.", "Missing AI Provider", MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 _loggingService.LogOperation("Analysis canceled: No AI provider selected");
                 return;
@@ -1855,7 +1854,14 @@ public partial class MainWindow
 
             try
             {
-                // Get the conversation history for the API call (uses in-memory content now)
+                // The "Continue" query is just the literal string "continue"
+                const string queryText = "continue";
+
+                // Start a new interaction turn with "continue" as the user prompt
+                // No files are included in this specific "continue" turn
+                await _responseService.StartNewInteractionAsync(queryText, new List<SourceFile>());
+
+                // Get the conversation history *including* the new "continue" prompt
                 var conversationHistory = _responseService.GetConversationHistoryForApi();
 
                 // Get the selected API key
@@ -1871,22 +1877,22 @@ public partial class MainWindow
                 }
 
                 // Send to AI API and get response
+                // Pass the literal "continue" as the current prompt, along with the history
                 var response = await _aiProviderService.SendPromptAsync(
                     apiSelection, apiKey, queryText, conversationHistory, modelId);
 
                 // Complete the current interaction with the AI response
-                // Await CompleteCurrentInteraction if it were Task, but it's void, so fire and forget
                 await _responseService.CompleteCurrentInteraction(response);
 
                 // Reset query input (although 'continue' doesn't use TxtFollowupQuestion)
                 TxtFollowupQuestion.Text = string.Empty;
 
-                // Enable buttons (already done in CompleteCurrentInteraction?)
+                // Enable buttons (CompleteCurrentInteraction should handle some via events)
                 BtnSaveResponse.IsEnabled = true;
                 BtnShowInputQuery.IsEnabled = true;
-                BtnContinue.IsEnabled = true;
+                BtnContinue.IsEnabled = true; // Re-enable continue after a successful response
 
-                // Disable Checkbox
+                // Disable Checkbox (Continue doesn't use these)
                 IncludePromptTemplate.IsChecked = false;
                 IncludeSelectedFilesChecker.IsChecked = false;
 

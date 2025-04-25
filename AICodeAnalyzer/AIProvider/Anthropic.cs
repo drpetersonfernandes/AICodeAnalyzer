@@ -88,7 +88,9 @@ public class Anthropic : IAProvider, IDisposable
             var requestData = new
             {
                 model,
-                messages
+                messages,
+                // FIX: Add the required max_tokens parameter
+                max_tokens = 4096 // Set a reasonable default maximum token limit for the response
             };
 
             var content = new StringContent(
