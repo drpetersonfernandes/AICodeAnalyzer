@@ -294,32 +294,12 @@
             <!-- AI Query GroupBox -->
             <GroupBox Grid.Row="3" Grid.Column="0" Grid.RowSpan="2" Header="AI Query" Margin="0,0,5,0" Padding="0">
                 <StackPanel Margin="5">
-                    <!-- Prompt Template Selection -->
-                    <Grid Margin="0,0,0,5">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <ComboBox x:Name="PromptTemplates" Grid.Column="0"
-                                  SelectionChanged="PromptTemplates_SelectionChanged"
-                                  DisplayMemberPath="Name"
-                                  Margin="0,0,5,0" />
-                        <Button x:Name="BtnConfigurePrompts" Content="Edit"
-                                Grid.Column="1" Padding="4,0" Height="27"
-                                Click="PromptTemplatesEdit_Click" />
-                    </Grid>
-
+                    
                     <!-- Option Checkboxes -->
-                    <StackPanel Margin="0,0,0,10">
-                        <CheckBox x:Name="IncludePromptTemplate" Content="Include initial prompt template"
-                                  IsChecked="False" Margin="0,0,0,5"
-                                  ToolTip="When checked, the initial prompt template will be included in your request" />
-
-                        <CheckBox x:Name="IncludeSelectedFilesChecker" Content="Include selected files"
+                    <CheckBox x:Name="IncludeSelectedFilesChecker" Content="Include selected files"
                                   IsChecked="True" Margin="0,0,0,5"
                                   ToolTip="Include the files selected in the file list with your request" />
-                    </StackPanel>
-
+                    
                     <!-- Text Input Area -->
                     <TextBox x:Name="TxtFollowupQuestion"
                              VerticalAlignment="Stretch"

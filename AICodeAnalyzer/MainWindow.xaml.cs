@@ -157,9 +157,6 @@ public partial class MainWindow
         AiModel.SelectionChanged -= AiModel_SelectionChanged;
         AiModel.SelectionChanged += AiModel_SelectionChanged;
 
-        PromptTemplates.SelectionChanged -= PromptTemplates_SelectionChanged;
-        PromptTemplates.SelectionChanged += PromptTemplates_SelectionChanged;
-
         BtnContinue.Click -= BtnContinue_Click;
         BtnContinue.Click += BtnContinue_Click;
 
@@ -363,7 +360,6 @@ public partial class MainWindow
     {
         // Populate UI elements
         PopulateAiProviders();
-        LoadPromptTemplates();
         UpdateRecentFilesMenu();
 
         // Set the initial UI state
@@ -655,13 +651,6 @@ public partial class MainWindow
         }
     }
 
-    private void LoadPromptTemplates()
-    {
-        PromptTemplates.ItemsSource = null;
-        PromptTemplates.ItemsSource = _settingsManager.Settings.CodePrompts;
-        PromptTemplates.SelectedItem = -1;
-    }
-
     private void UpdateTokenCountDisplay()
     {
         // Get the total token count from the result
@@ -683,26 +672,16 @@ public partial class MainWindow
     {
         // Get all source files as a flat list
         var allFiles = _fileService.FilesByExtension.Values
-            .SelectMany(files => files)
+            .SelectMany(static files => files)
             .ToList();
 
-        // Get the prompt template text for token counting
-        var promptTemplate = GetPromptTemplateText();
-
         // Use SharpToken to calculate tokens
-        _tokenCalculationResult = _tokenCounterService.CalculateTotalTokens(allFiles, promptTemplate);
+        _tokenCalculationResult = _tokenCounterService.CalculateTotalTokens(allFiles);
 
         // Update UI
         UpdateTokenCountDisplay();
 
         _loggingService.LogOperation($"Token calculation complete: {_tokenCalculationResult.TotalTokens:N0} tokens");
-    }
-
-    private string GetPromptTemplateText()
-    {
-        // Get the selected prompt content from the dropdown or settings
-        var selectedPromptTemplate = PromptTemplates.SelectedItem as CodePrompt;
-        return selectedPromptTemplate?.Content ?? _settingsManager.Settings.InitialPrompt; // Fallback
     }
 
     private void UpdateRecentFilesMenu()
@@ -896,7 +875,6 @@ public partial class MainWindow
                 BtnSaveResponse.IsEnabled = true;
                 BtnShowInputQuery.IsEnabled = true;
                 BtnContinue.IsEnabled = true;
-                IncludePromptTemplate.IsChecked = false;
                 IncludeSelectedFilesChecker.IsChecked = false;
 
                 _uiStateManager.SetStatusMessage("Query processed successfully!");
@@ -927,12 +905,6 @@ public partial class MainWindow
             _loggingService.LogOperation("Include Files checkbox is checked - preparing files");
             _loggingService.StartOperationTimer("PrepareFiles");
 
-            if (IncludePromptTemplate.IsChecked == true)
-            {
-                _loggingService.LogOperation("Including prompt template");
-                prompt = GetPromptTemplateText() + "\n\n";
-            }
-
             if (ListOfFiles.SelectedItems.Count > 0)
             {
                 prompt = AppendSelectedFilesToPrompt(prompt, currentQueryFiles);
@@ -962,16 +934,8 @@ public partial class MainWindow
         }
         else
         {
-            if (IncludePromptTemplate.IsChecked == true)
-            {
-                _loggingService.LogOperation("Using prompt template only (no files)");
-                prompt = GetPromptTemplateText() + "\n\n";
-            }
-            else
-            {
-                _loggingService.LogOperation("Using minimal prompt (no template, no files)");
-                prompt = "Please respond to the following:\n\n";
-            }
+            _loggingService.LogOperation("Using minimal prompt (no template, no files)");
+            prompt = "Please respond to the following:\n\n";
         }
 
         if (string.IsNullOrEmpty(queryText)) return prompt;
@@ -1175,15 +1139,6 @@ public partial class MainWindow
             // Clear the description if no valid model is selected
             TxtModelDescription.Text = string.Empty;
         }
-    }
-
-    private void PromptTemplates_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (PromptTemplates.SelectedItem is not CodePrompt selectedPrompt) return;
-
-        _settingsManager.Settings.SelectedPromptName = selectedPrompt.Name;
-        _settingsManager.SaveSettings();
-        _loggingService.LogOperation($"Selected prompt template: {selectedPrompt.Name}");
     }
 
     private async void UpdateResponseDisplay()
@@ -1686,9 +1641,6 @@ public partial class MainWindow
                 UpdateProviderKeys(selectedProvider);
             }
 
-            // 2. Reload Prompt Templates and refresh the prompt dropdown
-            LoadPromptTemplates();
-
             // 3. Recalculate token count based on potentially new file extensions/size limits
             // This will also update the token count display
             CalculateTotalTokens();
@@ -1738,7 +1690,6 @@ public partial class MainWindow
             ListOfFiles.Items.Clear();
 
             // Reset checkboxes to default state
-            IncludePromptTemplate.IsChecked = false;
             IncludeSelectedFilesChecker.IsChecked = true;
 
             // Reset AI provider
@@ -1893,7 +1844,6 @@ public partial class MainWindow
                 BtnContinue.IsEnabled = true; // Re-enable continue after a successful response
 
                 // Disable Checkbox (Continue doesn't use these)
-                IncludePromptTemplate.IsChecked = false;
                 IncludeSelectedFilesChecker.IsChecked = false;
 
                 _uiStateManager.SetStatusMessage("Query processed successfully!");

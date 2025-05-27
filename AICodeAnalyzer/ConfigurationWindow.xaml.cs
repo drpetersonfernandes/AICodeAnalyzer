@@ -13,7 +13,6 @@ public partial class ConfigurationWindow
 {
     private readonly SettingsManager _settingsManager;
     private ApplicationSettings _workingSettings;
-    private CodePrompt? _currentPrompt;
     private bool _isCurrentlyRegistered;
 
     private readonly ApiKeyManager _apiKeyManager = new();
@@ -111,54 +110,6 @@ public partial class ConfigurationWindow
             _workingSettings.CodePrompts.Add(prompt);
         }
 
-        // Manually create the items instead of binding directly
-        CboPromptTemplates.Items.Clear();
-        foreach (var prompt in _workingSettings.CodePrompts)
-        {
-            CboPromptTemplates.Items.Add(prompt);
-        }
-
-        // Select the current prompt
-        if (!string.IsNullOrEmpty(_workingSettings.SelectedPromptName))
-        {
-            var selectedPrompt = _workingSettings.CodePrompts.FirstOrDefault(p =>
-                p.Name == _workingSettings.SelectedPromptName);
-
-            if (selectedPrompt != null)
-            {
-                // Find the actual item in the ComboBox that matches the prompt
-                for (var i = 0; i < CboPromptTemplates.Items.Count; i++)
-                {
-                    if (CboPromptTemplates.Items[i] is not CodePrompt item || item.Name != selectedPrompt.Name)
-                        continue;
-
-                    CboPromptTemplates.SelectedIndex = i;
-                    _currentPrompt = item;
-                    TxtInitialPrompt.Text = item.Content;
-                    break;
-                }
-            }
-            else if (CboPromptTemplates.Items.Count > 0)
-            {
-                CboPromptTemplates.SelectedIndex = 0;
-                _currentPrompt = CboPromptTemplates.Items[0] as CodePrompt;
-                if (_currentPrompt != null)
-                {
-                    TxtInitialPrompt.Text = _currentPrompt.Content;
-                }
-            }
-        }
-        else if (CboPromptTemplates.Items.Count > 0)
-        {
-            CboPromptTemplates.SelectedIndex = 0;
-            _currentPrompt = CboPromptTemplates.Items[0] as CodePrompt;
-            if (_currentPrompt != null)
-            {
-                TxtInitialPrompt.Text = _currentPrompt.Content;
-            }
-        }
-
-        UpdatePromptButtons();
         InitializeFileAssociationTab();
     }
 
@@ -271,181 +222,6 @@ public partial class ConfigurationWindow
         LbExtensions.ItemsSource = _workingSettings.SourceFileExtensions;
     }
 
-    private void UpdatePromptButtons()
-    {
-        var hasPrompts = _workingSettings.CodePrompts.Count > 0;
-        var isDefaultSelected = _currentPrompt?.Name == "Analyze Source Code";
-
-        // Always enable New button
-        BtnNewPrompt.IsEnabled = true;
-
-        // Enable Rename and Delete only if there's a selection and it's not the Default prompt
-        BtnRenamePrompt.IsEnabled = hasPrompts && !isDefaultSelected;
-
-        // Only allow deleting non-default prompts and if there's more than one prompt
-        BtnDeletePrompt.IsEnabled = hasPrompts && !isDefaultSelected && _workingSettings.CodePrompts.Count > 1;
-    }
-
-    private void TxtInitialPrompt_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        // Update the current prompt content
-        if (_currentPrompt != null)
-        {
-            _currentPrompt.Content = TxtInitialPrompt.Text;
-        }
-    }
-
-    private void CboPromptTemplates_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (CboPromptTemplates.SelectedItem is not CodePrompt selectedPrompt) return;
-
-        _currentPrompt = selectedPrompt;
-        _workingSettings.SelectedPromptName = selectedPrompt.Name;
-        TxtInitialPrompt.Text = selectedPrompt.Content;
-
-        // Update button states
-        UpdatePromptButtons();
-    }
-
-    private void BtnNewPrompt_Click(object sender, RoutedEventArgs e)
-    {
-        // Show dialog to enter new prompt name
-        var promptName = ShowPromptNameDialog("New Prompt Template", "Enter name for the new prompt template:");
-
-        if (string.IsNullOrEmpty(promptName)) return;
-        // Check if name already exists
-        if (_workingSettings.CodePrompts.Any(p => p.Name == promptName))
-        {
-            MessageBox.Show($"A prompt template named '{promptName}' already exists.",
-                "Duplicate Name", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        // Create a new prompt with empty content
-        var newPrompt = new CodePrompt(promptName, "");
-        _workingSettings.CodePrompts.Add(newPrompt);
-
-        // Refresh combobox
-        RefreshPromptsComboBox();
-
-        // Select the new prompt
-        CboPromptTemplates.SelectedItem = newPrompt;
-    }
-
-    private void BtnRenamePrompt_Click(object sender, RoutedEventArgs e)
-    {
-        if (_currentPrompt == null || _currentPrompt.Name == "Analyze Source Code")
-            return;
-
-        // Show dialog to enter new name
-        var newName = ShowPromptNameDialog("Rename Prompt Template",
-            "Enter new name for this prompt template:", _currentPrompt.Name);
-
-        if (string.IsNullOrEmpty(newName) || newName == _currentPrompt.Name) return;
-        // Check if the name already exists
-        if (_workingSettings.CodePrompts.Any(p => p.Name == newName))
-        {
-            MessageBox.Show($"A prompt template named '{newName}' already exists.",
-                "Duplicate Name", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        // Rename the prompt
-        _currentPrompt.Name = newName;
-
-        // Update the selected prompt name if needed
-        if (_workingSettings.SelectedPromptName == _currentPrompt.Name)
-        {
-            _workingSettings.SelectedPromptName = newName;
-        }
-
-        // Refresh combobox
-        RefreshPromptsComboBox();
-
-        // Reselect the renamed prompt
-        CboPromptTemplates.SelectedItem = _currentPrompt;
-    }
-
-    private void BtnDeletePrompt_Click(object sender, RoutedEventArgs e)
-    {
-        if (_currentPrompt == null || _currentPrompt.Name == "Analyze Source Code" || _workingSettings.CodePrompts.Count <= 1)
-            return;
-
-        // Confirm deletion
-        var result = MessageBox.Show($"Are you sure you want to delete the prompt template '{_currentPrompt.Name}'?",
-            "Delete Prompt Template", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-        if (result != MessageBoxResult.Yes) return;
-        // If we're deleting the currently selected prompt, select the Default or first available
-        var needToUpdateSelected = _workingSettings.SelectedPromptName == _currentPrompt.Name;
-
-        // Remove the prompt
-        _workingSettings.CodePrompts.Remove(_currentPrompt);
-
-        // Update selected prompt if needed
-        if (needToUpdateSelected)
-        {
-            var defaultPrompt = _workingSettings.CodePrompts.FirstOrDefault(static p => p.Name == "Analyze Source Code");
-            _workingSettings.SelectedPromptName = defaultPrompt?.Name ?? _workingSettings.CodePrompts.FirstOrDefault()?.Name;
-        }
-
-        // Refresh combobox and select appropriate item
-        RefreshPromptsComboBox();
-
-        if (!needToUpdateSelected) return;
-
-        {
-            var newSelected = _workingSettings.CodePrompts.FirstOrDefault(p => p.Name == _workingSettings.SelectedPromptName);
-            CboPromptTemplates.SelectedItem = newSelected;
-        }
-    }
-
-    private void RefreshPromptsComboBox()
-    {
-        var selectedName = _currentPrompt?.Name;
-
-        // Ensure no duplicates in prompts collection
-        var uniquePrompts = new Dictionary<string, CodePrompt>();
-        foreach (var prompt in _workingSettings.CodePrompts)
-        {
-            uniquePrompts.TryAdd(prompt.Name, prompt);
-        }
-
-        // Replace the existing prompts with unique prompts
-        _workingSettings.CodePrompts.Clear();
-        foreach (var prompt in uniquePrompts.Values)
-        {
-            _workingSettings.CodePrompts.Add(prompt);
-        }
-
-        // Manually populate the ComboBox
-        CboPromptTemplates.Items.Clear();
-        foreach (var prompt in _workingSettings.CodePrompts)
-        {
-            CboPromptTemplates.Items.Add(prompt);
-        }
-
-        // Reselect the previously selected item if possible
-        if (!string.IsNullOrEmpty(selectedName))
-        {
-            for (var i = 0; i < CboPromptTemplates.Items.Count; i++)
-            {
-                if (CboPromptTemplates.Items[i] is not CodePrompt item || item.Name != selectedName) continue;
-
-                CboPromptTemplates.SelectedIndex = i;
-                _currentPrompt = item;
-                break;
-            }
-        }
-        else if (CboPromptTemplates.Items.Count > 0)
-        {
-            CboPromptTemplates.SelectedIndex = 0;
-            _currentPrompt = CboPromptTemplates.Items[0] as CodePrompt;
-        }
-
-        UpdatePromptButtons();
-    }
-
     private string ShowPromptNameDialog(string title, string message, string defaultValue = "")
     {
         var dialog = new Window
@@ -500,20 +276,6 @@ public partial class ConfigurationWindow
         textBox.SelectAll();
 
         return dialog.ShowDialog() == true ? textBox.Text.Trim() : string.Empty;
-    }
-
-    private void BtnRestoreDefaultPrompt_Click(object sender, RoutedEventArgs e)
-    {
-        if (_currentPrompt == null)
-            return;
-
-        // Find or create the default prompt template for reference
-        var defaultSettings = new ApplicationSettings();
-        var defaultPromptText = defaultSettings.InitialPrompt;
-
-        // Update the current prompt text to default
-        _currentPrompt.Content = defaultPromptText;
-        TxtInitialPrompt.Text = defaultPromptText;
     }
 
     private void BtnReset_Click(object sender, RoutedEventArgs e)

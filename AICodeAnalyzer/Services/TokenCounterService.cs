@@ -59,7 +59,6 @@ public class TokenCounterService
 
     public TokenCalculationResult CalculateTotalTokens(
         List<SourceFile> sourceFiles,
-        string promptTemplate,
         string encodingName = DefaultEncodingName)
     {
         // Try to use SharpToken for precise counting, fall back to estimation if unavailable
@@ -67,11 +66,11 @@ public class TokenCounterService
 
         if (useSharpToken)
         {
-            return CalculateTokensWithSharpToken(sourceFiles, promptTemplate, encodingName);
+            return CalculateTokensWithSharpToken(sourceFiles, encodingName);
         }
         else
         {
-            return EstimateTokens(sourceFiles, promptTemplate);
+            return EstimateTokens(sourceFiles);
         }
     }
 
@@ -85,7 +84,7 @@ public class TokenCounterService
         if (!_encodings.TryGetValue(encodingName, out var encoding))
         {
             _loggingService.LogOperation($"Encoding {encodingName} not found. Falling back to estimation.");
-            return EstimateTokens(sourceFiles, promptTemplate);
+            return EstimateTokens(sourceFiles);
         }
 
         // Calculate prompt template tokens
@@ -203,14 +202,9 @@ public class TokenCounterService
         return headerTokens + contentTokens + footerTokens;
     }
 
-    private TokenCalculationResult EstimateTokens(List<SourceFile> sourceFiles, string promptTemplate)
+    private TokenCalculationResult EstimateTokens(List<SourceFile> sourceFiles)
     {
         var result = new TokenCalculationResult();
-
-        // Calculate tokens from the prompt template
-        var promptTemplateLength = promptTemplate?.Length ?? 0;
-        var promptTemplateTokens = EstimateTokenCount(promptTemplateLength);
-        result.PromptTemplateTokens = promptTemplateTokens;
 
         // Calculate tokens from files
         var totalFileChars = 0;
@@ -252,7 +246,7 @@ public class TokenCounterService
         result.BufferTokens = bufferTokens;
 
         // Compute the total
-        result.TotalTokens = promptTemplateTokens + totalFileTokens + sectionHeadersEstimate + bufferTokens;
+        result.TotalTokens = totalFileTokens + sectionHeadersEstimate + bufferTokens;
 
         // Add model compatibility info
         AddModelCompatibilityInfo(result);
